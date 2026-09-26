@@ -1,0 +1,158 @@
+import React from "react";
+import prisma from "@/lib/prisma";
+import ProductCard from "@/components/ProductCard";
+import Link from "next/link";
+import { Filter, Search } from "lucide-react";
+
+export const revalidate = 0; // Dynamic to reflect database changes immediately
+
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams?: {
+    category?: string;
+    q?: string;
+    type?: string;
+    grade?: string;
+    sort?: string;
+  };
+}) {
+  const categorySlug = searchParams?.category;
+  const searchQuery = searchParams?.q;
+  const teaType = searchParams?.type;
+  const teaGrade = searchParams?.grade;
+  const sort = searchParams?.sort || "featured";
+
+  // Build where filter
+  const where: any = {
+    isActive: true,
+  };
+
+  if (categorySlug) {
+    where.category = { slug: categorySlug };
+  }
+
+  if (searchQuery) {
+    where.OR = [
+      { name: { contains: searchQuery } },
+      { shortDescription: { contains: searchQuery } },
+      { teaGrade: { contains: searchQuery } },
+      { teaType: { contains: searchQuery } },
+    ];
+  }
+
+  if (teaType) {
+    where.teaType = { contains: teaType };
+  }
+
+  if (teaGrade) {
+    where.teaGrade = { contains: teaGrade };
+  }
+
+  let orderBy: any = { isFeatured: "desc" };
+  if (sort === "price-asc") orderBy = { regularPrice: "asc" };
+  if (sort === "price-desc") orderBy = { regularPrice: "desc" };
+  if (sort === "newest") orderBy = { createdAt: "desc" };
+
+  const [products, categories] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      include: {
+        category: true,
+        sizes: {
+          where: { isActive: true },
+          orderBy: { regularPrice: "asc" },
+        },
+      },
+      orderBy,
+    }),
+    prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+  ]);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-8">
+      {/* Page Header */}
+      <div className="space-y-2 text-center sm:text-left border-b border-tea-border/60 pb-6">
+        <span className="text-xs font-bold uppercase tracking-widest text-tea-leaf">
+          Direct From Sri Lanka
+        </span>
+        <h1 className="font-serif text-3xl sm:text-4xl font-bold text-tea-dark">
+          Ceylon Tea Catalogue
+        </h1>
+        <p className="text-xs sm:text-sm text-tea-muted max-w-2xl">
+          Browse our handpicked collection of 100% Pure Ceylon orthodox teas, tea powders, and estate-crafted botanical blends.
+        </p>
+      </div>
+
+      {/* Category Pills & Filters Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/products"
+            className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
+              !categorySlug
+                ? "bg-tea-dark text-white"
+                : "bg-tea-surface text-tea-dark hover:bg-tea-bg border border-tea-border"
+            }`}
+          >
+            All Products
+          </Link>
+          {categories.map((c) => (
+            <Link
+              key={c.id}
+              href={`/products?category=${c.slug}`}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
+                categorySlug === c.slug
+                  ? "bg-tea-dark text-white"
+                  : "bg-tea-surface text-tea-dark hover:bg-tea-bg border border-tea-border"
+              }`}
+            >
+              {c.name}
+            </Link>
+          ))}
+        </div>
+
+        {/* Search status or active count */}
+        <div className="text-xs text-tea-muted font-medium">
+          Showing <span className="text-tea-dark font-bold">{products.length}</span>{" "}
+          {products.length === 1 ? "product" : "products"}
+          {searchQuery && (
+            <span>
+              {" "}
+              matching "<strong>{searchQuery}</strong>"
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Products Grid */}
+      {products.length === 0 ? (
+        <div className="text-center py-20 bg-tea-surface rounded-2xl border border-tea-border p-6 space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-full bg-tea-leaf/10 text-tea-forest flex items-center justify-center">
+            <Search className="w-6 h-6" />
+          </div>
+          <h3 className="font-serif text-lg font-bold text-tea-dark">No products available.</h3>
+          <p className="text-xs text-tea-muted max-w-sm mx-auto">
+            We couldn't find any tea matching your search criteria. Try browsing our full collection or resetting filters.
+          </p>
+          <Link
+            href="/products"
+            className="inline-block px-5 py-2.5 rounded-xl bg-tea-dark text-white text-xs font-semibold uppercase tracking-wider"
+          >
+            Clear Filters
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {products.map((p) => (
+            <ProductCard key={p.id} product={p as any} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

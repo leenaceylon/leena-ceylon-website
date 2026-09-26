@@ -1,0 +1,220 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  phone        String?
+  role         String    @default("CUSTOMER")
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  addresses    Address[]
+  orders       Order[]
+  reviews      Review[]
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName    String
+  phone       String
+  addressLine String
+  city        String
+  district    String
+  postalCode  String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AdminUser {
+  id           String             @id @default(cuid())
+  name         String
+  email        String             @unique
+  passwordHash String
+  roleName     String             @default("SUPER_ADMIN") // SUPER_ADMIN, MANAGER, PRODUCT_MANAGER, ORDER_MANAGER
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  activityLogs AdminActivityLog[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  isActive    Boolean   @default(true)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+}
+
+model Product {
+  id                String           @id @default(cuid())
+  name              String
+  slug              String           @unique
+  sku               String           @unique
+  categoryId        String
+  category          Category         @relation(fields: [categoryId], references: [id])
+  shortDescription  String
+  fullDescription   String
+  teaType           String           // e.g. "Pure Ceylon Black Tea", "Lemon Tea", "Tea Powder"
+  teaGrade          String           // e.g. "BOPF / DUST", "FBOP", "OP", "Pekoe"
+  origin            String           // e.g. "Nuwara Eliya / Kekirawa, Sri Lanka"
+  regularPrice      Float
+  salePrice         Float?
+  stock             Int              @default(100)
+  lowStockThreshold Int              @default(10)
+  isFeatured        Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  mainImage         String
+  brewingGuide      String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  images            ProductImage[]
+  sizes             ProductVariant[]
+  orderItems        OrderItem[]
+  reviews           Review[]
+}
+
+model ProductVariant {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sizeName     String   // "50g", "100g", "200g", "250g", "500g", "1kg"
+  weightGram   Int
+  regularPrice Float
+  salePrice    Float?
+  stock        Int      @default(50)
+  sku          String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  isMain    Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique // e.g. "LC-2026-0001"
+  customerId      String?
+  customer        User?       @relation(fields: [customerId], references: [id])
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress String
+  city            String
+  district        String
+  postalCode      String?
+  deliveryNotes   String?
+  subtotal        Float
+  deliveryCharge  Float       @default(0)
+  discount        Float       @default(0)
+  grandTotal      Float
+  paymentMethod   String      // "CASH_ON_DELIVERY", "BANK_TRANSFER"
+  paymentStatus   String      @default("PENDING") // "PENDING", "PAID", "FAILED"
+  orderStatus     String      @default("PENDING") // "PENDING", "CONFIRMED", "PROCESSING", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED"
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  productName String
+  size        String
+  unitPrice   Float
+  quantity    Int
+  subtotal    Float
+  image       String?
+}
+
+model Review {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId   String?
+  customer     User?    @relation(fields: [customerId], references: [id])
+  customerName String
+  email        String?
+  rating       Int      // 1 to 5
+  comment      String
+  isApproved   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Coupon {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    // "PERCENTAGE", "FIXED"
+  discountValue Float
+  minOrder      Float?
+  maxDiscount   Float?
+  startDate     DateTime?
+  endDate       DateTime?
+  usageLimit    Int?
+  timesUsed     Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+}
+
+model Media {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  url          String
+  altText      String?
+  createdAt    DateTime @default(now())
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String   @default("GENERAL") // GENERAL, CONTACT, SOCIAL, DELIVERY, PAYMENT, WHATSAPP, SEO, SYSTEM
+  updatedAt DateTime @updatedAt
+}
+
+model AdminActivityLog {
+  id         String     @id @default(cuid())
+  adminId    String?
+  admin      AdminUser? @relation(fields: [adminId], references: [id])
+  adminName  String
+  action     String     // e.g. "UPDATE_PRICE", "UPDATE_ORDER_STATUS", "DELETE_PRODUCT", "UPDATE_SETTINGS"
+  details    String
+  entityType String?
+  entityId   String?
+  createdAt  DateTime   @default(now())
+}
