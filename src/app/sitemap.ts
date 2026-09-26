@@ -1,11 +1,14 @@
 import { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://leenaceylon.com";
 
-  // Static routes
-  const staticRoutes = [
+  // Static core routes
+  const staticRoutes: MetadataRoute.Sitemap = [
     "",
     "/products",
     "/about",
@@ -20,18 +23,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === "" ? 1.0 : 0.8,
   }));
 
-  // Products
-  const products = await prisma.product.findMany({
-    where: { isActive: true },
-    select: { slug: true, updatedAt: true },
-  });
+  try {
+    // Dynamic products from database
+    const products = await prisma.product.findMany({
+      where: { isActive: true },
+      select: { slug: true, updatedAt: true },
+    });
 
-  const productRoutes = products.map((p) => ({
-    url: `${baseUrl}/products/${p.slug}`,
-    lastModified: p.updatedAt,
-    changeFrequency: "daily" as const,
-    priority: 0.9,
-  }));
+    const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
+      url: `${baseUrl}/products/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    }));
 
-  return [...staticRoutes, ...productRoutes];
+    return [...staticRoutes, ...productRoutes];
+  } catch (error) {
+    console.warn("Unable to fetch products for sitemap.xml, returning static routes:", error);
+    return staticRoutes;
+  }
 }
+
