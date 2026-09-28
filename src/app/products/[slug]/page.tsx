@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
@@ -9,18 +10,62 @@ import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
 
 export const revalidate = 0;
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
   });
-  if (!product) return { title: "Product Not Found" };
+  if (!product) return { title: "Product Not Found | LEENA CEYLON" };
+
+  const pageUrl = `https://leenaceylon.com/products/${product.slug}`;
+  const imageUrl = product.mainImage.startsWith("http")
+    ? product.mainImage
+    : `https://leenaceylon.com${product.mainImage}`;
+
+  const title = `${product.name} | LEENA Pure Ceylon Tea`;
+  const description =
+    product.shortDescription ||
+    `Buy authentic ${product.name} from LEENA CEYLON. 100% pure Sri Lankan single-origin tea freshly packed at source. Order via WhatsApp or online.`;
+
   return {
-    title: `${product.name} | LEENA CEYLON`,
-    description: product.shortDescription,
+    title,
+    description,
+    keywords: [
+      product.name,
+      `LEENA ${product.name}`,
+      "LEENA",
+      "Leena Ceylon Tea",
+      "Ceylon Tea Sri Lanka",
+      product.teaGrade || "Ceylon Tea",
+      product.teaType || "Black Tea",
+      "Buy Ceylon Tea",
+    ],
+    alternates: {
+      canonical: pageUrl,
+    },
     openGraph: {
-      title: `${product.name} - LEENA CEYLON`,
-      description: product.shortDescription,
-      images: [{ url: product.mainImage }],
+      title,
+      description,
+      url: pageUrl,
+      siteName: "LEENA CEYLON",
+      images: [
+        {
+          url: imageUrl,
+          width: 800,
+          height: 800,
+          alt: `${product.name} - LEENA CEYLON`,
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [imageUrl],
     },
   };
 }
@@ -69,8 +114,90 @@ export default async function ProductDetailPage({
     take: 3,
   });
 
+  const productUrl = `https://leenaceylon.com/products/${product.slug}`;
+  const imageUrl = product.mainImage.startsWith("http")
+    ? product.mainImage
+    : `https://leenaceylon.com${product.mainImage}`;
+  const minPrice = product.sizes?.[0]?.regularPrice || product.regularPrice || 0;
+  const inStock =
+    (product.sizes?.some((s) => s.stock > 0) ?? false) ||
+    product.stock > 0;
+
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    image: [imageUrl],
+    description: product.shortDescription || product.fullDescription || product.name,
+    sku: product.sku || product.slug,
+    brand: {
+      "@type": "Brand",
+      name: "LEENA",
+      alternateName: "LEENA CEYLON",
+    },
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: "LKR",
+      price: minPrice,
+      itemCondition: "https://schema.org/NewCondition",
+      availability: inStock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+      seller: {
+        "@type": "Organization",
+        name: "LEENA CEYLON",
+      },
+    },
+    ...(product.reviews && product.reviews.length > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: (
+              product.reviews.reduce((acc, r) => acc + r.rating, 0) /
+              product.reviews.length
+            ).toFixed(1),
+            reviewCount: product.reviews.length,
+          },
+        }
+      : {}),
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://leenaceylon.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Products",
+        item: "https://leenaceylon.com/products",
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: product.name,
+        item: productUrl,
+      },
+    ],
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center space-x-2 text-xs text-tea-muted">
         <Link href="/" className="hover:text-tea-dark transition">

@@ -3,15 +3,91 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck, Heart, Leaf, Mountain, ArrowRight } from "lucide-react";
 
-export const metadata = {
-  title: "About Us | LEENA CEYLON - Pure Ceylon Tea",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About LEENA CEYLON | Pure Sri Lankan Ceylon Tea Heritage & Estates",
   description:
-    "Learn about LEENA CEYLON, our heritage in Sri Lankan tea production, sustainable estate sourcing, and commitment to purity.",
+    "Learn about LEENA CEYLON (PVT) LTD, our heritage in Sri Lankan tea production, sustainable highland estate sourcing, and dedication to 100% pure Ceylon tea.",
+  keywords: [
+    "About Leena Ceylon",
+    "Leena Ceylon history",
+    "Leena tea Sri Lanka",
+    "Ceylon Tea brand history",
+    "LEENA CEYLON PVT LTD",
+    "Sri Lanka tea estates",
+  ],
+  alternates: {
+    canonical: "https://leenaceylon.com/about",
+  },
+  openGraph: {
+    title: "About LEENA CEYLON | Pure Ceylon Tea Heritage",
+    description:
+      "Discover how LEENA CEYLON preserves traditional artisanal Ceylon tea craftsmanship directly from Sri Lanka.",
+    url: "https://leenaceylon.com/about",
+    siteName: "LEENA CEYLON",
+    images: [
+      {
+        url: "/images/ceylon-hero-plantation.jpg",
+        width: 1200,
+        height: 630,
+        alt: "LEENA CEYLON Tea Heritage",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About LEENA CEYLON | Pure Ceylon Tea Heritage",
+    description: "Discover LEENA CEYLON's sustainable sourcing and master craftsmanship.",
+    images: ["/images/ceylon-hero-plantation.jpg"],
+  },
 };
 
 export default function AboutPage() {
+  const aboutSchema = {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    name: "About LEENA CEYLON",
+    url: "https://leenaceylon.com/about",
+    description:
+      "The official story, origin, and artisanal heritage of LEENA CEYLON, producer of authentic pure Ceylon tea in Sri Lanka.",
+    mainEntity: {
+      "@type": "Organization",
+      name: "LEENA CEYLON",
+      alternateName: "LEENA",
+      url: "https://leenaceylon.com",
+    },
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://leenaceylon.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "About Us",
+        item: "https://leenaceylon.com/about",
+      },
+    ],
+  };
+
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(aboutSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Hero */}
       <section className="bg-gradient-to-b from-tea-bg via-white to-tea-surface py-16 sm:py-24 border-b border-tea-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">

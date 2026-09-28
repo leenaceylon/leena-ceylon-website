@@ -1,10 +1,71 @@
 import React from "react";
+import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
 import { Filter, Search } from "lucide-react";
 
 export const revalidate = 0; // Dynamic to reflect database changes immediately
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: { category?: string; q?: string; type?: string; grade?: string };
+}): Promise<Metadata> {
+  const category = searchParams?.category;
+  const q = searchParams?.q;
+
+  let title = "Pure Ceylon Tea Collection | LEENA CEYLON Products";
+  let description =
+    "Explore the full collection of authentic Sri Lankan Ceylon Tea from LEENA. Single-origin black tea, green tea, flavoured teas, and premium artisan grades.";
+
+  if (category) {
+    const formattedCat = category.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    title = `${formattedCat} | LEENA CEYLON Tea Collection`;
+    description = `Shop authentic ${formattedCat} from LEENA CEYLON. Freshly packed single-origin tea from Sri Lanka with direct WhatsApp ordering.`;
+  } else if (q) {
+    title = `Search: "${q}" | LEENA CEYLON`;
+    description = `Search results for "${q}" across the LEENA CEYLON tea collection.`;
+  }
+
+  return {
+    title,
+    description,
+    keywords: [
+      "LEENA products",
+      "Leena tea collection",
+      "Buy Ceylon Tea",
+      "Sri Lanka tea shop",
+      "Pure Ceylon Tea Sri Lanka",
+      "Leena Ceylon catalog",
+    ],
+    alternates: {
+      canonical: category
+        ? `https://leenaceylon.com/products?category=${category}`
+        : "https://leenaceylon.com/products",
+    },
+    openGraph: {
+      title,
+      description,
+      url: "https://leenaceylon.com/products",
+      siteName: "LEENA CEYLON",
+      images: [
+        {
+          url: "/images/ceylon-hero-plantation.jpg",
+          width: 1200,
+          height: 630,
+          alt: "LEENA CEYLON Products",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/images/ceylon-hero-plantation.jpg"],
+    },
+  };
+}
 
 export default async function ProductsPage({
   searchParams,
@@ -72,8 +133,31 @@ export default async function ProductsPage({
     }),
   ]);
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://leenaceylon.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Products",
+        item: "https://leenaceylon.com/products",
+      },
+    ],
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Page Header */}
       <div className="space-y-2 text-center sm:text-left border-b border-tea-border/60 pb-6">
         <span className="text-xs font-bold uppercase tracking-widest text-tea-leaf">

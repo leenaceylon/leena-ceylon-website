@@ -11,10 +11,47 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-export const metadata = {
-  title: "Ceylon Tea Guide | Regions, Grades & Terroir | LEENA CEYLON",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Complete Ceylon Tea Guide | 7 Regions, Grades & Terroir | LEENA",
   description:
-    "An educational guide to authentic Ceylon Tea: 7 recognized growing regions, High/Medium/Low elevations, and official tea grades.",
+    "An expert guide to authentic Ceylon Tea from Sri Lanka by LEENA CEYLON. Learn about the 7 tea-growing regions (Nuwara Eliya, Dimbula, Uva), high & low elevations, and tea grades (BOPF, Pekoe, OP).",
+  keywords: [
+    "Ceylon Tea guide",
+    "Ceylon tea regions",
+    "Nuwara Eliya tea",
+    "Dimbula tea",
+    "Uva tea",
+    "Ceylon tea grades",
+    "BOPF tea",
+    "Leena Ceylon Tea guide",
+    "Sri Lanka orthodox tea",
+  ],
+  alternates: {
+    canonical: "https://leenaceylon.com/ceylon-tea",
+  },
+  openGraph: {
+    title: "Ceylon Tea Guide: 7 Regions & Official Grades | LEENA CEYLON",
+    description:
+      "Official educational guide to Sri Lankan Ceylon Tea terroir, grades, and tasting profiles by LEENA CEYLON.",
+    url: "https://leenaceylon.com/ceylon-tea",
+    siteName: "LEENA CEYLON",
+    images: [
+      {
+        url: "/images/ceylon-hero-plantation.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Ceylon Tea Plantation Nuwara Eliya",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Complete Ceylon Tea Guide | LEENA CEYLON",
+    description: "Learn about Ceylon tea regions, elevations, and official grades.",
+    images: ["/images/ceylon-hero-plantation.jpg"],
+  },
 };
 
 const REGIONS = [
@@ -102,8 +139,58 @@ const GRADES = [
 ];
 
 export default function CeylonTeaPage() {
+  const articleSchema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: "The Master Guide to Ceylon Tea: 7 Regions, Grades & Terroir",
+    description:
+      "A comprehensive guide exploring Sri Lanka's 7 tea growing regions, three elevation tiers, and orthodox leaf grading standards.",
+    image: "https://leenaceylon.com/images/ceylon-hero-plantation.jpg",
+    author: {
+      "@type": "Organization",
+      name: "LEENA CEYLON",
+      url: "https://leenaceylon.com",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "LEENA CEYLON",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://leenaceylon.com/brand/logo.png",
+      },
+    },
+    mainEntityOfPage: "https://leenaceylon.com/ceylon-tea",
+  };
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://leenaceylon.com",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Ceylon Tea Guide",
+        item: "https://leenaceylon.com/ceylon-tea",
+      },
+    ],
+  };
+
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Header */}
       <section className="bg-gradient-to-b from-tea-bg via-white to-tea-surface py-16 sm:py-24 border-b border-tea-border">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">

@@ -1,8 +1,11 @@
-import React from "react";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Terms & Conditions | LEENA CEYLON",
-  description: "Terms and conditions of sale and use for LEENA CEYLON.",
+export const metadata: Metadata = {
+  title: "Terms & Conditions | LEENA CEYLON - Official Policy",
+  description: "Terms and conditions of sale, delivery, and WhatsApp purchases for LEENA CEYLON (PVT) LTD.",
+  alternates: {
+    canonical: "https://leenaceylon.com/terms",
+  },
 };
 
 export default function TermsPage() {

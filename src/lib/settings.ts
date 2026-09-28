@@ -27,9 +27,9 @@ export const DEFAULT_SETTINGS: SiteSettingsMap = {
   whatsappTemplate:
     "Hello LEENA CEYLON,\n\nI am interested in:\n{{product_name}}\n\nWeight:\n{{size}}\n\nPrice:\nRs. {{price}}\n\nPlease provide more details.",
   whatsappEnabled: true,
-  seoTitle: "LEENA CEYLON | Pure Ceylon Tea - The Taste of Ceylon",
+  seoTitle: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
   seoDescription:
-    "Discover the authentic taste, aroma and character of 100% Pure Ceylon Tea from Sri Lanka. Handpicked from lush green hills.",
+    "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, and flavoured teas directly from Ceylon.",
 };
 
 export async function getSiteSettings(): Promise<SiteSettingsMap> {

@@ -24,9 +24,46 @@ import {
 export const revalidate = 0; // Dynamic server rendering to always reflect live database updates
 
 export const metadata: Metadata = {
-  title: "LEENA CEYLON | Pure Ceylon Tea from Sri Lanka",
+  title: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
   description:
-    "Discover LEENA CEYLON – authentic Ceylon Tea from Sri Lanka. Explore premium Sri Lankan tea, flavoured tea and carefully selected tea products.",
+    "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, BOPF, and flavoured teas. Order online or via WhatsApp.",
+  keywords: [
+    "LEENA",
+    "Leena",
+    "Leena Ceylon",
+    "Leena Tea",
+    "Leena Ceylon Tea",
+    "Ceylon Tea Sri Lanka",
+    "Pure Ceylon Tea",
+    "Buy Ceylon Tea",
+    "Single Origin Ceylon Tea",
+    "Sri Lanka Tea brand",
+    "Leena official website",
+  ],
+  alternates: {
+    canonical: "https://leenaceylon.com",
+  },
+  openGraph: {
+    title: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
+    description:
+      "Official LEENA CEYLON website. Authentic Sri Lankan single-origin Ceylon tea directly from misty mountain estates.",
+    url: "https://leenaceylon.com",
+    siteName: "LEENA CEYLON",
+    images: [
+      {
+        url: "/images/ceylon-hero-plantation.jpg",
+        width: 1200,
+        height: 630,
+        alt: "LEENA CEYLON - Pure Ceylon Tea Plantation",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "LEENA | Pure Ceylon Tea Sri Lanka",
+    description: "Official LEENA CEYLON store. 100% authentic Ceylon tea.",
+    images: ["/images/ceylon-hero-plantation.jpg"],
+  },
 };
 
 export default async function HomePage() {
@@ -103,8 +140,52 @@ export default async function HomePage() {
     },
   ];
 
+  // FAQ Schema for Google Rich Results
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What makes LEENA Ceylon Tea authentic and pure?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "LEENA CEYLON sources unblended 100% Pure Ceylon Tea directly from recognized high, medium, and low grown tea estates of Sri Lanka. Every batch is harvested from single-origin plantations and packed fresh under strict Ceylon tea quality standards.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How can I order LEENA Ceylon Tea via WhatsApp?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "You can click the 'Order via WhatsApp' button on any product or contact our official hotline at 071 777 4717 (+94 71 777 4717) for fast assistance, customized pack sizes, and direct bank transfer details.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What types of Ceylon Tea does LEENA provide?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "LEENA offers traditional high-grown black teas (such as BOPF, Pekoe, and OP), fragrant green teas, premium flavoured teas, and curated gift collections.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Do you deliver islandwide across Sri Lanka?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes, LEENA CEYLON delivers islandwide across Sri Lanka with Cash on Delivery (COD) and direct bank transfer options. Free delivery is available on qualifying orders.",
+        },
+      },
+    ],
+  };
+
   return (
     <div className="space-y-16 sm:space-y-24 pb-16 overflow-x-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       {/* ================================================== */}
       {/* 1. HERO SECTION WITH CINEMATIC CEYLON PLANTATION */}
       {/* ================================================== */}
@@ -113,7 +194,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image
             src="/images/ceylon-hero-plantation.jpg"
-            alt="Misty Ceylon Tea Plantation Highlands Nuwara Eliya Sri Lanka"
+            alt="Misty Ceylon Tea Plantation Highlands Nuwara Eliya Sri Lanka - LEENA CEYLON"
             fill
             priority
             sizes="100vw"
@@ -165,6 +246,9 @@ export default async function HomePage() {
                   />
                 </div>
                 <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-tea-dark tracking-tight leading-tight">
+                  <span className="block font-sans text-xs sm:text-sm font-extrabold text-tea-forest tracking-[0.25em] uppercase mb-1">
+                    LEENA CEYLON
+                  </span>
                   PURE CEYLON TEA
                 </h1>
                 <p className="font-serif text-lg sm:text-2xl text-tea-gold font-medium tracking-[0.2em] uppercase">

@@ -1,8 +1,11 @@
-import React from "react";
+import type { Metadata } from "next";
 
-export const metadata = {
-  title: "Privacy Policy | LEENA CEYLON",
-  description: "Privacy policy and data protection standards at LEENA CEYLON.",
+export const metadata: Metadata = {
+  title: "Privacy Policy | LEENA CEYLON - Customer Data Protection",
+  description: "Official Privacy policy and customer data protection standards at LEENA CEYLON (PVT) LTD.",
+  alternates: {
+    canonical: "https://leenaceylon.com/privacy-policy",
+  },
 };
 
 export default function PrivacyPolicyPage() {
