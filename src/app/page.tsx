@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import prisma from "@/lib/prisma";
 import { getSiteSettings } from "@/lib/settings";
+import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 import ProductCard from "@/components/ProductCard";
 import ProductSlider from "@/components/ProductSlider";
 import HeroProductSlider from "@/components/HeroProductSlider";
@@ -69,37 +70,52 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const settings = await getSiteSettings();
 
-  // Fetch all active products from database for hero & catalog
-  const allAvailableProducts = await prisma.product.findMany({
-    where: {
-      isActive: true,
-    },
-    include: {
-      sizes: {
-        where: { isActive: true },
-        orderBy: { regularPrice: "asc" },
+  // Fetch products & categories safely with fallback
+  let allAvailableProducts: any[] = [];
+  let categories: any[] = [];
+
+  try {
+    allAvailableProducts = await prisma.product.findMany({
+      where: {
+        isActive: true,
       },
-      category: true,
-      images: {
-        orderBy: { sortOrder: "asc" },
+      include: {
+        sizes: {
+          where: { isActive: true },
+          orderBy: { regularPrice: "asc" },
+        },
+        category: true,
+        images: {
+          orderBy: { sortOrder: "asc" },
+        },
       },
-    },
-    orderBy: [
-      { isFeatured: "desc" },
-      { createdAt: "desc" },
-    ],
-  });
+      orderBy: [
+        { isFeatured: "desc" },
+        { createdAt: "desc" },
+      ],
+    });
+
+    categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+    });
+  } catch (error) {
+    console.warn("Could not load products from database, using resilient fallback data:", error);
+    allAvailableProducts = FALLBACK_PRODUCTS as any;
+    categories = FALLBACK_CATEGORIES as any;
+  }
+
+  if (!allAvailableProducts || allAvailableProducts.length === 0) {
+    allAvailableProducts = FALLBACK_PRODUCTS as any;
+  }
+  if (!categories || categories.length === 0) {
+    categories = FALLBACK_CATEGORIES as any;
+  }
 
   // Featured products for the carousel (or all available if none marked featured)
   const featuredProducts = allAvailableProducts.filter((p) => p.isFeatured);
   const carouselProducts =
     featuredProducts.length > 0 ? featuredProducts : allAvailableProducts;
-
-  // Fetch active categories
-  const categories = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: { sortOrder: "asc" },
-  });
 
   // 7 Iconic Ceylon Tea Regions
   const ceylonRegions = [

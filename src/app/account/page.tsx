@@ -18,14 +18,20 @@ export default async function AccountPage() {
   const customer = await getCurrentCustomer();
 
   // If customer is logged in, show their orders
-  const orders = customer
-    ? await prisma.order.findMany({
+  let orders: any[] = [];
+  if (customer) {
+    try {
+      orders = await prisma.order.findMany({
         where: { customerId: customer.id },
         include: { items: true },
         orderBy: { createdAt: "desc" },
         take: 10,
-      })
-    : [];
+      });
+    } catch (error) {
+      console.warn("Could not load orders from database:", error);
+      orders = [];
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 space-y-8">

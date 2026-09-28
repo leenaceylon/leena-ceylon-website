@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { FALLBACK_PRODUCTS } from "@/lib/fallback-data";
 import ProductDetailsClient from "@/components/ProductDetailsClient";
 import ProductReviews from "@/components/ProductReviews";
 import ProductCard from "@/components/ProductCard";
@@ -15,9 +16,18 @@ export async function generateMetadata({
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-  });
+  let product: any = null;
+  try {
+    product = await prisma.product.findUnique({
+      where: { slug: params.slug },
+    });
+  } catch (error) {
+    product = FALLBACK_PRODUCTS.find((p) => p.slug === params.slug);
+  }
+
+  if (!product) {
+    product = FALLBACK_PRODUCTS.find((p) => p.slug === params.slug);
+  }
   if (!product) return { title: "Product Not Found | LEENA CEYLON" };
 
   const pageUrl = `https://leenaceylon.com/products/${product.slug}`;
@@ -75,44 +85,61 @@ export default async function ProductDetailPage({
 }: {
   params: { slug: string };
 }) {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    include: {
-      category: true,
-      sizes: {
-        where: { isActive: true },
-        orderBy: { regularPrice: "asc" },
+  let product: any = null;
+  let relatedProducts: any[] = [];
+
+  try {
+    product = await prisma.product.findUnique({
+      where: { slug: params.slug },
+      include: {
+        category: true,
+        sizes: {
+          where: { isActive: true },
+          orderBy: { regularPrice: "asc" },
+        },
+        images: {
+          orderBy: { sortOrder: "asc" },
+        },
+        reviews: {
+          where: { isApproved: true },
+          orderBy: { createdAt: "desc" },
+        },
       },
-      images: {
-        orderBy: { sortOrder: "asc" },
-      },
-      reviews: {
-        where: { isApproved: true },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+    });
+
+    if (product) {
+      relatedProducts = await prisma.product.findMany({
+        where: {
+          isActive: true,
+          id: { not: product.id },
+          categoryId: product.categoryId,
+        },
+        include: {
+          sizes: {
+            where: { isActive: true },
+            orderBy: { regularPrice: "asc" },
+          },
+          category: true,
+        },
+        take: 3,
+      });
+    }
+  } catch (error) {
+    console.warn("Could not query database on product details page, using fallback:", error);
+    product = FALLBACK_PRODUCTS.find((p) => p.slug === params.slug) || null;
+    relatedProducts = FALLBACK_PRODUCTS.filter((p) => p.slug !== params.slug).slice(0, 3);
+  }
+
+  if (!product) {
+    product = FALLBACK_PRODUCTS.find((p) => p.slug === params.slug) || null;
+    if (relatedProducts.length === 0) {
+      relatedProducts = FALLBACK_PRODUCTS.filter((p) => p.slug !== params.slug).slice(0, 3);
+    }
+  }
 
   if (!product || !product.isActive) {
     notFound();
   }
-
-  // Fetch related products
-  const relatedProducts = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      id: { not: product.id },
-      categoryId: product.categoryId,
-    },
-    include: {
-      sizes: {
-        where: { isActive: true },
-        orderBy: { regularPrice: "asc" },
-      },
-      category: true,
-    },
-    take: 3,
-  });
 
   const productUrl = `https://leenaceylon.com/products/${product.slug}`;
   const imageUrl = product.mainImage.startsWith("http")
@@ -120,7 +147,7 @@ export default async function ProductDetailPage({
     : `https://leenaceylon.com${product.mainImage}`;
   const minPrice = product.sizes?.[0]?.regularPrice || product.regularPrice || 0;
   const inStock =
-    (product.sizes?.some((s) => s.stock > 0) ?? false) ||
+    (product.sizes?.some((s: any) => s.stock > 0) ?? false) ||
     product.stock > 0;
 
   const productSchema = {
@@ -154,7 +181,7 @@ export default async function ProductDetailPage({
           aggregateRating: {
             "@type": "AggregateRating",
             ratingValue: (
-              product.reviews.reduce((acc, r) => acc + r.rating, 0) /
+              product.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) /
               product.reviews.length
             ).toFixed(1),
             reviewCount: product.reviews.length,

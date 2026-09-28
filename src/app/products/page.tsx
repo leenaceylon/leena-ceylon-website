@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
+import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
 import { Filter, Search } from "lucide-react";
@@ -115,23 +116,41 @@ export default async function ProductsPage({
   if (sort === "price-desc") orderBy = { regularPrice: "desc" };
   if (sort === "newest") orderBy = { createdAt: "desc" };
 
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      include: {
-        category: true,
-        sizes: {
-          where: { isActive: true },
-          orderBy: { regularPrice: "asc" },
+  let products: any[] = [];
+  let categories: any[] = [];
+
+  try {
+    const res = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          sizes: {
+            where: { isActive: true },
+            orderBy: { regularPrice: "asc" },
+          },
         },
-      },
-      orderBy,
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-  ]);
+        orderBy,
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+    products = res[0];
+    categories = res[1];
+  } catch (error) {
+    console.warn("Could not query database on products page, using fallback data:", error);
+    products = FALLBACK_PRODUCTS as any;
+    categories = FALLBACK_CATEGORIES as any;
+  }
+
+  if (!products || products.length === 0) {
+    products = FALLBACK_PRODUCTS as any;
+  }
+  if (!categories || categories.length === 0) {
+    categories = FALLBACK_CATEGORIES as any;
+  }
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
