@@ -1,6 +1,9 @@
 import { MetadataRoute } from "next";
+import { getBaseUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = getBaseUrl();
+
   return {
     rules: [
       {
@@ -26,8 +29,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: "https://leenaceylon.com/sitemap.xml",
-    host: "https://leenaceylon.com",
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   };
 }
-

@@ -44,29 +44,18 @@ export default function ContactPage() {
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-tea-surface p-6 sm:p-8 rounded-3xl border border-tea-border space-y-6 shadow-subtle">
             <h3 className="font-serif text-lg font-bold text-tea-dark pb-3 border-b border-tea-border">
-              Headquarters & Facilities
+              Head Office & Customer Support
             </h3>
 
             <div className="space-y-4 text-xs">
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-tea-forest shrink-0 mt-0.5" />
                 <div>
-                  <h5 className="font-bold text-tea-dark">Main Operations & Packaging</h5>
+                  <h5 className="font-bold text-tea-dark">Head Office</h5>
                   <p className="text-tea-muted mt-0.5">
                     LEENA CEYLON (PVT) LTD<br />
                     A/Bandarapothana, Pubbogama,<br />
                     Kekirawa, Sri Lanka.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-tea-forest shrink-0 mt-0.5" />
-                <div>
-                  <h5 className="font-bold text-tea-dark">Highland Estate Office</h5>
-                  <p className="text-tea-muted mt-0.5">
-                    No. 123, Tea Garden Road,<br />
-                    Nuwara Eliya, Sri Lanka.
                   </p>
                 </div>
               </div>

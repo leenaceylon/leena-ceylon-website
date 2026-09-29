@@ -5,26 +5,28 @@ import { ShieldCheck, Heart, Leaf, Mountain, ArrowRight } from "lucide-react";
 
 import type { Metadata } from "next";
 
+import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
+
 export const metadata: Metadata = {
-  title: "About LEENA CEYLON | Pure Sri Lankan Ceylon Tea Heritage & Estates",
+  title: "About LEENA CEYLON | Pure Sri Lankan Ceylon Tea Heritage",
   description:
     "Learn about LEENA CEYLON (PVT) LTD, our heritage in Sri Lankan tea production, sustainable highland estate sourcing, and dedication to 100% pure Ceylon tea.",
   keywords: [
+    ...SEO_KEYWORDS,
     "About Leena Ceylon",
     "Leena Ceylon history",
     "Leena tea Sri Lanka",
     "Ceylon Tea brand history",
     "LEENA CEYLON PVT LTD",
-    "Sri Lanka tea estates",
   ],
   alternates: {
-    canonical: "https://leenaceylon.com/about",
+    canonical: "/about",
   },
   openGraph: {
     title: "About LEENA CEYLON | Pure Ceylon Tea Heritage",
     description:
       "Discover how LEENA CEYLON preserves traditional artisanal Ceylon tea craftsmanship directly from Sri Lanka.",
-    url: "https://leenaceylon.com/about",
+    url: "/about",
     siteName: "LEENA CEYLON",
     images: [
       {
@@ -44,18 +46,20 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const baseUrl = getBaseUrl();
+
   const aboutSchema = {
     "@context": "https://schema.org",
     "@type": "AboutPage",
     name: "About LEENA CEYLON",
-    url: "https://leenaceylon.com/about",
+    url: `${baseUrl}/about`,
     description:
       "The official story, origin, and artisanal heritage of LEENA CEYLON, producer of authentic pure Ceylon tea in Sri Lanka.",
     mainEntity: {
       "@type": "Organization",
       name: "LEENA CEYLON",
-      alternateName: "LEENA",
-      url: "https://leenaceylon.com",
+      alternateName: ["LEENA", "Leena Ceylon", "leenaceylon", "Leena Tea"],
+      url: baseUrl,
     },
   };
 
@@ -67,13 +71,13 @@ export default function AboutPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://leenaceylon.com",
+        item: baseUrl,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "About Us",
-        item: "https://leenaceylon.com/about",
+        item: `${baseUrl}/about`,
       },
     ],
   };
@@ -115,10 +119,10 @@ export default function AboutPage() {
               Heritage & Origin
             </span>
             <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
-              From Nuwara Eliya & Kekirawa with Pride
+              From Sri Lanka&apos;s Finest Highlands to Kekirawa with Pride
             </h2>
             <p className="text-xs sm:text-sm text-tea-muted leading-relaxed">
-              LEENA CEYLON (PVT) LTD is rooted in Sri Lanka’s lush highlands and historic tea-trading junctions. By partnering directly with esteemed smallholders and heritage plantations, we guarantee that only the freshest, tender two leaves and a bud make their way into our processing facilities.
+              LEENA CEYLON (PVT) LTD brings you the purest single-origin Ceylon tea directly through our head office in Kekirawa. By partnering directly with esteemed smallholders and heritage tea gardens across Sri Lanka&apos;s central highlands, we ensure that only the finest two leaves and a bud are selected for our products.
             </p>
             <p className="text-xs sm:text-sm text-tea-muted leading-relaxed">
               Unlike mass commercial brands that blend teas from across disparate continents to mask inconsistencies, LEENA CEYLON remains fiercely committed to 100% single-origin Ceylon tea.

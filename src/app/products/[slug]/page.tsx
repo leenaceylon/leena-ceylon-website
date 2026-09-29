@@ -8,6 +8,7 @@ import ProductDetailsClient from "@/components/ProductDetailsClient";
 import ProductReviews from "@/components/ProductReviews";
 import ProductCard from "@/components/ProductCard";
 import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
+import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
 export const revalidate = 0;
 
@@ -30,11 +31,12 @@ export async function generateMetadata({
   }
   if (!product) return { title: "Product Not Found | LEENA CEYLON" };
 
-  const pageUrl = `https://leenaceylon.com/products/${product.slug}`;
+  const baseUrl = getBaseUrl();
+  const pageUrl = `/products/${product.slug}`;
   const mainImg = product.mainImage || "/uploads/leena-tea-powder-200g.jpeg";
   const imageUrl = mainImg.startsWith("http")
     ? mainImg
-    : `https://leenaceylon.com${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
+    : `${baseUrl}${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
 
   const title = `${product.name} | LEENA Pure Ceylon Tea`;
   const description =
@@ -45,6 +47,7 @@ export async function generateMetadata({
     title,
     description,
     keywords: [
+      ...SEO_KEYWORDS,
       product.name,
       `LEENA ${product.name}`,
       "LEENA",
@@ -142,11 +145,12 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const productUrl = `https://leenaceylon.com/products/${product.slug}`;
+  const baseUrl = getBaseUrl();
+  const productUrl = `${baseUrl}/products/${product.slug}`;
   const mainImg = product.mainImage || "/uploads/leena-tea-powder-200g.jpeg";
   const imageUrl = mainImg.startsWith("http")
     ? mainImg
-    : `https://leenaceylon.com${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
+    : `${baseUrl}${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
   const minPrice = Number(product.sizes?.[0]?.regularPrice || product.regularPrice) || 0;
   const inStock =
     (product.sizes?.some((s: any) => s.stock > 0) ?? false) ||
@@ -161,8 +165,8 @@ export default async function ProductDetailPage({
     sku: product.sku || product.slug,
     brand: {
       "@type": "Brand",
-      name: "LEENA",
-      alternateName: "LEENA CEYLON",
+      name: "LEENA CEYLON",
+      alternateName: ["LEENA", "Leena Ceylon", "leenaceylon", "Leena Tea"],
     },
     offers: {
       "@type": "Offer",
@@ -200,13 +204,13 @@ export default async function ProductDetailPage({
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://leenaceylon.com",
+        item: baseUrl,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Products",
-        item: "https://leenaceylon.com/products",
+        item: `${baseUrl}/products`,
       },
       {
         "@type": "ListItem",

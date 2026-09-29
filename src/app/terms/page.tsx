@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: "Terms & Conditions | LEENA CEYLON - Official Policy",
   description: "Terms and conditions of sale, delivery, and WhatsApp purchases for LEENA CEYLON (PVT) LTD.",
   alternates: {
-    canonical: "https://leenaceylon.com/terms",
+    canonical: "/terms",
   },
 };
 
@@ -16,7 +16,7 @@ export default function TermsPage() {
           Terms & Conditions
         </h1>
         <p className="text-xs text-tea-muted">
-          LEENA CEYLON (PVT) LTD • Nuwara Eliya & Kekirawa, Sri Lanka
+          LEENA CEYLON (PVT) LTD • Head Office: Kekirawa, Sri Lanka
         </p>
       </div>
 

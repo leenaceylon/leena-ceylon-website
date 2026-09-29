@@ -141,7 +141,7 @@ export const FALLBACK_PRODUCTS: FallbackProduct[] = [
     sku: "LC-TIN-250",
     categoryId: "cat-3",
     shortDescription: "Finest quality 100% Pure Ceylon BOPF packaged in an airtight luxury tin caddy for enduring freshness.",
-    fullDescription: "LEENA CEYLON Tea is a premium blend of finest Ceylon tea leaves, handpicked from the lush green hills of Sri Lanka. Rich in taste, natural in aroma. Preserved in a protective reusable food-grade tin canister.\n\nPacked & Marketed by Leena Ceylon (Pvt) Ltd, Nuwara Eliya, Sri Lanka.",
+    fullDescription: "LEENA CEYLON Tea is a premium blend of finest Ceylon tea leaves, handpicked from the lush green hills of Sri Lanka. Rich in taste, natural in aroma. Preserved in a protective reusable food-grade tin canister.\n\nPacked & Marketed by LEENA CEYLON (PVT) LTD, A/Bandarapothana, Pubbogama, Kekirawa, Sri Lanka.",
     teaType: "Pure Ceylon Black Tea",
     teaGrade: "BOPF (Broken Orange Pekoe Fannings)",
     origin: "Nuwara Eliya, High Grown (6,000+ ft), Sri Lanka",

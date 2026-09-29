@@ -24,31 +24,21 @@ import {
 
 export const revalidate = 0; // Dynamic server rendering to always reflect live database updates
 
+import { SEO_KEYWORDS } from "@/lib/seo";
+
 export const metadata: Metadata = {
-  title: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
+  title: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
   description:
-    "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, BOPF, and flavoured teas. Order online or via WhatsApp.",
-  keywords: [
-    "LEENA",
-    "Leena",
-    "Leena Ceylon",
-    "Leena Tea",
-    "Leena Ceylon Tea",
-    "Ceylon Tea Sri Lanka",
-    "Pure Ceylon Tea",
-    "Buy Ceylon Tea",
-    "Single Origin Ceylon Tea",
-    "Sri Lanka Tea brand",
-    "Leena official website",
-  ],
+    "Official LEENA CEYLON website. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, BOPF, and flavoured teas. Order online or via WhatsApp.",
+  keywords: SEO_KEYWORDS,
   alternates: {
-    canonical: "https://leenaceylon.com",
+    canonical: "/",
   },
   openGraph: {
-    title: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
+    title: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
     description:
       "Official LEENA CEYLON website. Authentic Sri Lankan single-origin Ceylon tea directly from misty mountain estates.",
-    url: "https://leenaceylon.com",
+    url: "/",
     siteName: "LEENA CEYLON",
     images: [
       {
@@ -61,7 +51,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "LEENA | Pure Ceylon Tea Sri Lanka",
+    title: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka",
     description: "Official LEENA CEYLON store. 100% authentic Ceylon tea.",
     images: ["/images/ceylon-hero-plantation.jpg"],
   },

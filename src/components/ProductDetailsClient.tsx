@@ -380,7 +380,7 @@ export default function ProductDetailsClient({
             </div>
             <div>
               <span className="text-tea-muted block">Dispatched From:</span>
-              <span className="font-semibold text-tea-dark">Kekirawa / Nuwara Eliya</span>
+              <span className="font-semibold text-tea-dark">Kekirawa Head Office</span>
             </div>
           </div>
         </div>

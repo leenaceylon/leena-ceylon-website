@@ -12,30 +12,29 @@ import {
 } from "lucide-react";
 
 import type { Metadata } from "next";
+import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Complete Ceylon Tea Guide | 7 Regions, Grades & Terroir | LEENA",
+  title: "Complete Ceylon Tea Guide | 7 Regions, Grades & Terroir | LEENA CEYLON",
   description:
-    "An expert guide to authentic Ceylon Tea from Sri Lanka by LEENA CEYLON. Learn about the 7 tea-growing regions (Nuwara Eliya, Dimbula, Uva), high & low elevations, and tea grades (BOPF, Pekoe, OP).",
+    "An expert guide to authentic Ceylon Tea from Sri Lanka by LEENA CEYLON. Learn about Sri Lanka's 7 tea-growing regions, high & low elevations, and tea grades (BOPF, Pekoe, OP).",
   keywords: [
+    ...SEO_KEYWORDS,
     "Ceylon Tea guide",
     "Ceylon tea regions",
-    "Nuwara Eliya tea",
-    "Dimbula tea",
-    "Uva tea",
     "Ceylon tea grades",
     "BOPF tea",
     "Leena Ceylon Tea guide",
     "Sri Lanka orthodox tea",
   ],
   alternates: {
-    canonical: "https://leenaceylon.com/ceylon-tea",
+    canonical: "/ceylon-tea",
   },
   openGraph: {
     title: "Ceylon Tea Guide: 7 Regions & Official Grades | LEENA CEYLON",
     description:
       "Official educational guide to Sri Lankan Ceylon Tea terroir, grades, and tasting profiles by LEENA CEYLON.",
-    url: "https://leenaceylon.com/ceylon-tea",
+    url: "/ceylon-tea",
     siteName: "LEENA CEYLON",
     images: [
       {
@@ -139,27 +138,29 @@ const GRADES = [
 ];
 
 export default function CeylonTeaPage() {
+  const baseUrl = getBaseUrl();
+
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: "The Master Guide to Ceylon Tea: 7 Regions, Grades & Terroir",
     description:
       "A comprehensive guide exploring Sri Lanka's 7 tea growing regions, three elevation tiers, and orthodox leaf grading standards.",
-    image: "https://leenaceylon.com/images/ceylon-hero-plantation.jpg",
+    image: `${baseUrl}/images/ceylon-hero-plantation.jpg`,
     author: {
       "@type": "Organization",
       name: "LEENA CEYLON",
-      url: "https://leenaceylon.com",
+      url: baseUrl,
     },
     publisher: {
       "@type": "Organization",
       name: "LEENA CEYLON",
       logo: {
         "@type": "ImageObject",
-        url: "https://leenaceylon.com/brand/logo.png",
+        url: `${baseUrl}/brand/logo.png`,
       },
     },
-    mainEntityOfPage: "https://leenaceylon.com/ceylon-tea",
+    mainEntityOfPage: `${baseUrl}/ceylon-tea`,
   };
 
   const breadcrumbSchema = {
@@ -170,13 +171,13 @@ export default function CeylonTeaPage() {
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://leenaceylon.com",
+        item: baseUrl,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Ceylon Tea Guide",
-        item: "https://leenaceylon.com/ceylon-tea",
+        item: `${baseUrl}/ceylon-tea`,
       },
     ],
   };

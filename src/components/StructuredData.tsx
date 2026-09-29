@@ -1,12 +1,13 @@
 import React from "react";
 import { SiteSettingsMap } from "@/types";
+import { getBaseUrl } from "@/lib/seo";
 
 interface StructuredDataProps {
   settings: SiteSettingsMap;
 }
 
 export default function StructuredData({ settings }: StructuredDataProps) {
-  const baseUrl = "https://leenaceylon.com";
+  const baseUrl = getBaseUrl();
   const brandName = settings.brandName || "LEENA CEYLON";
 
   // Organization Schema for Google Knowledge Graph & Brand recognition
@@ -14,21 +15,30 @@ export default function StructuredData({ settings }: StructuredDataProps) {
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${baseUrl}/#organization`,
-    name: "LEENA",
+    name: "LEENA CEYLON",
     legalName: "LEENA CEYLON (PVT) LTD",
     alternateName: [
+      "LEENA",
       "Leena",
+      "leena",
       "LEENA CEYLON",
+      "Leena Ceylon",
+      "leena ceylon",
+      "leenaceylon",
+      "LeenaCeylon",
+      "leenaceylon.vercel.app",
+      "Leena Ceylon Website",
       "Leena Ceylon Tea",
       "Leena Tea",
       "Leena Sri Lanka",
       "LEENA Pure Ceylon Tea",
+      "Leena Tea Powder",
     ],
     url: baseUrl,
     logo: `${baseUrl}/brand/logo.png`,
     image: `${baseUrl}/images/ceylon-hero-plantation.jpg`,
     description:
-      "LEENA (LEENA CEYLON) is an authentic Sri Lankan tea brand producing 100% Pure Ceylon Tea sourced directly from single-origin high and low grown tea estates of Sri Lanka.",
+      "Official website of LEENA CEYLON (PVT) LTD. 100% Pure Ceylon Tea sourced from finest Sri Lankan tea gardens, with head office in Kekirawa, Sri Lanka.",
     telephone: settings.phone || "+94 71 777 4717",
     email: settings.email || "info@leenaceylon.com",
     address: {
@@ -37,6 +47,7 @@ export default function StructuredData({ settings }: StructuredDataProps) {
       addressLocality: "Kekirawa",
       addressRegion: "North Central Province",
       addressCountry: "LK",
+      description: "LEENA CEYLON Head Office",
     },
     contactPoint: {
       "@type": "ContactPoint",
@@ -58,8 +69,8 @@ export default function StructuredData({ settings }: StructuredDataProps) {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${baseUrl}/#website`,
-    name: "LEENA",
-    alternateName: ["LEENA CEYLON", "Leena Ceylon Tea", "Leena Tea"],
+    name: "LEENA CEYLON",
+    alternateName: ["LEENA", "Leena Ceylon", "leenaceylon", "Leena Ceylon Website", "Leena Tea"],
     url: baseUrl,
     description: "Official LEENA CEYLON website. 100% Pure Ceylon Tea from Sri Lanka.",
     publisher: {
@@ -81,7 +92,7 @@ export default function StructuredData({ settings }: StructuredDataProps) {
     "@type": "Store",
     "@id": `${baseUrl}/#store`,
     name: "LEENA CEYLON",
-    alternateName: ["LEENA", "Leena Tea Store"],
+    alternateName: ["LEENA", "Leena Tea Store", "LEENA CEYLON Office"],
     image: `${baseUrl}/brand/logo.png`,
     url: baseUrl,
     telephone: settings.phone || "+94 71 777 4717",

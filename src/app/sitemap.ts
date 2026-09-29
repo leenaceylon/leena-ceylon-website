@@ -1,11 +1,12 @@
 import { MetadataRoute } from "next";
 import prisma from "@/lib/prisma";
+import { getBaseUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://leenaceylon.com";
+  const baseUrl = getBaseUrl();
 
   // Static core routes
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -24,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    // Dynamic products from database
+    // Dynamic products from PostgreSQL database
     const products = await prisma.product.findMany({
       where: { isActive: true },
       select: { slug: true, updatedAt: true },
@@ -43,4 +44,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return staticRoutes;
   }
 }
-

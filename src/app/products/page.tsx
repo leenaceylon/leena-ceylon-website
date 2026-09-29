@@ -5,6 +5,7 @@ import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
 import { Filter, Search } from "lucide-react";
+import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
 export const revalidate = 0; // Dynamic to reflect database changes immediately
 
@@ -33,6 +34,7 @@ export async function generateMetadata({
     title,
     description,
     keywords: [
+      ...SEO_KEYWORDS,
       "LEENA products",
       "Leena tea collection",
       "Buy Ceylon Tea",
@@ -42,13 +44,13 @@ export async function generateMetadata({
     ],
     alternates: {
       canonical: category
-        ? `https://leenaceylon.com/products?category=${category}`
-        : "https://leenaceylon.com/products",
+        ? `/products?category=${category}`
+        : "/products",
     },
     openGraph: {
       title,
       description,
-      url: "https://leenaceylon.com/products",
+      url: "/products",
       siteName: "LEENA CEYLON",
       images: [
         {
@@ -173,6 +175,8 @@ export default async function ProductsPage({
     }
   }
 
+  const baseUrl = getBaseUrl();
+
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -181,13 +185,13 @@ export default async function ProductsPage({
         "@type": "ListItem",
         position: 1,
         name: "Home",
-        item: "https://leenaceylon.com",
+        item: baseUrl,
       },
       {
         "@type": "ListItem",
         position: 2,
         name: "Products",
-        item: "https://leenaceylon.com/products",
+        item: `${baseUrl}/products`,
       },
     ],
   };

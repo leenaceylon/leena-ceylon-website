@@ -4,44 +4,27 @@ import { CartProvider } from "@/context/CartContext";
 import CustomerLayoutWrapper from "@/components/CustomerLayoutWrapper";
 import { getSiteSettings } from "@/lib/settings";
 import StructuredData from "@/components/StructuredData";
+import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
-  const siteUrl = "https://leenaceylon.com";
+  const siteUrl = getBaseUrl();
 
   return {
     metadataBase: new URL(siteUrl),
     title: {
-      default: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
-      template: `%s | ${settings.brandName}`,
+      default: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
+      template: `%s | ${settings.brandName || "LEENA CEYLON"}`,
     },
     description:
       settings.seoDescription ||
-      "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, and flavoured teas directly from Ceylon.",
+      "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, BOPF, and flavoured teas directly from Ceylon.",
     applicationName: "LEENA CEYLON",
     authors: [{ name: "LEENA CEYLON", url: siteUrl }],
     creator: "LEENA CEYLON (PVT) LTD",
     publisher: "LEENA CEYLON (PVT) LTD",
     category: "Food & Beverage",
-    keywords: [
-      "LEENA",
-      "Leena",
-      "Leena Ceylon",
-      "Leena Tea",
-      "Leena Ceylon Tea",
-      "Ceylon Tea",
-      "Pure Ceylon Tea",
-      "Sri Lanka Tea",
-      "Ceylon Black Tea",
-      "Ceylon Green Tea",
-      "Flavoured Tea Sri Lanka",
-      "Authentic Ceylon Tea",
-      "Single Origin Ceylon Tea",
-      "Buy Ceylon Tea Online",
-      "Leena official website",
-      "Ceylon Tea brand Sri Lanka",
-      "LEENA CEYLON PVT LTD",
-    ],
+    keywords: SEO_KEYWORDS,
     alternates: {
       canonical: "/",
     },
@@ -54,10 +37,10 @@ export async function generateMetadata(): Promise<Metadata> {
       shortcut: [settings.faviconUrl || "/brand/logo.png"],
     },
     openGraph: {
-      title: "LEENA | Pure Ceylon Tea from Sri Lanka - The Taste of Ceylon",
+      title: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
       description:
         settings.seoDescription ||
-        "Official LEENA CEYLON store. Experience 100% authentic, single-origin Ceylon tea directly from the lush green hills of Sri Lanka.",
+        "Official LEENA CEYLON website. Experience 100% authentic, single-origin Ceylon tea directly from Sri Lanka.",
       url: siteUrl,
       siteName: "LEENA CEYLON",
       locale: "en_LK",
@@ -79,7 +62,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: "LEENA | Pure Ceylon Tea Sri Lanka",
+      title: "LEENA CEYLON | Pure Ceylon Tea Sri Lanka",
       description:
         "Official LEENA CEYLON store. Handpicked 100% authentic Ceylon tea directly from Sri Lanka.",
       site: "@leenaceylon",
@@ -125,4 +108,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
