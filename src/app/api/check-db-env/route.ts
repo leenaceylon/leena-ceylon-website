@@ -3,21 +3,48 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const envKeys = Object.keys(process.env).filter(
-    (k) =>
-      k.includes("DATABASE") ||
-      k.includes("POSTGRES") ||
-      k.includes("SQL") ||
-      k.includes("PRISMA") ||
-      k.includes("KV") ||
-      k.includes("BLOB") ||
-      k.includes("STORAGE")
-  );
+  const envKeys = [
+    "leenaceylon_PRISMA_DATABASE_URL",
+    "leenaceylon_POSTGRES_URL",
+    "leenaceylon_DATABASE_URL",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL",
+    "DATABASE_URL",
+  ];
+
+  const results: Record<string, any> = {};
+
+  for (const k of envKeys) {
+    const val = process.env[k];
+    if (!val) {
+      results[k] = { exists: false };
+      continue;
+    }
+
+    try {
+      const u = new URL(val);
+      results[k] = {
+        exists: true,
+        protocol: u.protocol,
+        host: u.host,
+        pathname: u.pathname,
+        search: u.search,
+        length: val.length,
+      };
+    } catch {
+      results[k] = {
+        exists: true,
+        protocol: val.split(":")[0],
+        length: val.length,
+      };
+    }
+  }
 
   return NextResponse.json({
-    hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
-    databaseUrlPrefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.slice(0, 15) : null,
-    hasPostgresUrl: Boolean(process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL),
-    envKeys,
+    timestamp: new Date().toISOString(),
+    results,
+    allMatchingKeys: Object.keys(process.env).filter(
+      (k) => k.includes("leenaceylon") || k.includes("DATABASE") || k.includes("POSTGRES")
+    ),
   });
 }
