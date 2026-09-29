@@ -50,34 +50,41 @@ export default function ProductDetailsClient({
 }) {
   const { openWhatsAppModal } = useCart();
 
-  const [selectedImage, setSelectedImage] = useState(
-    product.images?.[0]?.url || product.mainImage
-  );
+  const fallbackImg = "/uploads/leena-tea-powder-200g.jpeg";
+  const initialImg = product.images?.[0]?.url || product.mainImage || fallbackImg;
+
+  const [selectedImage, setSelectedImage] = useState(initialImg);
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
-  const activeSize =
-    product.sizes && product.sizes.length > 0
-      ? product.sizes[selectedSizeIndex]
-      : null;
+  const sizes = Array.isArray(product.sizes) ? product.sizes : [];
+  const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const currentPrice = activeSize
-    ? activeSize.salePrice || activeSize.regularPrice
-    : product.salePrice || product.regularPrice;
+  const currentPrice = Number(
+    activeSize
+      ? activeSize.salePrice || activeSize.regularPrice
+      : product.salePrice || product.regularPrice
+  ) || 0;
 
-  const regularPrice = activeSize
-    ? activeSize.regularPrice
-    : product.regularPrice;
+  const regularPrice = Number(
+    activeSize
+      ? activeSize.regularPrice
+      : product.regularPrice
+  ) || currentPrice;
 
   const hasDiscount = regularPrice > currentPrice;
-  const currentStock = activeSize ? activeSize.stock : product.stock;
+  const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
   const isOutOfStock = currentStock <= 0;
 
-  const galleryImages = [
+  const rawGallery = [
     product.mainImage,
     ...(product.images || []).map((img) => img.url),
-  ].filter((url, index, self) => self.indexOf(url) === index);
+  ].filter((url): url is string => Boolean(url) && typeof url === "string");
+  const galleryImages = rawGallery.filter((url, index, self) => self.indexOf(url) === index);
+  if (galleryImages.length === 0) {
+    galleryImages.push(fallbackImg);
+  }
 
   const handleCopyAccount = () => {
     navigator.clipboard.writeText("100024897120");

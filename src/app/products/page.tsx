@@ -152,6 +152,27 @@ export default async function ProductsPage({
     categories = FALLBACK_CATEGORIES as any;
   }
 
+  // Filter fallback products if database was unavailable
+  if (categorySlug && Array.isArray(products)) {
+    const filtered = products.filter((p: any) => p.category?.slug === categorySlug);
+    if (filtered.length > 0) {
+      products = filtered;
+    }
+  }
+  if (searchQuery && Array.isArray(products)) {
+    const q = searchQuery.toLowerCase();
+    const filtered = products.filter(
+      (p: any) =>
+        p.name?.toLowerCase().includes(q) ||
+        p.shortDescription?.toLowerCase().includes(q) ||
+        p.teaGrade?.toLowerCase().includes(q) ||
+        p.teaType?.toLowerCase().includes(q)
+    );
+    if (filtered.length > 0) {
+      products = filtered;
+    }
+  }
+
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",

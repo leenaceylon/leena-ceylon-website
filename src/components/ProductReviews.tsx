@@ -8,7 +8,7 @@ export default function ProductReviews({
   reviews,
 }: {
   productId: string;
-  reviews: Array<{
+  reviews?: Array<{
     id: string;
     customerName: string;
     rating: number;
@@ -16,6 +16,7 @@ export default function ProductReviews({
     createdAt: Date | string;
   }>;
 }) {
+  const safeReviews = Array.isArray(reviews) ? reviews : [];
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState(5);
@@ -175,7 +176,7 @@ export default function ProductReviews({
 
       {/* Reviews List */}
       <div className="space-y-4">
-        {reviews.length === 0 ? (
+        {safeReviews.length === 0 ? (
           <div className="p-8 text-center bg-tea-surface rounded-2xl border border-tea-border">
             <p className="text-sm font-medium text-tea-muted">No reviews yet.</p>
             <p className="text-xs text-tea-muted/80 mt-1">
@@ -184,7 +185,7 @@ export default function ProductReviews({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {reviews.map((rev) => (
+            {safeReviews.map((rev) => (
               <div
                 key={rev.id}
                 className="p-5 rounded-2xl border border-tea-border bg-white space-y-2.5 shadow-subtle"

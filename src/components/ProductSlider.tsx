@@ -161,28 +161,34 @@ export default function ProductSlider({ products }: ProductSliderProps) {
           }}
         >
           {products.map((product) => {
+            if (!product) return null;
             const selectedSizeIndex = selectedSizes[product.id] || 0;
+            const sizes = Array.isArray(product.sizes) ? product.sizes : [];
             const activeSize =
-              product.sizes && product.sizes.length > 0
-                ? product.sizes[selectedSizeIndex]
+              sizes.length > 0
+                ? sizes[selectedSizeIndex] || sizes[0]
                 : null;
-            const currentPrice = activeSize
-              ? activeSize.salePrice || activeSize.regularPrice
-              : product.salePrice || product.regularPrice;
-            const regularPrice = activeSize
-              ? activeSize.regularPrice
-              : product.regularPrice;
+            const currentPrice = Number(
+              activeSize
+                ? activeSize.salePrice || activeSize.regularPrice
+                : product.salePrice || product.regularPrice
+            ) || 0;
+            const regularPrice = Number(
+              activeSize
+                ? activeSize.regularPrice
+                : product.regularPrice
+            ) || currentPrice;
             const hasDiscount = regularPrice > currentPrice;
-            const discountPercent = hasDiscount
+            const discountPercent = hasDiscount && regularPrice > 0
               ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
               : 0;
-            const currentStock = activeSize ? activeSize.stock : product.stock;
+            const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
             const isOutOfStock = currentStock <= 0;
 
             const handleOrder = (e: React.MouseEvent) => {
               e.preventDefault();
               openWhatsAppModal({
-                productName: product.name,
+                productName: product.name || "Ceylon Tea",
                 size: activeSize?.sizeName || "Standard",
                 quantity: 1,
                 price: currentPrice,
@@ -301,11 +307,11 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                           <span className="text-xs text-tea-muted">Price:</span>
                           <div className="flex items-baseline gap-2">
                             <span className="font-serif text-xl sm:text-2xl font-bold text-tea-dark">
-                              Rs. {currentPrice.toLocaleString()}
+                              Rs. {currentPrice.toLocaleString("en-US")}
                             </span>
                             {hasDiscount && (
                               <span className="text-xs text-tea-muted line-through">
-                                Rs. {regularPrice.toLocaleString()}
+                                Rs. {regularPrice.toLocaleString("en-US")}
                               </span>
                             )}
                           </div>

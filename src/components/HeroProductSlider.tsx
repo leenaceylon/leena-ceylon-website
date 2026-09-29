@@ -86,26 +86,30 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
 
   if (total === 0) return null;
 
-  const currentProduct = products[currentIndex];
-  const activeSize =
-    currentProduct.sizes && currentProduct.sizes.length > 0
-      ? currentProduct.sizes[selectedSizeIndex] || currentProduct.sizes[0]
-      : null;
+  const currentProduct = products[currentIndex] || products[0];
+  if (!currentProduct) return null;
 
-  const currentPrice = activeSize
-    ? activeSize.salePrice || activeSize.regularPrice
-    : currentProduct.salePrice || currentProduct.regularPrice;
+  const sizes = Array.isArray(currentProduct.sizes) ? currentProduct.sizes : [];
+  const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const regularPrice = activeSize
-    ? activeSize.regularPrice
-    : currentProduct.regularPrice;
+  const currentPrice = Number(
+    activeSize
+      ? activeSize.salePrice || activeSize.regularPrice
+      : currentProduct.salePrice || currentProduct.regularPrice
+  ) || 0;
+
+  const regularPrice = Number(
+    activeSize
+      ? activeSize.regularPrice
+      : currentProduct.regularPrice
+  ) || currentPrice;
 
   const hasDiscount = regularPrice > currentPrice;
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
-      productName: currentProduct.name,
+      productName: currentProduct.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: 1,
       price: currentPrice,

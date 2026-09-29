@@ -31,9 +31,10 @@ export async function generateMetadata({
   if (!product) return { title: "Product Not Found | LEENA CEYLON" };
 
   const pageUrl = `https://leenaceylon.com/products/${product.slug}`;
-  const imageUrl = product.mainImage.startsWith("http")
-    ? product.mainImage
-    : `https://leenaceylon.com${product.mainImage}`;
+  const mainImg = product.mainImage || "/uploads/leena-tea-powder-200g.jpeg";
+  const imageUrl = mainImg.startsWith("http")
+    ? mainImg
+    : `https://leenaceylon.com${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
 
   const title = `${product.name} | LEENA Pure Ceylon Tea`;
   const description =
@@ -142,13 +143,14 @@ export default async function ProductDetailPage({
   }
 
   const productUrl = `https://leenaceylon.com/products/${product.slug}`;
-  const imageUrl = product.mainImage.startsWith("http")
-    ? product.mainImage
-    : `https://leenaceylon.com${product.mainImage}`;
-  const minPrice = product.sizes?.[0]?.regularPrice || product.regularPrice || 0;
+  const mainImg = product.mainImage || "/uploads/leena-tea-powder-200g.jpeg";
+  const imageUrl = mainImg.startsWith("http")
+    ? mainImg
+    : `https://leenaceylon.com${mainImg.startsWith("/") ? "" : "/"}${mainImg}`;
+  const minPrice = Number(product.sizes?.[0]?.regularPrice || product.regularPrice) || 0;
   const inStock =
     (product.sizes?.some((s: any) => s.stock > 0) ?? false) ||
-    product.stock > 0;
+    Number(product.stock) > 0;
 
   const productSchema = {
     "@context": "https://schema.org",

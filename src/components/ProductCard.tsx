@@ -32,27 +32,31 @@ export default function ProductCard({ product }: ProductCardProps) {
   const { openWhatsAppModal } = useCart();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
 
-  const activeSize =
-    product.sizes && product.sizes.length > 0
-      ? product.sizes[selectedSizeIndex]
-      : null;
+  if (!product) return null;
 
-  const currentPrice = activeSize
-    ? activeSize.salePrice || activeSize.regularPrice
-    : product.salePrice || product.regularPrice;
+  const sizes = Array.isArray(product.sizes) ? product.sizes : [];
+  const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const regularPrice = activeSize
-    ? activeSize.regularPrice
-    : product.regularPrice;
+  const currentPrice = Number(
+    activeSize
+      ? activeSize.salePrice || activeSize.regularPrice
+      : product.salePrice || product.regularPrice
+  ) || 0;
+
+  const regularPrice = Number(
+    activeSize
+      ? activeSize.regularPrice
+      : product.regularPrice
+  ) || currentPrice;
 
   const hasDiscount = regularPrice > currentPrice;
-  const currentStock = activeSize ? activeSize.stock : product.stock;
+  const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
   const isOutOfStock = currentStock <= 0;
 
   const handleOrderWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
-      productName: product.name,
+      productName: product.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: 1,
       price: currentPrice,
