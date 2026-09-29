@@ -14,6 +14,8 @@ export default function WhatsAppModal({
 }) {
   const { whatsAppModal, closeWhatsAppModal } = useCart();
   const [customerName, setCustomerName] = useState("");
+  const [payWithBankTransfer, setPayWithBankTransfer] = useState(false);
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -31,12 +33,6 @@ export default function WhatsAppModal({
     };
   }, [whatsAppModal.isOpen, closeWhatsAppModal]);
 
-  if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
-
-  const { details } = whatsAppModal;
-  const [payWithBankTransfer, setPayWithBankTransfer] = useState(false);
-  const [copiedAccount, setCopiedAccount] = useState(false);
-
   const handleCopyAccount = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -44,6 +40,10 @@ export default function WhatsAppModal({
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2000);
   };
+
+  if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
+
+  const { details } = whatsAppModal;
 
   const handleContinue = () => {
     let message = compileSingleProductWhatsAppMessage(
