@@ -11,12 +11,21 @@ export interface CartItem {
   sku?: string;
 }
 
+export interface WhatsAppOrderSizeOption {
+  id?: string;
+  sizeName: string;
+  price: number;
+  regularPrice?: number;
+  stock?: number;
+}
+
 export interface WhatsAppOrderDetails {
   productName: string;
   size: string;
   quantity: number;
   price: number;
   total: number;
+  availableSizes?: WhatsAppOrderSizeOption[];
 }
 
 export interface SiteSettingsMap {

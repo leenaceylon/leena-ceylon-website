@@ -2,8 +2,23 @@
 
 import React, { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
-import { compileSingleProductWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
-import { MessageSquare, X, CheckCircle2, Building, Copy, Check } from "lucide-react";
+import { compileSingleProductWhatsAppOrder, getWhatsAppUrl } from "@/lib/whatsapp";
+import {
+  MessageSquare,
+  X,
+  CheckCircle2,
+  Copy,
+  Check,
+  Truck,
+  CreditCard,
+  Plus,
+  Minus,
+  ShieldCheck,
+  MapPin,
+  User,
+  Phone,
+} from "lucide-react";
+import { WhatsAppOrderDetails, WhatsAppOrderSizeOption } from "@/types";
 
 export default function WhatsAppModal({
   whatsappNumber = "071 777 4717",
@@ -13,10 +28,30 @@ export default function WhatsAppModal({
   whatsappTemplate?: string;
 }) {
   const { whatsAppModal, closeWhatsAppModal } = useCart();
+
+  // All React state hooks declared at the top unconditionally
   const [customerName, setCustomerName] = useState("");
-  const [payWithBankTransfer, setPayWithBankTransfer] = useState(false);
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"COD" | "BANK">("COD");
+  const [quantity, setQuantity] = useState(1);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [unitPrice, setUnitPrice] = useState(0);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
+  // Sync state whenever modal is opened with new product details
+  useEffect(() => {
+    if (whatsAppModal.isOpen && whatsAppModal.details) {
+      setQuantity(Math.max(1, whatsAppModal.details.quantity || 1));
+      setSelectedSize(whatsAppModal.details.size || "Standard");
+      setUnitPrice(whatsAppModal.details.price || 0);
+      setPaymentMethod("COD");
+    } else {
+      setCopiedAccount(false);
+    }
+  }, [whatsAppModal.isOpen, whatsAppModal.details]);
+
+  // Keyboard shortcut for ESC to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -44,17 +79,31 @@ export default function WhatsAppModal({
   if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
 
   const { details } = whatsAppModal;
+  const currentTotal = unitPrice * quantity;
+  const availableSizes: WhatsAppOrderSizeOption[] = details.availableSizes || [];
+
+  const handleSelectSize = (sz: WhatsAppOrderSizeOption) => {
+    setSelectedSize(sz.sizeName);
+    setUnitPrice(sz.price);
+  };
 
   const handleContinue = () => {
-    let message = compileSingleProductWhatsAppMessage(
-      whatsappTemplate || "",
-      details,
-      customerName
-    );
+    const orderDetails: WhatsAppOrderDetails = {
+      productName: details.productName,
+      size: selectedSize || details.size,
+      quantity: quantity,
+      price: unitPrice,
+      total: currentTotal,
+      availableSizes: details.availableSizes,
+    };
 
-    if (payWithBankTransfer) {
-      message += `\n\nPayment Preference: *Direct Bank Transfer*\n\n--- *LEENA CEYLON BANK DETAILS* ---\nBank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch (Swift: CCEYLKLX)\n\nI will transfer Rs. ${details.total.toLocaleString("en-US")} to this account and send my deposit slip screenshot here.`;
-    }
+    const message = compileSingleProductWhatsAppOrder({
+      details: orderDetails,
+      customerName: customerName.trim(),
+      customerAddress: customerAddress.trim(),
+      customerPhone: customerPhone.trim(),
+      paymentMethod: paymentMethod,
+    });
 
     const url = getWhatsAppUrl(whatsappNumber, message);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -63,27 +112,27 @@ export default function WhatsAppModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in"
       onClick={closeWhatsAppModal}
       role="dialog"
       aria-modal="true"
       aria-labelledby="whatsapp-modal-title"
     >
       <div
-        className="w-full max-w-md bg-white rounded-2xl shadow-hover border border-tea-border overflow-hidden transform transition-all animate-scale-up"
+        className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-tea-border overflow-hidden transform transition-all animate-scale-up max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-tea-dark px-6 py-4 text-white flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4" />
+        <div className="bg-gradient-to-r from-tea-dark via-tea-forest to-tea-dark px-5 py-4 text-white flex items-center justify-between shrink-0 shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 flex items-center justify-center shrink-0">
+              <MessageSquare className="w-5 h-5 fill-current" />
             </div>
             <div>
-              <h3 id="whatsapp-modal-title" className="font-serif font-semibold text-lg text-white">
+              <h3 id="whatsapp-modal-title" className="font-serif font-bold text-base sm:text-lg text-white leading-tight">
                 Order via WhatsApp
               </h3>
-              <p className="text-xs text-emerald-300">Quick direct ordering from Sri Lanka</p>
+              <p className="text-[11px] text-emerald-300 font-sans">Direct dispatch from Ceylon • Instant confirmation</p>
             </div>
           </div>
           <button
@@ -95,115 +144,298 @@ export default function WhatsAppModal({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
-          <div className="bg-tea-bg rounded-xl p-4 border border-tea-border/60 space-y-3">
+        {/* Scrollable Content Body */}
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+          {/* 1. Product Summary & Options */}
+          <div className="bg-tea-bg/70 rounded-xl p-4 border border-tea-border/80 space-y-3.5">
+            {/* Product Name */}
             <div className="flex justify-between items-start text-sm">
-              <span className="text-tea-muted font-medium">Product</span>
-              <span className="text-tea-dark font-semibold text-right max-w-[65%]">
+              <span className="text-tea-muted font-medium text-xs uppercase tracking-wider">Product</span>
+              <span className="text-tea-dark font-serif font-bold text-sm sm:text-base text-right max-w-[70%]">
                 {details.productName}
               </span>
             </div>
-            <div className="flex justify-between items-center text-sm border-t border-tea-border/40 pt-2">
-              <span className="text-tea-muted font-medium">Size</span>
-              <span className="inline-block px-2.5 py-0.5 rounded-full bg-tea-leaf/10 text-tea-forest font-semibold text-xs">
-                {details.size}
+
+            {/* Size / Weight Selection */}
+            {availableSizes.length > 1 ? (
+              <div className="border-t border-tea-border/60 pt-2.5 space-y-1.5">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-tea-muted font-medium">Select Pack / Size:</span>
+                  <span className="font-bold text-tea-forest">{selectedSize}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {availableSizes.map((sz) => {
+                    const isSelected = selectedSize === sz.sizeName;
+                    return (
+                      <button
+                        key={sz.sizeName}
+                        type="button"
+                        onClick={() => handleSelectSize(sz)}
+                        className={`text-xs px-2.5 py-1.5 rounded-lg border font-medium transition flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-tea-forest text-white border-tea-forest shadow-xs font-bold"
+                            : "bg-white text-tea-dark border-tea-border hover:border-tea-leaf"
+                        }`}
+                      >
+                        <span>{sz.sizeName}</span>
+                        <span className={`text-[10px] ${isSelected ? "text-emerald-200" : "text-tea-muted"}`}>
+                          Rs. {sz.price.toLocaleString("en-US")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center text-sm border-t border-tea-border/60 pt-2.5">
+                <span className="text-tea-muted font-medium">Pack / Weight</span>
+                <span className="inline-block px-2.5 py-0.5 rounded-full bg-tea-leaf/10 text-tea-forest font-semibold text-xs">
+                  {selectedSize}
+                </span>
+              </div>
+            )}
+
+            {/* Quantity Selector with Plus / Minus & Direct Number Input */}
+            <div className="border-t border-tea-border/60 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-tea-muted font-medium text-xs block">Quantity (Packs)</span>
+                <span className="text-[11px] text-tea-muted/80">Choose how many you need</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Plus / Minus Box */}
+                <div className="inline-flex items-center border border-tea-border rounded-xl bg-white shadow-xs overflow-hidden h-9">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="w-8 h-full flex items-center justify-center text-tea-dark hover:bg-tea-bg active:bg-tea-surface disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="99"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setQuantity(isNaN(val) || val < 1 ? 1 : val);
+                    }}
+                    className="w-11 h-full text-center font-bold text-sm text-tea-dark focus:outline-none border-x border-tea-border/60 bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    aria-label="Quantity"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="w-8 h-full flex items-center justify-center text-tea-dark hover:bg-tea-bg active:bg-tea-surface transition"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Quick Preset Pills */}
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 5, 10].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setQuantity(num)}
+                      className={`w-7 h-9 text-xs rounded-lg border font-semibold transition flex items-center justify-center ${
+                        quantity === num
+                          ? "bg-tea-forest text-white border-tea-forest shadow-xs"
+                          : "bg-white text-tea-muted border-tea-border hover:border-tea-leaf hover:text-tea-dark"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Price Breakdown */}
+            <div className="flex justify-between items-center text-xs border-t border-tea-border/60 pt-2 text-tea-muted">
+              <span>Unit Price</span>
+              <span>Rs. {unitPrice.toLocaleString("en-US")} each</span>
+            </div>
+
+            {/* Order Total Highlight */}
+            <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-2.5 text-tea-dark">
+              <span className="flex items-center gap-1.5">
+                <span>Total Amount:</span>
+                <span className="text-xs font-normal text-tea-muted">({quantity} × Rs. {unitPrice.toLocaleString("en-US")})</span>
               </span>
-            </div>
-            <div className="flex justify-between items-center text-sm border-t border-tea-border/40 pt-2">
-              <span className="text-tea-muted font-medium">Quantity</span>
-              <span className="text-tea-dark font-medium">{details.quantity}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm border-t border-tea-border/40 pt-2">
-              <span className="text-tea-muted font-medium">Price</span>
-              <span className="text-tea-dark font-medium">
-                Rs. {details.price.toLocaleString("en-US")} each
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-3 text-tea-dark">
-              <span>Product Total</span>
-              <span className="text-tea-forest text-lg">
-                Rs. {details.total.toLocaleString("en-US")}
+              <span className="text-tea-forest text-lg font-serif">
+                Rs. {currentTotal.toLocaleString("en-US")}
               </span>
             </div>
           </div>
 
-          {/* Optional customer name */}
-          <div>
-            <label className="block text-xs font-medium text-tea-muted mb-1.5">
-              Your Name (Optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Priyantha"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full px-3.5 py-2 text-sm rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition"
-            />
+          {/* 2. Delivery & Customer Details */}
+          <div className="space-y-2.5 bg-white p-3.5 rounded-xl border border-tea-border/70 shadow-xs">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-tea-leaf" />
+              <span>Customer & Delivery Details</span>
+            </h4>
+
+            <div className="space-y-2 text-xs">
+              {/* Full Name */}
+              <div>
+                <label className="block text-tea-muted font-medium mb-1">
+                  Your Name (Optional)
+                </label>
+                <div className="relative">
+                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Priyantha Kumara"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Delivery Address / City */}
+              <div>
+                <label className="block text-tea-muted font-medium mb-1">
+                  Delivery Address / Nearest City
+                </label>
+                <div className="relative">
+                  <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Kekirawa, Kandy, Colombo 03, etc."
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Phone (Optional) */}
+              <div>
+                <label className="block text-tea-muted font-medium mb-1">
+                  Contact Phone (Optional)
+                </label>
+                <div className="relative">
+                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  <input
+                    type="tel"
+                    placeholder="e.g. 077 123 4567"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Optional Bank Transfer preference */}
-          <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 space-y-2 text-xs">
-            <label className="flex items-center gap-2 cursor-pointer font-semibold text-tea-dark select-none">
-              <input
-                type="checkbox"
-                checked={payWithBankTransfer}
-                onChange={(e) => setPayWithBankTransfer(e.target.checked)}
-                className="rounded border-amber-300 text-tea-forest focus:ring-tea-leaf w-4 h-4"
-              />
-              <span>Pay via Bank Transfer (Include Account Details in WhatsApp)</span>
+          {/* 3. Payment Method Selection */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-tea-forest">
+              Payment Method
             </label>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {/* Cash on Delivery */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("COD")}
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition text-center ${
+                  paymentMethod === "COD"
+                    ? "border-emerald-600 bg-emerald-50/70 text-emerald-950 font-bold ring-2 ring-emerald-500/20 shadow-xs"
+                    : "border-tea-border bg-white text-tea-muted hover:border-tea-leaf"
+                }`}
+              >
+                <Truck className="w-4 h-4 text-emerald-600" />
+                <span className="font-semibold text-xs">Cash on Delivery</span>
+                <span className="text-[10px] text-tea-muted font-normal">Pay when package arrives</span>
+              </button>
 
-            {payWithBankTransfer && (
-              <div className="bg-white p-2.5 rounded-lg border border-amber-200/60 text-[11px] space-y-1 text-tea-dark mt-1">
-                <div className="flex justify-between items-center pb-1 border-b border-tea-border/60">
-                  <span className="font-bold text-tea-forest">Commercial Bank of Ceylon</span>
+              {/* Direct Bank Transfer */}
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("BANK")}
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition text-center ${
+                  paymentMethod === "BANK"
+                    ? "border-amber-600 bg-amber-50/70 text-amber-950 font-bold ring-2 ring-amber-500/20 shadow-xs"
+                    : "border-tea-border bg-white text-tea-muted hover:border-tea-leaf"
+                }`}
+              >
+                <CreditCard className="w-4 h-4 text-amber-700" />
+                <span className="font-semibold text-xs">Bank Transfer</span>
+                <span className="text-[10px] text-tea-muted font-normal">Commercial Bank of Ceylon</span>
+              </button>
+            </div>
+
+            {/* Bank Details Box (Shown when Bank Transfer is selected) */}
+            {paymentMethod === "BANK" && (
+              <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3 text-xs space-y-2 text-tea-dark animate-fade-in">
+                <div className="flex justify-between items-center pb-1.5 border-b border-amber-200/70">
+                  <span className="font-bold text-tea-forest text-xs">Commercial Bank of Ceylon PLC</span>
                   <button
                     type="button"
                     onClick={handleCopyAccount}
-                    className="flex items-center gap-1 text-[10px] text-tea-leaf hover:text-tea-dark font-medium px-2 py-0.5 rounded bg-tea-surface border border-tea-border"
+                    className="flex items-center gap-1 text-[11px] text-tea-leaf hover:text-tea-dark font-medium px-2 py-0.5 rounded-md bg-white border border-amber-300 shadow-xs active:scale-95 transition"
                   >
                     {copiedAccount ? (
                       <>
                         <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-700">Copied!</span>
+                        <span className="text-emerald-700 font-bold">Copied!</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="w-3 h-3" />
-                        <span>Copy No</span>
+                        <Copy className="w-3 h-3 text-tea-leaf" />
+                        <span>Copy Account No</span>
                       </>
                     )}
                   </button>
                 </div>
-                <p>Acc Name: LEENA CEYLON (PVT) LTD</p>
-                <p className="font-mono font-bold text-xs text-tea-forest">Acc No: 1000 2489 7120</p>
-                <p>Branch: Kekirawa Branch (Swift: CCEYLKLX)</p>
+                <div className="space-y-0.5 text-[11px]">
+                  <p><span className="text-tea-muted">Account Name:</span> <strong className="text-tea-dark">LEENA CEYLON (PVT) LTD</strong></p>
+                  <p><span className="text-tea-muted">Account Number:</span> <strong className="font-mono text-tea-forest font-bold text-xs">1000 2489 7120</strong></p>
+                  <p><span className="text-tea-muted">Branch:</span> <strong>Kekirawa Branch (Swift: CCEYLKLX)</strong></p>
+                  <p><span className="text-tea-muted">Amount to Transfer:</span> <strong className="text-emerald-700 font-bold">Rs. {currentTotal.toLocaleString("en-US")}</strong></p>
+                </div>
+                <p className="text-[10px] text-amber-800 bg-amber-100/70 p-1.5 rounded-md">
+                  💡 Transfer Rs. {currentTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.
+                </p>
               </div>
             )}
           </div>
 
-          <div className="text-xs text-tea-muted bg-emerald-50/70 border border-emerald-200/60 p-2.5 rounded-lg flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Opens WhatsApp directly with your order and account details pre-filled.</span>
+          {/* Trust Guarantees */}
+          <div className="text-[11px] text-tea-muted bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-xl flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-emerald-800">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Islandwide delivery in 24–48 hours</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-emerald-800">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>100% Pure Ceylon Tea</span>
+            </span>
           </div>
+        </div>
 
-          {/* Buttons */}
-          <div className="space-y-2.5 pt-1">
-            <button
-              onClick={handleContinue}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition shadow-sm hover:shadow active:scale-[0.99]"
-            >
-              <MessageSquare className="w-4 h-4" />
-              CONTINUE TO WHATSAPP
-            </button>
-            <button
-              onClick={closeWhatsAppModal}
-              className="w-full py-2.5 px-4 rounded-xl border border-tea-border text-tea-muted hover:text-tea-dark hover:bg-tea-bg text-sm font-medium transition"
-            >
-              CANCEL
-            </button>
-          </div>
+        {/* Fixed Footer Buttons */}
+        <div className="p-4 sm:p-5 bg-tea-bg/80 border-t border-tea-border space-y-2 shrink-0">
+          <button
+            onClick={handleContinue}
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-[0.99]"
+          >
+            <MessageSquare className="w-5 h-5 fill-current" />
+            <span>CONTINUE TO WHATSAPP • RS. {currentTotal.toLocaleString("en-US")}</span>
+          </button>
+          <button
+            onClick={closeWhatsAppModal}
+            className="w-full py-2 px-4 rounded-xl border border-tea-border text-tea-muted hover:text-tea-dark hover:bg-white text-xs font-medium transition"
+          >
+            CANCEL / CONTINUE BROWSING
+          </button>
         </div>
       </div>
     </div>

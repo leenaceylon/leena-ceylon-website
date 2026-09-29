@@ -99,6 +99,13 @@ export default function ProductDetailsClient({
       quantity: quantity,
       price: currentPrice,
       total: currentPrice * quantity,
+      availableSizes: sizes.map((s) => ({
+        id: s.id,
+        sizeName: s.sizeName,
+        price: Number(s.salePrice || s.regularPrice) || currentPrice,
+        regularPrice: Number(s.regularPrice) || currentPrice,
+        stock: Number(s.stock) || 0,
+      })),
     });
   };
 

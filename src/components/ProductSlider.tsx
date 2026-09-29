@@ -193,6 +193,13 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                 quantity: 1,
                 price: currentPrice,
                 total: currentPrice,
+                availableSizes: (product.sizes || []).map((s: any) => ({
+                  id: s.id,
+                  sizeName: s.sizeName,
+                  price: Number(s.salePrice || s.regularPrice) || currentPrice,
+                  regularPrice: Number(s.regularPrice) || currentPrice,
+                  stock: Number(s.stock) || 0,
+                })),
               });
             };
 

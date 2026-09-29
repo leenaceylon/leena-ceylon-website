@@ -13,25 +13,91 @@ export function formatWhatsAppNumber(phone: string): string {
   return cleaned;
 }
 
+export interface WhatsAppOrderCompilationParams {
+  details: WhatsAppOrderDetails;
+  customerName?: string;
+  customerAddress?: string;
+  customerPhone?: string;
+  paymentMethod?: "COD" | "BANK";
+  brandName?: string;
+}
+
+export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilationParams): string {
+  const {
+    details,
+    customerName,
+    customerAddress,
+    customerPhone,
+    paymentMethod = "COD",
+    brandName = "LEENA CEYLON",
+  } = params;
+  const isBank = paymentMethod === "BANK";
+
+  const lines: string[] = [
+    `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `🛍️ *Order Item:*`,
+    `• *Product:* ${details.productName}`,
+    `• *Weight / Size:* ${details.size}`,
+    `• *Quantity:* ${details.quantity} pack(s)`,
+    `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")}`,
+    `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}*`,
+    ``,
+  ];
+
+  if (customerName || customerAddress || customerPhone) {
+    lines.push(`📍 *Customer & Delivery Details:*`);
+    if (customerName) lines.push(`• *Name:* ${customerName}`);
+    if (customerPhone) lines.push(`• *Contact Phone:* ${customerPhone}`);
+    if (customerAddress) lines.push(`• *Delivery Address / City:* ${customerAddress}`);
+    lines.push(``);
+  }
+
+  if (isBank) {
+    lines.push(`💳 *Payment Preference:* *Direct Bank Transfer*`);
+    lines.push(``);
+    lines.push(`--- *LEENA CEYLON BANK DETAILS* ---`);
+    lines.push(`Bank: Commercial Bank of Ceylon PLC`);
+    lines.push(`Account Name: LEENA CEYLON (PVT) LTD`);
+    lines.push(`Account No: 1000 2489 7120`);
+    lines.push(`Branch: Kekirawa Branch (Swift: CCEYLKLX)`);
+    lines.push(`Amount to Transfer: Rs. ${details.total.toLocaleString("en-US")}`);
+    lines.push(``);
+    lines.push(`I will transfer Rs. ${details.total.toLocaleString("en-US")} to this account and send my deposit slip / transfer screenshot here.`);
+  } else {
+    lines.push(`💳 *Payment Preference:* *Cash on Delivery (COD)* (Islandwide Delivery)`);
+  }
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`Please confirm my order and share dispatch details. Thank you!`);
+
+  return lines.join("\n").trim();
+}
+
 export function compileSingleProductWhatsAppMessage(
   template: string,
   details: WhatsAppOrderDetails,
   customerName: string = ""
 ): string {
-  let msg = template || `Hello LEENA CEYLON,\n\nI am interested in:\n{{product_name}}\n\nWeight:\n{{size}}\n\nPrice:\nRs. {{price}}\n\nPlease provide more details.`;
-
-  msg = msg.replace(/{{product_name}}/g, details.productName);
-  msg = msg.replace(/{{size}}/g, details.size);
-  msg = msg.replace(/{{weight}}/g, details.size);
-  msg = msg.replace(/{{quantity}}/g, details.quantity.toString());
-  msg = msg.replace(/{{price}}/g, details.price.toLocaleString("en-US"));
-  msg = msg.replace(/{{total}}/g, details.total.toLocaleString("en-US"));
-  msg = msg.replace(/{{order_total}}/g, details.total.toLocaleString("en-US"));
-  if (customerName) {
-    msg += `\n\nCustomer: ${customerName}`;
+  if (template && (template.includes("{{product_name}}") || template.includes("{{total}}"))) {
+    let msg = template;
+    msg = msg.replace(/{{product_name}}/g, details.productName);
+    msg = msg.replace(/{{size}}/g, details.size);
+    msg = msg.replace(/{{weight}}/g, details.size);
+    msg = msg.replace(/{{quantity}}/g, details.quantity.toString());
+    msg = msg.replace(/{{price}}/g, details.price.toLocaleString("en-US"));
+    msg = msg.replace(/{{total}}/g, details.total.toLocaleString("en-US"));
+    msg = msg.replace(/{{order_total}}/g, details.total.toLocaleString("en-US"));
+    if (customerName) {
+      msg += `\n\nCustomer: ${customerName}`;
+    }
+    return msg.trim();
   }
 
-  return msg.trim();
+  return compileSingleProductWhatsAppOrder({
+    details,
+    customerName,
+  });
 }
 
 export function compileCartWhatsAppMessage(

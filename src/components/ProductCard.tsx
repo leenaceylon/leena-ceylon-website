@@ -31,6 +31,7 @@ export interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { openWhatsAppModal } = useCart();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
+  const [cardQuantity, setCardQuantity] = useState(1);
 
   if (!product) return null;
 
@@ -58,9 +59,16 @@ export default function ProductCard({ product }: ProductCardProps) {
     openWhatsAppModal({
       productName: product.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
-      quantity: 1,
+      quantity: cardQuantity,
       price: currentPrice,
-      total: currentPrice,
+      total: currentPrice * cardQuantity,
+      availableSizes: sizes.map((s) => ({
+        id: s.id,
+        sizeName: s.sizeName,
+        price: Number(s.salePrice || s.regularPrice) || currentPrice,
+        regularPrice: Number(s.regularPrice) || currentPrice,
+        stock: Number(s.stock) || 0,
+      })),
     });
   };
 
@@ -167,20 +175,53 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
 
-          {/* Clean SHOP NOW / WhatsApp Button */}
-          <button
-            type="button"
-            onClick={handleOrderWhatsApp}
-            disabled={isOutOfStock}
-            className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider transition ${
-              isOutOfStock
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-[0.98]"
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5 fill-current" />
-            <span>Shop Now</span>
-          </button>
+          {/* Clean Quantity Counter & SHOP NOW Button */}
+          <div className="flex items-center gap-1.5">
+            {/* Quantity Selector on Card */}
+            <div className="inline-flex items-center border border-tea-border rounded-xl bg-tea-surface/40 overflow-hidden h-9">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCardQuantity((q) => Math.max(1, q - 1));
+                }}
+                disabled={cardQuantity <= 1 || isOutOfStock}
+                className="w-7 h-full flex items-center justify-center text-tea-muted hover:text-tea-dark hover:bg-white transition text-xs font-bold disabled:opacity-40"
+                aria-label="Decrease quantity"
+              >
+                -
+              </button>
+              <span className="w-6 text-center font-bold text-xs text-tea-dark select-none">
+                {cardQuantity}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCardQuantity((q) => q + 1);
+                }}
+                disabled={isOutOfStock}
+                className="w-7 h-full flex items-center justify-center text-tea-muted hover:text-tea-dark hover:bg-white transition text-xs font-bold disabled:opacity-40"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOrderWhatsApp}
+              disabled={isOutOfStock}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider transition ${
+                isOutOfStock
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-[0.98]"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5 fill-current" />
+              <span>Shop Now</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
