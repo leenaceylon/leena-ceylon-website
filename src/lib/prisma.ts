@@ -1,36 +1,24 @@
 import { PrismaClient } from "@prisma/client";
-import path from "path";
-import fs from "fs";
 
 declare global {
   var prisma: PrismaClient | undefined;
 }
 
+function resolveDatabaseUrl(): string | undefined {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.leenaceylon_PRISMA_DATABASE_URL ||
+    process.env.leenaceylon_POSTGRES_URL ||
+    process.env.leenaceylon_DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL
+  );
+}
+
 function getPrismaClient(): PrismaClient {
-  let dbUrl: string | undefined = undefined;
-
-  // In Vercel serverless / AWS Lambda, /var/task is read-only.
-  // Copy SQLite dev.db to writable /tmp directory so writes succeed.
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    try {
-      const tmpDbPath = path.join("/tmp", "dev.db");
-      const sourceDbPath = path.join(process.cwd(), "prisma", "dev.db");
-
-      if (!fs.existsSync(tmpDbPath)) {
-        if (fs.existsSync(sourceDbPath)) {
-          fs.copyFileSync(sourceDbPath, tmpDbPath);
-          try {
-            fs.chmodSync(tmpDbPath, 0o666);
-          } catch {}
-        }
-      }
-
-      if (fs.existsSync(tmpDbPath)) {
-        dbUrl = `file:${tmpDbPath}`;
-      }
-    } catch (e: any) {
-      console.warn("Could not copy database to /tmp:", e?.message);
-    }
+  const dbUrl = resolveDatabaseUrl();
+  if (dbUrl && !process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = dbUrl;
   }
 
   return new PrismaClient({
