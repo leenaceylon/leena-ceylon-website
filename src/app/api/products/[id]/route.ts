@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -112,16 +114,18 @@ export async function PUT(
       detailMsg = `Changed price of "${updated.name}" from Rs. ${existing.regularPrice} to Rs. ${updated.regularPrice}`;
     }
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: actionLog,
-        details: detailMsg,
-        entityType: "Product",
-        entityId: updated.id,
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: actionLog,
+          details: detailMsg,
+          entityType: "Product",
+          entityId: updated.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true, product: updated });
   } catch (err: any) {
@@ -131,6 +135,13 @@ export async function PUT(
       { status: 500 }
     );
   }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  return PUT(req, context);
 }
 
 export async function DELETE(
@@ -153,16 +164,18 @@ export async function DELETE(
 
     await prisma.product.delete({ where: { id: params.id } });
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "DELETE_PRODUCT",
-        details: `Deleted product "${existing.name}" (SKU: ${existing.sku})`,
-        entityType: "Product",
-        entityId: params.id,
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "DELETE_PRODUCT",
+          details: `Deleted product "${existing.name}" (SKU: ${existing.sku})`,
+          entityType: "Product",
+          entityId: params.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

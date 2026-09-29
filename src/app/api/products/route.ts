@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 import { FALLBACK_PRODUCTS } from "@/lib/fallback-data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const products = await prisma.product.findMany({
@@ -99,17 +101,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Log admin activity
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "ADD_PRODUCT",
-        details: `Created product "${product.name}" with regular price Rs. ${product.regularPrice}`,
-        entityType: "Product",
-        entityId: product.id,
-      },
-    });
+    // Log admin activity safely
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "ADD_PRODUCT",
+          details: `Created product "${product.name}" with regular price Rs. ${product.regularPrice}`,
+          entityType: "Product",
+          entityId: product.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true, product });
   } catch (err: any) {

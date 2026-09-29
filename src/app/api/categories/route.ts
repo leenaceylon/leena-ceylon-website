@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 import { FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
@@ -49,16 +51,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "ADD_CATEGORY",
-        details: `Created category "${category.name}"`,
-        entityType: "Category",
-        entityId: category.id,
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "ADD_CATEGORY",
+          details: `Created category "${category.name}"`,
+          entityType: "Category",
+          entityId: category.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true, category });
   } catch (err: any) {

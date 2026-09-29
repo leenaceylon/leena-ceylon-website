@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 import { getSiteSettings, updateSiteSetting } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const settings = await getSiteSettings();
@@ -12,7 +14,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: NextRequest) {
+async function handleUpdate(req: NextRequest) {
   try {
     const admin = await getCurrentAdmin();
     if (!admin) {
@@ -40,20 +42,33 @@ export async function PUT(req: NextRequest) {
       await updateSiteSetting(key, String(value), group);
     }
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "UPDATE_SETTINGS",
-        details: `Updated website configuration settings`,
-        entityType: "SiteSetting",
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPDATE_SETTINGS",
+          details: `Updated website configuration settings`,
+          entityType: "SiteSetting",
+        },
+      });
+    } catch {}
 
     const updated = await getSiteSettings();
     return NextResponse.json({ success: true, settings: updated });
   } catch (err: any) {
     console.error("Settings update error:", err);
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message || "Failed to update settings" },
+      { status: 500 }
+    );
   }
+}
+
+export async function PUT(req: NextRequest) {
+  return handleUpdate(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleUpdate(req);
 }

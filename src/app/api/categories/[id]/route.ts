@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -24,16 +26,18 @@ export async function PUT(
       },
     });
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "UPDATE_CATEGORY",
-        details: `Updated category "${updated.name}"`,
-        entityType: "Category",
-        entityId: updated.id,
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPDATE_CATEGORY",
+          details: `Updated category "${updated.name}"`,
+          entityType: "Category",
+          entityId: updated.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true, category: updated });
   } catch (err: any) {
@@ -69,16 +73,18 @@ export async function DELETE(
 
     await prisma.category.delete({ where: { id: params.id } });
 
-    await prisma.adminActivityLog.create({
-      data: {
-        adminId: admin.id,
-        adminName: admin.name,
-        action: "DELETE_CATEGORY",
-        details: `Deleted category "${existing.name}"`,
-        entityType: "Category",
-        entityId: params.id,
-      },
-    });
+    try {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "DELETE_CATEGORY",
+          details: `Deleted category "${existing.name}"`,
+          entityType: "Category",
+          entityId: params.id,
+        },
+      });
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
