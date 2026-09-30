@@ -8,6 +8,9 @@ import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 import ProductCard from "@/components/ProductCard";
 import ProductSlider from "@/components/ProductSlider";
 import HeroProductSlider from "@/components/HeroProductSlider";
+import TeaGradesSlider from "@/components/TeaGradesSlider";
+import TestimonialsSlider from "@/components/TestimonialsSlider";
+import PromoMarquee from "@/components/PromoMarquee";
 import {
   ArrowRight,
   ShieldCheck,
@@ -20,6 +23,9 @@ import {
   HeartHandshake,
   Clock,
   Compass,
+  Truck,
+  Tag,
+  Star,
 } from "lucide-react";
 
 export const revalidate = 0; // Dynamic server rendering to always reflect live database updates
@@ -180,22 +186,28 @@ export default async function HomePage() {
         name: "Do you deliver islandwide across Sri Lanka?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, LEENA CEYLON delivers islandwide across Sri Lanka with Cash on Delivery (COD) and direct bank transfer options. Free delivery is available on qualifying orders.",
+          text: "Yes, LEENA CEYLON delivers islandwide across Sri Lanka with Cash on Delivery (COD) and direct bank transfer options. Free delivery is available on qualifying orders over Rs. 3,500.",
         },
       },
     ],
   };
 
   return (
-    <div className="space-y-16 sm:space-y-24 pb-16 overflow-x-hidden">
+    <div className="space-y-14 sm:space-y-20 pb-16 overflow-x-hidden">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
+
+      {/* ================================================== */}
+      {/* 0. PROMOTIONAL ANNOUNCEMENT TICKER MARQUEE */}
+      {/* ================================================== */}
+      <PromoMarquee />
+
       {/* ================================================== */}
       {/* 1. HERO SECTION WITH CINEMATIC CEYLON PLANTATION */}
       {/* ================================================== */}
-      <section className="relative overflow-hidden min-h-[640px] lg:min-h-[720px] flex items-center pt-8 pb-20 sm:pt-14 sm:pb-28">
+      <section className="relative overflow-hidden min-h-[640px] lg:min-h-[720px] flex items-center pt-6 pb-20 sm:pt-12 sm:pb-28">
         {/* Full-width Photographic Tea Plantation Background */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <Image
@@ -270,6 +282,22 @@ export default async function HomePage() {
                 <p className="text-xs sm:text-sm leading-relaxed">
                   Handpicked from Sri Lanka&apos;s finest tea-growing regions and carefully selected for a rich and memorable cup.
                 </p>
+              </div>
+
+              {/* Trust Guarantee Badges */}
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 pt-1 text-xs">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 border border-tea-border shadow-xs text-tea-dark font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Single-Origin Harvest</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 border border-tea-border shadow-xs text-tea-dark font-semibold">
+                  <Truck className="w-3.5 h-3.5 text-tea-leaf" />
+                  <span>Cash on Delivery</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 border border-tea-border shadow-xs text-tea-dark font-semibold">
+                  <Tag className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Coupon: LEENA10</span>
+                </span>
               </div>
 
               {/* Action Buttons */}
@@ -367,7 +395,29 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 3. OUR TEA COLLECTION (Clean White Background) */}
+      {/* 3. FEATURED PRODUCTS SLIDER (Interactive Category Filter + Auto-Slide) */}
+      {/* ================================================== */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-b from-[#F7F9F6] to-white rounded-3xl p-6 sm:p-10 border border-tea-border/80 shadow-subtle">
+          <div className="text-center space-y-2 mb-8">
+            <span className="text-xs uppercase tracking-widest text-tea-leaf font-bold">
+              Curated Master Selection
+            </span>
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
+              FEATURED CEYLON TEA SLIDER
+            </h2>
+            <div className="w-16 h-0.5 bg-tea-gold mx-auto" />
+            <p className="text-xs sm:text-sm text-tea-muted max-w-xl mx-auto">
+              Select your pack size, apply promo codes, and order instantly through WhatsApp.
+            </p>
+          </div>
+
+          <ProductSlider products={carouselProducts as any} />
+        </div>
+      </section>
+
+      {/* ================================================== */}
+      {/* 4. OUR TEA COLLECTION (Grid View with all products) */}
       {/* ================================================== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-white">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 sm:mb-12 gap-4 text-center sm:text-left">
@@ -376,10 +426,10 @@ export default async function HomePage() {
               Pure Ceylon Perfection
             </span>
             <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
-              OUR TEA COLLECTION
+              OUR COMPLETE COLLECTION
             </h2>
             <p className="text-xs sm:text-sm text-tea-muted">
-              Discover the taste of authentic Ceylon tea.
+              Discover the full spectrum of authentic Ceylon tea.
             </p>
           </div>
           <Link
@@ -406,9 +456,31 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 4. PRODUCT CATEGORIES (Light Cream Surface) */}
+      {/* 5. CEYLON TEA GRADES & AROMAS SLIDER */}
       {/* ================================================== */}
-      <section className="bg-tea-surface/90 py-16 sm:py-20 border-y border-tea-border/60">
+      <section className="bg-gradient-to-b from-[#FAFBF9] via-[#F3F7F4] to-[#FAFBF9] py-16 sm:py-20 border-y border-tea-border/70">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center space-y-2 mb-8 sm:mb-12">
+            <span className="text-xs uppercase tracking-widest text-tea-leaf font-bold">
+              Tea Connoisseur Academy
+            </span>
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
+              CEYLON LEAF GRADES & AROMAS
+            </h2>
+            <div className="w-16 h-0.5 bg-tea-gold mx-auto" />
+            <p className="text-xs sm:text-sm text-tea-muted max-w-xl mx-auto">
+              Learn the characteristics, liquor shades, and optimal brewing notes of authentic Ceylon grades.
+            </p>
+          </div>
+
+          <TeaGradesSlider />
+        </div>
+      </section>
+
+      {/* ================================================== */}
+      {/* 6. PRODUCT CATEGORIES (Light Cream Surface) */}
+      {/* ================================================== */}
+      <section className="bg-tea-surface/90 py-16 sm:py-20 border-b border-tea-border/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center space-y-2 mb-8 sm:mb-12">
             <span className="text-xs uppercase tracking-widest text-tea-leaf font-bold">
@@ -465,7 +537,7 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 5. CEYLON TEA STORY (Warm White/Cream Atmosphere) */}
+      {/* 7. CEYLON TEA STORY (Warm White/Cream Atmosphere) */}
       {/* ================================================== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-[#FAFBF9] rounded-3xl border border-tea-border/80 shadow-subtle p-6 sm:p-12">
@@ -513,7 +585,7 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 6. TEA-GROWING REGIONS (Very Light Green/Cream Background) */}
+      {/* 8. TEA-GROWING REGIONS (The 7 Terroirs) */}
       {/* ================================================== */}
       <section className="bg-[#F2F6F3] py-16 sm:py-20 border-y border-tea-border/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -522,7 +594,7 @@ export default async function HomePage() {
               The Terroir of Ceylon
             </span>
             <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
-              EXPLORE CEYLON TEA
+              EXPLORE CEYLON TEA REGIONS
             </h2>
             <div className="w-16 h-0.5 bg-tea-gold mx-auto" />
             <p className="text-xs sm:text-sm text-tea-muted max-w-xl mx-auto">
@@ -557,7 +629,7 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 7. WHY LEENA CEYLON (Clean White Background) */}
+      {/* 9. WHY LEENA CEYLON (Our Four Pillars) */}
       {/* ================================================== */}
       <section className="bg-white py-16 sm:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -584,7 +656,7 @@ export default async function HomePage() {
                 AUTHENTIC CEYLON TEA
               </h3>
               <p className="text-xs text-tea-muted leading-relaxed">
-                Authentic Sri Lankan tea selection.
+                100% pure unblended single-origin Sri Lankan harvest.
               </p>
             </div>
 
@@ -594,10 +666,10 @@ export default async function HomePage() {
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h3 className="font-serif font-bold text-sm sm:text-base text-tea-dark">
-                QUALITY
+                ESTATE QUALITY
               </h3>
               <p className="text-xs text-tea-muted leading-relaxed">
-                Carefully selected tea for consistent quality.
+                Hand-selected batches for consistent flavor and briskness.
               </p>
             </div>
 
@@ -607,10 +679,10 @@ export default async function HomePage() {
                 <Clock className="w-6 h-6" />
               </div>
               <h3 className="font-serif font-bold text-sm sm:text-base text-tea-dark">
-                FRESHNESS
+                ORIGIN FRESHNESS
               </h3>
               <p className="text-xs text-tea-muted leading-relaxed">
-                Packed carefully to preserve aroma and freshness.
+                Airtight packaging preserves mountain aroma from garden to cup.
               </p>
             </div>
 
@@ -620,10 +692,10 @@ export default async function HomePage() {
                 <HeartHandshake className="w-6 h-6" />
               </div>
               <h3 className="font-serif font-bold text-sm sm:text-base text-tea-dark">
-                TRUST
+                TRUST & CONVENIENCE
               </h3>
               <p className="text-xs text-tea-muted leading-relaxed">
-                A Sri Lankan tea brand built around quality and customer trust.
+                Direct WhatsApp ordering with islandwide delivery & COD.
               </p>
             </div>
           </div>
@@ -631,59 +703,71 @@ export default async function HomePage() {
       </section>
 
       {/* ================================================== */}
-      {/* 8. FEATURED PRODUCTS AUTO SLIDER (Very Light Cream Background) */}
+      {/* 10. CUSTOMER TESTIMONIALS SLIDER */}
       {/* ================================================== */}
-      <section className="bg-tea-bg/70 py-16 sm:py-20 border-y border-tea-border/60">
+      <section className="bg-gradient-to-b from-[#F7F9F6] via-white to-[#F7F9F6] py-16 sm:py-20 border-y border-tea-border/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-2 mb-8 sm:mb-10">
+          <div className="text-center space-y-2 mb-8 sm:mb-12">
             <span className="text-xs uppercase tracking-widest text-tea-leaf font-bold">
-              Curated Collection
+              Voices of Ceylon Tea Lovers
             </span>
             <h2 className="font-serif text-2xl sm:text-4xl font-bold text-tea-dark">
-              FEATURED TEA
+              WHAT OUR CUSTOMERS SAY
             </h2>
             <div className="w-16 h-0.5 bg-tea-gold mx-auto" />
             <p className="text-xs sm:text-sm text-tea-muted max-w-xl mx-auto">
-              Explore our handpicked master selection. Sourced directly from high-grown mountain slopes.
+              5-Star reviews from delighted customers across Sri Lanka and worldwide.
             </p>
           </div>
 
-          <ProductSlider products={carouselProducts as any} />
+          <TestimonialsSlider />
         </div>
       </section>
 
       {/* ================================================== */}
-      {/* 9. PROMOTIONAL BANNER */}
+      {/* 11. PROMOTIONAL BANNER WITH PROMO CODE */}
       {/* ================================================== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-tea-dark via-tea-forest to-tea-dark text-white p-8 sm:p-14 shadow-hover">
           {/* Subtle background decorative shapes */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,169,81,0.18),transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,169,81,0.22),transparent_55%)]" />
           <div className="relative z-10 max-w-2xl space-y-4 text-center sm:text-left">
-            <span className="inline-block px-3 py-1 rounded-full bg-tea-gold/20 text-tea-gold text-xs font-bold uppercase tracking-wider">
-              Special Ceylon Harvest
-            </span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-tea-gold/20 text-tea-gold text-xs font-bold uppercase tracking-wider">
+              <Tag className="w-3.5 h-3.5" />
+              <span>Special Online Offer: Use Code &apos;LEENA10&apos;</span>
+            </div>
             <h2 className="font-serif text-2xl sm:text-4xl font-bold leading-tight">
               BRING THE TASTE OF CEYLON HOME
             </h2>
             <p className="text-xs sm:text-sm text-tea-pale/85 leading-relaxed">
-              Explore our collection of authentic Sri Lankan tea.
+              Explore our full collection of authentic Sri Lankan tea. Enjoy 10% OFF and free islandwide delivery on orders over Rs. 3,500.
             </p>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
               <Link
                 href="/products"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-white text-tea-dark hover:bg-tea-bg font-bold text-xs uppercase tracking-wider transition shadow-sm"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-white text-tea-dark hover:bg-tea-bg font-bold text-xs uppercase tracking-wider transition shadow-sm"
               >
-                <span>SHOP TEA</span>
+                <span>SHOP TEA NOW</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
+              <a
+                href={`https://wa.me/${(settings.whatsappNumber || "071 777 4717").replace(/\D/g, "").replace(/^0/, "94")}?text=${encodeURIComponent(
+                  "Hello LEENA CEYLON,\n\nI would like to order Ceylon tea using promo code LEENA10."
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs uppercase tracking-wider transition shadow-sm"
+              >
+                <MessageSquare className="w-4 h-4 fill-current" />
+                <span>WhatsApp Instant Order</span>
+              </a>
             </div>
           </div>
         </div>
       </section>
 
       {/* ================================================== */}
-      {/* 10. ABOUT LEENA CEYLON (Clean White Background) */}
+      {/* 12. ABOUT LEENA CEYLON (Clean White Background) */}
       {/* ================================================== */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-5">
         <div className="relative h-10 sm:h-12 w-40 sm:w-48 mx-auto">
@@ -699,21 +783,21 @@ export default async function HomePage() {
         </h2>
         <div className="w-16 h-0.5 bg-tea-gold mx-auto" />
         <p className="text-sm sm:text-base text-tea-muted max-w-2xl mx-auto leading-relaxed">
-          LEENA CEYLON is a Sri Lankan tea brand focused on bringing authentic Ceylon Tea to customers in Sri Lanka and international markets.
+          LEENA CEYLON is an authentic Sri Lankan tea brand dedicated to bringing single-origin pure Ceylon Tea from lush island estates directly to customers across Sri Lanka and worldwide.
         </p>
         <div>
           <Link
             href="/about"
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-tea-border text-tea-dark hover:text-tea-forest hover:bg-tea-bg font-semibold text-xs uppercase tracking-wider transition"
           >
-            <span>LEARN MORE</span>
+            <span>LEARN OUR STORY</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </section>
 
       {/* ================================================== */}
-      {/* 11. WHATSAPP ORDER CTA */}
+      {/* 13. WHATSAPP ORDER CTA */}
       {/* ================================================== */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-3xl p-8 sm:p-10 text-center space-y-4 shadow-subtle">

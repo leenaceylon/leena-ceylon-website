@@ -1,9 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, MessageSquare, Eye, Sparkles, Pause, Play } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  Eye,
+  Sparkles,
+  Pause,
+  Play,
+  ShieldCheck,
+  Check,
+} from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { calculatePricing } from "@/lib/pricing";
 
@@ -35,12 +45,48 @@ interface ProductSliderProps {
 
 export default function ProductSlider({ products }: ProductSliderProps) {
   const { openWhatsAppModal } = useCart();
+  const [activeCategory, setActiveCategory] = useState<string>("all");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedSizes, setSelectedSizes] = useState<Record<string, number>>({});
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+
+  // Extract unique categories from products
+  const categoryFilters = useMemo(() => {
+    const cats: { key: string; label: string; count: number }[] = [
+      { key: "all", label: "All Teas", count: products.length },
+    ];
+    const catMap = new Map<string, { label: string; count: number }>();
+
+    products.forEach((p) => {
+      const name = p.category?.name || p.teaType || "Black Tea";
+      const key = (p.category?.slug || name).toLowerCase().replace(/\s+/g, "-");
+      const existing = catMap.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        catMap.set(key, { label: name, count: 1 });
+      }
+    });
+
+    catMap.forEach((val, key) => {
+      cats.push({ key, label: val.label, count: val.count });
+    });
+
+    return cats;
+  }, [products]);
+
+  // Filtered products list
+  const filteredProducts = useMemo(() => {
+    if (activeCategory === "all") return products;
+    return products.filter((p) => {
+      const name = p.category?.name || p.teaType || "Black Tea";
+      const key = (p.category?.slug || name).toLowerCase().replace(/\s+/g, "-");
+      return key === activeCategory;
+    });
+  }, [products, activeCategory]);
 
   // Responsive items calculation
   useEffect(() => {
@@ -60,8 +106,20 @@ export default function ProductSlider({ products }: ProductSliderProps) {
     return () => window.removeEventListener("resize", updateItemsPerPage);
   }, []);
 
-  const totalProducts = products.length;
-  const maxIndex = Math.max(0, totalProducts - itemsPerPage);
+  const totalFiltered = filteredProducts.length;
+  const maxIndex = Math.max(0, totalFiltered - itemsPerPage);
+
+  // Reset index when filter changes
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [activeCategory]);
+
+  // Ensure index remains in bounds if itemsPerPage changes
+  useEffect(() => {
+    if (currentIndex > maxIndex) {
+      setCurrentIndex(maxIndex);
+    }
+  }, [maxIndex, currentIndex]);
 
   // Auto sliding logic
   const handleNext = useCallback(() => {
@@ -76,7 +134,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
     if (isPaused || maxIndex <= 0) return;
     const timer = setInterval(() => {
       handleNext();
-    }, 3800);
+    }, 4000);
     return () => clearInterval(timer);
   }, [isPaused, maxIndex, handleNext]);
 
@@ -92,9 +150,9 @@ export default function ProductSlider({ products }: ProductSliderProps) {
   const handleTouchEnd = () => {
     if (!touchStartX.current || !touchEndX.current) return;
     const distance = touchStartX.current - touchEndX.current;
-    if (distance > 50) {
+    if (distance > 45) {
       handleNext();
-    } else if (distance < -50) {
+    } else if (distance < -45) {
       handlePrev();
     }
     touchStartX.current = null;
@@ -114,42 +172,72 @@ export default function ProductSlider({ products }: ProductSliderProps) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Slider Controls Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tea-leaf/10 border border-tea-leaf/20 text-tea-forest text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-tea-leaf" />
-            <span>Featured Ceylon Teas ({totalProducts})</span>
-          </span>
+      {/* Category Filter Pills & Auto-Slide Controls */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        {/* Category Tabs */}
+        {categoryFilters.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            {categoryFilters.map((tab) => {
+              const isActive = activeCategory === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveCategory(tab.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
+                    isActive
+                      ? "bg-tea-dark text-white shadow-xs"
+                      : "bg-white text-tea-dark border border-tea-border hover:border-tea-leaf/60 hover:bg-tea-surface/40"
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      isActive ? "bg-white/20 text-white" : "bg-tea-bg text-tea-muted"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Status & Next/Prev Controls */}
+        <div className="flex items-center justify-between sm:justify-end gap-3 w-full md:w-auto">
           <button
             type="button"
             onClick={() => setIsPaused(!isPaused)}
-            className="hidden sm:inline-flex items-center gap-1 text-[11px] text-tea-muted hover:text-tea-dark transition px-2 py-0.5 rounded-md hover:bg-tea-bg"
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-tea-muted hover:text-tea-dark transition px-2.5 py-1 rounded-lg border border-tea-border/60 bg-white"
             title={isPaused ? "Resume Auto-Slide" : "Pause Auto-Slide"}
           >
-            {isPaused ? <Play className="w-3 h-3 text-emerald-600" /> : <Pause className="w-3 h-3" />}
-            <span>{isPaused ? "Auto-slide paused" : "Auto-sliding"}</span>
+            {isPaused ? (
+              <Play className="w-3 h-3 text-emerald-600 fill-emerald-600" />
+            ) : (
+              <Pause className="w-3 h-3 text-tea-muted" />
+            )}
+            <span>{isPaused ? "Paused" : "Auto-sliding"}</span>
           </button>
-        </div>
 
-        {/* Navigation Arrows */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handlePrev}
-            aria-label="Previous Slide"
-            className="w-10 h-10 rounded-full border border-tea-border bg-white hover:bg-tea-bg text-tea-dark flex items-center justify-center transition shadow-xs hover:border-tea-leaf focus:outline-none"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleNext}
-            aria-label="Next Slide"
-            className="w-10 h-10 rounded-full border border-tea-border bg-white hover:bg-tea-bg text-tea-dark flex items-center justify-center transition shadow-xs hover:border-tea-leaf focus:outline-none"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrev}
+              aria-label="Previous Slide"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-tea-border bg-white hover:bg-tea-bg text-tea-dark flex items-center justify-center transition shadow-xs hover:border-tea-leaf focus:outline-none"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleNext}
+              aria-label="Next Slide"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-tea-border bg-white hover:bg-tea-bg text-tea-dark flex items-center justify-center transition shadow-xs hover:border-tea-leaf focus:outline-none"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -161,7 +249,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
             transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)`,
           }}
         >
-          {products.map((product) => {
+          {filteredProducts.map((product) => {
             if (!product) return null;
             const selectedSizeIndex = selectedSizes[product.id] || 0;
             const sizes = Array.isArray(product.sizes) ? product.sizes : [];
@@ -178,6 +266,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
             const regularPrice = pricing.regularPrice;
             const hasDiscount = pricing.hasDiscount;
             const discountPercent = pricing.discountPercent;
+            const totalSavings = pricing.totalSavings;
             const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
             const isOutOfStock = currentStock <= 0;
 
@@ -212,8 +301,8 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                 style={{ width: `${100 / itemsPerPage}%` }}
                 className="shrink-0 px-2 sm:px-3"
               >
-                <div className="group h-full bg-white rounded-2xl border border-tea-border shadow-subtle hover:shadow-card transition-all duration-300 flex flex-col justify-between overflow-hidden">
-                  {/* Top Image Showcase - Perfectly fitted with object-contain */}
+                <div className="group h-full bg-white rounded-3xl border border-tea-border shadow-card hover:shadow-hover transition-all duration-300 flex flex-col justify-between overflow-hidden">
+                  {/* Top Image Showcase with floating badges */}
                   <div className="relative aspect-square w-full bg-gradient-to-b from-tea-surface/60 via-white to-tea-bg/30 p-4 sm:p-5 flex items-center justify-center overflow-hidden border-b border-tea-border/40">
                     <Link
                       href={`/products/${product.slug}`}
@@ -228,11 +317,11 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                       />
                     </Link>
 
-                    {/* Grade & Discount Badges */}
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                    {/* Left Badges: Offer & Grade */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10 pointer-events-none">
                       {hasDiscount && (
-                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-xs">
-                          {discountPercent}% OFF
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-xs">
+                          <span>{discountPercent}% OFF</span>
                         </span>
                       )}
                       {product.teaGrade && (
@@ -242,15 +331,20 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                       )}
                     </div>
 
-                    {/* Stock Status Badge */}
-                    <div className="absolute top-3 right-3 z-10">
+                    {/* Right Badges: Savings Pill & Stock Status */}
+                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5 z-10 pointer-events-none">
+                      {hasDiscount && totalSavings > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-700 text-white shadow-xs">
+                          Save Rs. {totalSavings}
+                        </span>
+                      )}
                       {isOutOfStock ? (
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-600 text-white">
                           Out of Stock
                         </span>
                       ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-700 text-white flex items-center gap-1 shadow-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
                           In Stock
                         </span>
                       )}
@@ -258,7 +352,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                   </div>
 
                   {/* Product Details */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[11px] text-tea-leaf font-semibold uppercase tracking-wider">
                         <span>{product.teaType || "Pure Ceylon Tea"}</span>
@@ -279,15 +373,21 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                         {product.shortDescription}
                       </p>
 
-                      {/* Size Selector */}
+                      {/* Interactive Size Selector Directly on Slider */}
                       {product.sizes && product.sizes.length > 0 && (
                         <div className="pt-2">
-                          <div className="text-[11px] text-tea-muted mb-1.5 font-medium">
-                            Choose Pack Size:
+                          <div className="flex items-center justify-between text-[11px] text-tea-muted mb-1.5 font-medium">
+                            <span>Select Pack Size:</span>
+                            {activeSize && (
+                              <span className="text-tea-forest font-bold">
+                                {activeSize.sizeName}
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {product.sizes.map((sz, idx) => {
                               const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
+                              const isSelected = selectedSizeIndex === idx;
                               return (
                                 <button
                                   key={sz.id}
@@ -298,14 +398,20 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                                       [product.id]: idx,
                                     }))
                                   }
-                                  className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition flex items-center gap-1 ${
-                                    selectedSizeIndex === idx
+                                  className={`text-xs px-2.5 py-1 rounded-xl border font-medium transition flex items-center gap-1 ${
+                                    isSelected
                                       ? "border-tea-forest bg-tea-forest text-white shadow-xs font-bold"
                                       : "border-tea-border bg-white text-tea-dark hover:border-tea-leaf"
                                   }`}
                                 >
                                   <span>{sz.sizeName}</span>
-                                  <span className={`text-[10px] ${selectedSizeIndex === idx ? "text-emerald-200" : "text-tea-forest font-bold"}`}>
+                                  <span
+                                    className={`text-[10px] ${
+                                      isSelected
+                                        ? "text-emerald-200"
+                                        : "text-tea-forest font-bold"
+                                    }`}
+                                  >
                                     Rs. {szPricing.unitPrice.toLocaleString("en-US")}
                                   </span>
                                 </button>
@@ -332,11 +438,16 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                             )}
                           </div>
                         </div>
-                        {activeSize && (
+
+                        {currentPrice >= 3500 ? (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            Free Islandwide Delivery
+                          </span>
+                        ) : activeSize ? (
                           <span className="text-xs font-medium text-tea-forest bg-tea-surface px-2 py-0.5 rounded">
                             {activeSize.sizeName}
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
                       {/* Action Buttons */}
@@ -346,8 +457,8 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                           onClick={handleOrder}
                           className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide transition shadow-xs hover:shadow-subtle"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>WhatsApp Order</span>
+                          <MessageSquare className="w-3.5 h-3.5 fill-current" />
+                          <span>WhatsApp</span>
                         </button>
 
                         <Link
@@ -355,7 +466,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                           className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-tea-border bg-white hover:bg-tea-bg text-tea-dark font-medium text-xs transition"
                         >
                           <Eye className="w-3.5 h-3.5 text-tea-leaf" />
-                          <span>View Details</span>
+                          <span>Details</span>
                         </Link>
                       </div>
                     </div>
