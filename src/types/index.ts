@@ -16,6 +16,7 @@ export interface WhatsAppOrderSizeOption {
   sizeName: string;
   price: number;
   regularPrice?: number;
+  salePrice?: number | null;
   stock?: number;
 }
 
@@ -24,7 +25,10 @@ export interface WhatsAppOrderDetails {
   size: string;
   quantity: number;
   price: number;
+  regularPrice?: number;
   total: number;
+  regularTotal?: number;
+  savings?: number;
   availableSizes?: WhatsAppOrderSizeOption[];
 }
 

@@ -33,6 +33,11 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   } = params;
   const isBank = paymentMethod === "BANK";
 
+  const hasDiscount = Boolean(details.regularPrice && details.regularPrice > details.price);
+  const totalSavings = hasDiscount
+    ? (details.regularPrice! - details.price) * details.quantity
+    : 0;
+
   const lines: string[] = [
     `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
@@ -40,8 +45,12 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     `• *Product:* ${details.productName}`,
     `• *Weight / Size:* ${details.size}`,
     `• *Quantity:* ${details.quantity} pack(s)`,
-    `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")}`,
-    `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}*`,
+    hasDiscount
+      ? `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")} (Special Offer • Regular Rs. ${details.regularPrice!.toLocaleString("en-US")})`
+      : `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")}`,
+    hasDiscount
+      ? `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}* (🎉 You Save Rs. ${totalSavings.toLocaleString("en-US")}!)`
+      : `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}*`,
     ``,
   ];
 

@@ -4,7 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
-import { MessageSquare, ArrowRight } from "lucide-react";
+import { MessageSquare, ArrowRight, Sparkles } from "lucide-react";
+import { calculatePricing } from "@/lib/pricing";
 
 export interface ProductCardProps {
   product: {
@@ -38,19 +39,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   const sizes = Array.isArray(product.sizes) ? product.sizes : [];
   const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const currentPrice = Number(
-    activeSize
-      ? activeSize.salePrice || activeSize.regularPrice
-      : product.salePrice || product.regularPrice
-  ) || 0;
+  const pricing = calculatePricing(
+    activeSize ? activeSize.regularPrice : product.regularPrice,
+    activeSize ? activeSize.salePrice : product.salePrice,
+    cardQuantity
+  );
 
-  const regularPrice = Number(
-    activeSize
-      ? activeSize.regularPrice
-      : product.regularPrice
-  ) || currentPrice;
-
-  const hasDiscount = regularPrice > currentPrice;
   const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
   const isOutOfStock = currentStock <= 0;
 
@@ -60,15 +54,22 @@ export default function ProductCard({ product }: ProductCardProps) {
       productName: product.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: cardQuantity,
-      price: currentPrice,
-      total: currentPrice * cardQuantity,
-      availableSizes: sizes.map((s) => ({
-        id: s.id,
-        sizeName: s.sizeName,
-        price: Number(s.salePrice || s.regularPrice) || currentPrice,
-        regularPrice: Number(s.regularPrice) || currentPrice,
-        stock: Number(s.stock) || 0,
-      })),
+      price: pricing.unitPrice,
+      regularPrice: pricing.regularPrice,
+      total: pricing.totalPrice,
+      regularTotal: pricing.totalRegularPrice,
+      savings: pricing.totalSavings,
+      availableSizes: sizes.map((s) => {
+        const szP = calculatePricing(s.regularPrice, s.salePrice, 1);
+        return {
+          id: s.id,
+          sizeName: s.sizeName,
+          price: szP.unitPrice,
+          regularPrice: szP.regularPrice,
+          salePrice: szP.hasDiscount ? szP.unitPrice : null,
+          stock: Number(s.stock) || 0,
+        };
+      }),
     });
   };
 
@@ -88,6 +89,12 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Top Badges */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+          {pricing.hasDiscount && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white shadow-xs flex items-center gap-1">
+              <Sparkles className="w-2.5 h-2.5" />
+              {pricing.discountPercent}% OFF
+            </span>
+          )}
           {product.teaGrade && (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-tea-dark/85 backdrop-blur-xs text-white">
               {product.teaGrade}
@@ -136,20 +143,29 @@ export default function ProductCard({ product }: ProductCardProps) {
           {product.sizes && product.sizes.length > 0 && (
             <div className="pt-1">
               <div className="flex flex-wrap gap-1">
-                {product.sizes.map((sz, idx) => (
-                  <button
-                    key={sz.id}
-                    type="button"
-                    onClick={() => setSelectedSizeIndex(idx)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium transition ${
-                      selectedSizeIndex === idx
-                        ? "border-tea-forest bg-tea-forest text-white"
-                        : "border-tea-border bg-tea-surface/40 text-tea-dark hover:border-tea-leaf"
-                    }`}
-                  >
-                    {sz.sizeName}
-                  </button>
-                ))}
+                {product.sizes.map((sz, idx) => {
+                  const szP = calculatePricing(sz.regularPrice, sz.salePrice, 1);
+                  const isSelected = selectedSizeIndex === idx;
+                  return (
+                    <button
+                      key={sz.id}
+                      type="button"
+                      onClick={() => setSelectedSizeIndex(idx)}
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium transition flex items-center gap-1 ${
+                        isSelected
+                          ? "border-tea-forest bg-tea-forest text-white font-bold shadow-xs"
+                          : "border-tea-border bg-tea-surface/40 text-tea-dark hover:border-tea-leaf"
+                      }`}
+                    >
+                      <span>{sz.sizeName}</span>
+                      {szP.hasDiscount && (
+                        <span className={`text-[9px] ${isSelected ? "text-emerald-200" : "text-emerald-700 font-bold"}`}>
+                          Rs. {szP.unitPrice}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -157,21 +173,44 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Price and CTA Button */}
         <div className="pt-2 border-t border-tea-border/60 space-y-2">
-          <div className="flex items-baseline justify-between">
-            <div className="flex items-baseline gap-1.5">
-              <span className="font-serif font-bold text-tea-dark text-base sm:text-lg">
-                Rs. {currentPrice.toLocaleString("en-US")}
-              </span>
-              {hasDiscount && (
-                <span className="text-[11px] text-tea-muted line-through">
-                  Rs. {regularPrice.toLocaleString("en-US")}
+          <div>
+            <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-serif font-bold text-tea-dark text-base sm:text-lg">
+                  Rs. {pricing.unitPrice.toLocaleString("en-US")}
                 </span>
-              )}
+                {pricing.hasDiscount && (
+                  <span className="text-[11px] text-tea-muted line-through">
+                    Rs. {pricing.regularPrice.toLocaleString("en-US")}
+                  </span>
+                )}
+              </div>
+              {pricing.hasDiscount ? (
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  Save Rs. {pricing.savingsPerUnit.toLocaleString("en-US")}
+                </span>
+              ) : activeSize ? (
+                <span className="text-[10px] font-medium text-tea-muted">
+                  {activeSize.sizeName}
+                </span>
+              ) : null}
             </div>
-            {activeSize && (
-              <span className="text-[10px] font-medium text-tea-muted">
-                {activeSize.sizeName}
-              </span>
+
+            {/* Qty-wise Live Total when cardQuantity > 1 */}
+            {cardQuantity > 1 && (
+              <div className="flex items-center justify-between text-[11px] text-tea-muted pt-1 border-t border-dashed border-tea-border/60 mt-1">
+                <span>
+                  Total ({cardQuantity} packs):{" "}
+                  <strong className="text-tea-forest font-bold">
+                    Rs. {pricing.totalPrice.toLocaleString("en-US")}
+                  </strong>
+                </span>
+                {pricing.hasDiscount && (
+                  <span className="text-emerald-700 font-bold text-[10px]">
+                    (Saved Rs. {pricing.totalSavings.toLocaleString("en-US")}!)
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

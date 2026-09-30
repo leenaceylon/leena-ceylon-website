@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle, Tag, Percent } from "lucide-react";
+import { calculatePricing } from "@/lib/pricing";
 
 export default function ProductForm({
   initialData,
@@ -97,8 +98,8 @@ export default function ProductForm({
       {
         sizeName: "200g",
         weightGram: 200,
-        regularPrice: formData.regularPrice,
-        salePrice: null,
+        regularPrice: Number(formData.regularPrice) || 500,
+        salePrice: formData.salePrice ? Number(formData.salePrice) : null,
         stock: 50,
       },
     ]);
@@ -116,7 +117,30 @@ export default function ProductForm({
     try {
       const payload = {
         ...formData,
-        sizes,
+        regularPrice: Number(formData.regularPrice) || 0,
+        salePrice:
+          formData.salePrice !== "" &&
+          formData.salePrice !== null &&
+          formData.salePrice !== undefined &&
+          Number(formData.salePrice) > 0
+            ? Number(formData.salePrice)
+            : null,
+        stock: Number(formData.stock) || 0,
+        lowStockThreshold: Number(formData.lowStockThreshold) || 10,
+        sizes: sizes.map((s) => ({
+          ...s,
+          sizeName: s.sizeName?.trim() || "Standard",
+          weightGram: Number(s.weightGram) || 0,
+          regularPrice: Number(s.regularPrice) || 0,
+          salePrice:
+            s.salePrice !== "" &&
+            s.salePrice !== null &&
+            s.salePrice !== undefined &&
+            Number(s.salePrice) > 0
+              ? Number(s.salePrice)
+              : null,
+          stock: Number(s.stock) || 0,
+        })),
       };
 
       const url = isEdit ? `/api/products/${initialData.id}` : "/api/products";
@@ -336,9 +360,19 @@ export default function ProductForm({
 
       {/* Pricing & Stock Management */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-tea-border shadow-subtle space-y-4">
-        <h3 className="font-serif text-base font-bold text-tea-dark pb-2 border-b border-tea-border">
-          2. Base Pricing & Stock
-        </h3>
+        <div className="pb-2 border-b border-tea-border flex items-center justify-between">
+          <div>
+            <h3 className="font-serif text-base font-bold text-tea-dark">
+              2. Base Pricing & Stock
+            </h3>
+            <p className="text-xs text-tea-muted">
+              Configure base regular selling price and optional discount offer price
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-tea-forest bg-tea-surface px-2.5 py-1 rounded-lg border border-tea-border">
+            Currency: LKR (Rs.)
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div>
@@ -350,25 +384,28 @@ export default function ProductForm({
               name="regularPrice"
               required
               min="0"
+              placeholder="e.g. 500"
               value={formData.regularPrice}
               onChange={handleChange}
-              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-semibold"
             />
+            <span className="text-[10px] text-tea-muted mt-0.5 block">Original / crossed-out MRP price</span>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-tea-dark mb-1">
-              Sale Price (Optional)
+              Offer Price (Rs.) <span className="text-emerald-700 font-normal">(Optional)</span>
             </label>
             <input
               type="number"
               name="salePrice"
               min="0"
-              placeholder="Optional discount price"
+              placeholder="e.g. 480"
               value={formData.salePrice}
               onChange={handleChange}
-              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-emerald-300 bg-emerald-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-bold text-emerald-900"
             />
+            <span className="text-[10px] text-emerald-800 mt-0.5 block">Discounted customer selling price</span>
           </div>
 
           <div>
@@ -384,6 +421,7 @@ export default function ProductForm({
               onChange={handleChange}
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
             />
+            <span className="text-[10px] text-tea-muted mt-0.5 block">Total available packs in warehouse</span>
           </div>
 
           <div>
@@ -398,93 +436,155 @@ export default function ProductForm({
               onChange={handleChange}
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
             />
+            <span className="text-[10px] text-tea-muted mt-0.5 block">Alerts admin when stock is below this</span>
           </div>
+
+          {/* Live Base Offer Status Banner */}
+          {(() => {
+            const pricing = calculatePricing(formData.regularPrice, formData.salePrice);
+            if (pricing.hasDiscount) {
+              return (
+                <div className="sm:col-span-4 p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-emerald-950 font-medium">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                    <span>
+                      <strong>Active Base Offer:</strong> Customer pays{" "}
+                      <strong className="text-emerald-700 text-sm">Rs. {pricing.unitPrice.toLocaleString("en-US")}</strong>{" "}
+                      (was <span className="line-through text-tea-muted">Rs. {pricing.regularPrice.toLocaleString("en-US")}</span>)
+                    </span>
+                  </div>
+                  <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-emerald-600 text-white font-bold text-[11px] shadow-xs">
+                    Save Rs. {pricing.savingsPerUnit.toLocaleString("en-US")} ({pricing.discountPercent}% OFF)
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
 
       {/* Available Sizes / Weight Variations */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-tea-border shadow-subtle space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-tea-border">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-tea-border gap-2">
           <div>
             <h3 className="font-serif text-base font-bold text-tea-dark">
-              3. Available Packaging Sizes (100g, 250g, 500g, 1kg)
+              3. Packaging Sizes & Gram-wise Offer Pricing (50g, 100g, 200g, 250g, 500g, 1kg)
             </h3>
             <p className="text-xs text-tea-muted">
-              Control the specific package sizes offered to customers with individual pricing
+              Set gram weight, regular price, and special offer price for each packaging size
             </p>
           </div>
           <button
             type="button"
             onClick={handleAddSize}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tea-border hover:bg-tea-bg text-xs font-semibold text-tea-forest transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-tea-forest bg-tea-forest/5 hover:bg-tea-forest hover:text-white text-xs font-semibold text-tea-forest transition self-start sm:self-auto"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add Size Option
+            Add Packaging Size
           </button>
         </div>
 
         <div className="space-y-3">
-          {sizes.map((sz, idx) => (
-            <div
-              key={idx}
-              className="p-3 bg-tea-surface rounded-xl border border-tea-border/80 grid grid-cols-2 sm:grid-cols-5 gap-3 items-center"
-            >
-              <div>
-                <label className="block text-[10px] text-tea-muted mb-0.5">Size Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 250g"
-                  value={sz.sizeName}
-                  onChange={(e) => handleSizeChange(idx, "sizeName", e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white"
-                />
-              </div>
+          {sizes.map((sz, idx) => {
+            const szPricing = calculatePricing(sz.regularPrice, sz.salePrice);
+            return (
+              <div
+                key={idx}
+                className="p-3.5 bg-tea-surface rounded-xl border border-tea-border/80 space-y-2.5 transition hover:border-tea-leaf/60"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 items-end">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-tea-muted mb-1">Pack Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 200g"
+                      value={sz.sizeName}
+                      onChange={(e) => handleSizeChange(idx, "sizeName", e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white font-medium"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-[10px] text-tea-muted mb-0.5">Weight (g)</label>
-                <input
-                  type="number"
-                  placeholder="250"
-                  value={sz.weightGram}
-                  onChange={(e) => handleSizeChange(idx, "weightGram", Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white"
-                />
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-tea-muted mb-1">Weight (g)</label>
+                    <input
+                      type="number"
+                      placeholder="200"
+                      value={sz.weightGram}
+                      onChange={(e) => handleSizeChange(idx, "weightGram", Number(e.target.value))}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-[10px] text-tea-muted mb-0.5">Price (Rs.)</label>
-                <input
-                  type="number"
-                  placeholder="490"
-                  value={sz.regularPrice}
-                  onChange={(e) => handleSizeChange(idx, "regularPrice", Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white font-bold"
-                />
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-tea-muted mb-1">Regular Price (Rs.) *</label>
+                    <input
+                      type="number"
+                      placeholder="500"
+                      value={sz.regularPrice}
+                      onChange={(e) => handleSizeChange(idx, "regularPrice", Number(e.target.value))}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white font-semibold text-tea-dark"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-[10px] text-tea-muted mb-0.5">Stock</label>
-                <input
-                  type="number"
-                  placeholder="50"
-                  value={sz.stock}
-                  onChange={(e) => handleSizeChange(idx, "stock", Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white"
-                />
-              </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-800 mb-1">Offer Price (Rs.)</label>
+                    <input
+                      type="number"
+                      placeholder="480 (Optional)"
+                      value={sz.salePrice !== null && sz.salePrice !== undefined ? sz.salePrice : ""}
+                      onChange={(e) => handleSizeChange(idx, "salePrice", e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-emerald-300 bg-emerald-50/40 font-bold text-emerald-900 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
 
-              <div className="flex justify-end pt-3 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSize(idx)}
-                  className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
-                  title="Remove size"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-tea-muted mb-1">Stock (Packs)</label>
+                    <input
+                      type="number"
+                      placeholder="50"
+                      value={sz.stock}
+                      onChange={(e) => handleSizeChange(idx, "stock", Number(e.target.value))}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-tea-border bg-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end pb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSize(idx)}
+                      className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition border border-rose-200"
+                      title="Remove size option"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Gram-wise Live Offer Status Badge */}
+                <div className="pt-1.5 border-t border-tea-border/50 flex items-center justify-between text-[11px]">
+                  {szPricing.hasDiscount ? (
+                    <div className="flex items-center gap-2 text-emerald-900 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                      <span>
+                        <strong>Offer Active:</strong> Customer pays{" "}
+                        <strong className="text-emerald-700">Rs. {szPricing.unitPrice.toLocaleString("en-US")}</strong>{" "}
+                        (was <span className="line-through text-tea-muted">Rs. {szPricing.regularPrice.toLocaleString("en-US")}</span>)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+                        Save Rs. {szPricing.savingsPerUnit.toLocaleString("en-US")} ({szPricing.discountPercent}% OFF)
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-tea-muted">
+                      Standard Price: <strong>Rs. {szPricing.unitPrice.toLocaleString("en-US")}</strong> (No discount)
+                    </span>
+                  )}
+                  <span className="text-[10px] text-tea-muted">Weight: {sz.weightGram} grams</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

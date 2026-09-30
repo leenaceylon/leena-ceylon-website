@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, MessageSquare, Eye, Sparkles, Pause, Play } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { calculatePricing } from "@/lib/pricing";
 
 export interface SliderProduct {
   id: string;
@@ -168,20 +169,15 @@ export default function ProductSlider({ products }: ProductSliderProps) {
               sizes.length > 0
                 ? sizes[selectedSizeIndex] || sizes[0]
                 : null;
-            const currentPrice = Number(
-              activeSize
-                ? activeSize.salePrice || activeSize.regularPrice
-                : product.salePrice || product.regularPrice
-            ) || 0;
-            const regularPrice = Number(
-              activeSize
-                ? activeSize.regularPrice
-                : product.regularPrice
-            ) || currentPrice;
-            const hasDiscount = regularPrice > currentPrice;
-            const discountPercent = hasDiscount && regularPrice > 0
-              ? Math.round(((regularPrice - currentPrice) / regularPrice) * 100)
-              : 0;
+            const pricing = calculatePricing(
+              activeSize ? activeSize.regularPrice : product.regularPrice,
+              activeSize ? activeSize.salePrice : product.salePrice,
+              1
+            );
+            const currentPrice = pricing.unitPrice;
+            const regularPrice = pricing.regularPrice;
+            const hasDiscount = pricing.hasDiscount;
+            const discountPercent = pricing.discountPercent;
             const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
             const isOutOfStock = currentStock <= 0;
 
@@ -191,15 +187,22 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                 productName: product.name || "Ceylon Tea",
                 size: activeSize?.sizeName || "Standard",
                 quantity: 1,
-                price: currentPrice,
-                total: currentPrice,
-                availableSizes: (product.sizes || []).map((s: any) => ({
-                  id: s.id,
-                  sizeName: s.sizeName,
-                  price: Number(s.salePrice || s.regularPrice) || currentPrice,
-                  regularPrice: Number(s.regularPrice) || currentPrice,
-                  stock: Number(s.stock) || 0,
-                })),
+                price: pricing.unitPrice,
+                total: pricing.totalPrice,
+                regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
+                regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
+                savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
+                availableSizes: (product.sizes || []).map((s: any) => {
+                  const sp = calculatePricing(s.regularPrice, s.salePrice, 1);
+                  return {
+                    id: s.id,
+                    sizeName: s.sizeName,
+                    price: sp.unitPrice,
+                    regularPrice: sp.regularPrice,
+                    salePrice: sp.hasDiscount ? sp.unitPrice : undefined,
+                    stock: Number(s.stock) || 0,
+                  };
+                }),
               });
             };
 
@@ -283,25 +286,31 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                             Choose Pack Size:
                           </div>
                           <div className="flex flex-wrap gap-1.5">
-                            {product.sizes.map((sz, idx) => (
-                              <button
-                                key={sz.id}
-                                type="button"
-                                onClick={() =>
-                                  setSelectedSizes((prev) => ({
-                                    ...prev,
-                                    [product.id]: idx,
-                                  }))
-                                }
-                                className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition ${
-                                  selectedSizeIndex === idx
-                                    ? "border-tea-forest bg-tea-forest text-white shadow-xs"
-                                    : "border-tea-border bg-white text-tea-dark hover:border-tea-leaf"
-                                }`}
-                              >
-                                {sz.sizeName}
-                              </button>
-                            ))}
+                            {product.sizes.map((sz, idx) => {
+                              const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
+                              return (
+                                <button
+                                  key={sz.id}
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedSizes((prev) => ({
+                                      ...prev,
+                                      [product.id]: idx,
+                                    }))
+                                  }
+                                  className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition flex items-center gap-1 ${
+                                    selectedSizeIndex === idx
+                                      ? "border-tea-forest bg-tea-forest text-white shadow-xs font-bold"
+                                      : "border-tea-border bg-white text-tea-dark hover:border-tea-leaf"
+                                  }`}
+                                >
+                                  <span>{sz.sizeName}</span>
+                                  <span className={`text-[10px] ${selectedSizeIndex === idx ? "text-emerald-200" : "text-tea-forest font-bold"}`}>
+                                    Rs. {szPricing.unitPrice.toLocaleString("en-US")}
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

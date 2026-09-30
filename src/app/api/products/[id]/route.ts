@@ -78,16 +78,39 @@ export async function PUT(
 
     // Update sizes if provided
     if (body.sizes && Array.isArray(body.sizes)) {
+      const incomingIds = body.sizes
+        .filter((sz: any) => sz.id && typeof sz.id === "string")
+        .map((sz: any) => sz.id);
+
+      // Cleanly delete sizes that were removed by admin
+      if (incomingIds.length > 0) {
+        await prisma.productVariant.deleteMany({
+          where: {
+            productId: params.id,
+            id: { notIn: incomingIds },
+          },
+        });
+      }
+
       for (const sz of body.sizes) {
+        const regPrice = Number(sz.regularPrice) || 0;
+        const sPrice =
+          sz.salePrice !== "" &&
+          sz.salePrice !== null &&
+          sz.salePrice !== undefined &&
+          Number(sz.salePrice) > 0
+            ? Number(sz.salePrice)
+            : null;
+
         if (sz.id) {
           await prisma.productVariant.update({
             where: { id: sz.id },
             data: {
               sizeName: sz.sizeName,
               weightGram: Number(sz.weightGram) || 0,
-              regularPrice: Number(sz.regularPrice),
-              salePrice: sz.salePrice ? Number(sz.salePrice) : null,
-              stock: Number(sz.stock),
+              regularPrice: regPrice,
+              salePrice: sPrice,
+              stock: Number(sz.stock) || 0,
               isActive: sz.isActive !== false,
             },
           });
@@ -97,9 +120,10 @@ export async function PUT(
               productId: params.id,
               sizeName: sz.sizeName,
               weightGram: Number(sz.weightGram) || 0,
-              regularPrice: Number(sz.regularPrice),
-              salePrice: sz.salePrice ? Number(sz.salePrice) : null,
+              regularPrice: regPrice,
+              salePrice: sPrice,
               stock: Number(sz.stock) || 50,
+              isActive: true,
             },
           });
         }

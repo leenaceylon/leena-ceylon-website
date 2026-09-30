@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { compileSingleProductWhatsAppOrder, getWhatsAppUrl } from "@/lib/whatsapp";
+import { calculatePricing } from "@/lib/pricing";
 import {
   MessageSquare,
   X,
@@ -17,6 +18,7 @@ import {
   MapPin,
   User,
   Phone,
+  Sparkles,
 } from "lucide-react";
 import { WhatsAppOrderDetails, WhatsAppOrderSizeOption } from "@/types";
 
@@ -37,6 +39,7 @@ export default function WhatsAppModal({
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("");
   const [unitPrice, setUnitPrice] = useState(0);
+  const [regularUnitPrice, setRegularUnitPrice] = useState<number | undefined>(undefined);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
   // Sync state whenever modal is opened with new product details
@@ -45,6 +48,7 @@ export default function WhatsAppModal({
       setQuantity(Math.max(1, whatsAppModal.details.quantity || 1));
       setSelectedSize(whatsAppModal.details.size || "Standard");
       setUnitPrice(whatsAppModal.details.price || 0);
+      setRegularUnitPrice(whatsAppModal.details.regularPrice ?? whatsAppModal.details.price);
       setPaymentMethod("COD");
     } else {
       setCopiedAccount(false);
@@ -79,12 +83,16 @@ export default function WhatsAppModal({
   if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
 
   const { details } = whatsAppModal;
-  const currentTotal = unitPrice * quantity;
   const availableSizes: WhatsAppOrderSizeOption[] = details.availableSizes || [];
+
+  // Calculate live pricing with offer discounts and quantity scaling
+  const pricing = calculatePricing(regularUnitPrice ?? unitPrice, unitPrice, quantity);
+  const currentTotal = pricing.totalPrice;
 
   const handleSelectSize = (sz: WhatsAppOrderSizeOption) => {
     setSelectedSize(sz.sizeName);
     setUnitPrice(sz.price);
+    setRegularUnitPrice(sz.regularPrice ?? sz.price);
   };
 
   const handleContinue = () => {
@@ -92,8 +100,11 @@ export default function WhatsAppModal({
       productName: details.productName,
       size: selectedSize || details.size,
       quantity: quantity,
-      price: unitPrice,
-      total: currentTotal,
+      price: pricing.unitPrice,
+      total: pricing.totalPrice,
+      regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
+      regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
+      savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
       availableSizes: details.availableSizes,
     };
 
@@ -166,6 +177,7 @@ export default function WhatsAppModal({
                 <div className="flex flex-wrap gap-1.5">
                   {availableSizes.map((sz) => {
                     const isSelected = selectedSize === sz.sizeName;
+                    const szPricing = calculatePricing(sz.regularPrice ?? sz.price, sz.price, 1);
                     return (
                       <button
                         key={sz.sizeName}
@@ -178,9 +190,21 @@ export default function WhatsAppModal({
                         }`}
                       >
                         <span>{sz.sizeName}</span>
-                        <span className={`text-[10px] ${isSelected ? "text-emerald-200" : "text-tea-muted"}`}>
-                          Rs. {sz.price.toLocaleString("en-US")}
+                        <span className={`text-[10px] ${isSelected ? "text-emerald-200" : "text-tea-forest font-bold"}`}>
+                          Rs. {szPricing.unitPrice.toLocaleString("en-US")}
                         </span>
+                        {szPricing.hasDiscount && (
+                          <span className={`text-[9px] line-through ${isSelected ? "text-emerald-200/70" : "text-tea-muted"}`}>
+                            Rs. {szPricing.regularPrice.toLocaleString("en-US")}
+                          </span>
+                        )}
+                        {szPricing.hasDiscount && (
+                          <span className={`text-[8px] uppercase tracking-wider px-1 py-0.2 rounded font-extrabold ${
+                            isSelected ? "bg-amber-400 text-emerald-950" : "bg-amber-100 text-amber-800"
+                          }`}>
+                            Offer
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -259,18 +283,50 @@ export default function WhatsAppModal({
             {/* Price Breakdown */}
             <div className="flex justify-between items-center text-xs border-t border-tea-border/60 pt-2 text-tea-muted">
               <span>Unit Price</span>
-              <span>Rs. {unitPrice.toLocaleString("en-US")} each</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-tea-dark">Rs. {pricing.unitPrice.toLocaleString("en-US")} each</span>
+                {pricing.hasDiscount && (
+                  <span className="text-tea-muted line-through text-[11px]">
+                    Rs. {pricing.regularPrice.toLocaleString("en-US")}
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* Special Offer Savings Banner */}
+            {pricing.hasDiscount && (
+              <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-900 border border-emerald-200/80 px-3 py-2 rounded-xl font-medium animate-fade-in">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>
+                    Special Offer ({pricing.discountPercent}% OFF
+                    {quantity > 1 ? ` • Rs. ${pricing.savingsPerUnit} off/pack` : ""})
+                  </span>
+                </div>
+                <span className="font-bold text-emerald-800">
+                  Save Rs. {pricing.totalSavings.toLocaleString("en-US")}
+                </span>
+              </div>
+            )}
 
             {/* Order Total Highlight */}
             <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-2.5 text-tea-dark">
               <span className="flex items-center gap-1.5">
                 <span>Total Amount:</span>
-                <span className="text-xs font-normal text-tea-muted">({quantity} × Rs. {unitPrice.toLocaleString("en-US")})</span>
+                <span className="text-xs font-normal text-tea-muted">
+                  ({quantity} {quantity === 1 ? "pack" : "packs"} × Rs. {pricing.unitPrice.toLocaleString("en-US")})
+                </span>
               </span>
-              <span className="text-tea-forest text-lg font-serif">
-                Rs. {currentTotal.toLocaleString("en-US")}
-              </span>
+              <div className="text-right">
+                <span className="text-tea-forest text-lg font-serif block">
+                  Rs. {pricing.totalPrice.toLocaleString("en-US")}
+                </span>
+                {pricing.hasDiscount && (
+                  <span className="text-[11px] text-tea-muted line-through font-normal block -mt-1">
+                    Reg. Rs. {pricing.totalRegularPrice.toLocaleString("en-US")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { calculatePricing } from "@/lib/pricing";
 
 export interface HeroSlideItem {
   id: string;
@@ -92,19 +93,16 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
   const sizes = Array.isArray(currentProduct.sizes) ? currentProduct.sizes : [];
   const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const currentPrice = Number(
-    activeSize
-      ? activeSize.salePrice || activeSize.regularPrice
-      : currentProduct.salePrice || currentProduct.regularPrice
-  ) || 0;
+  // Live calculation of offer and regular pricing
+  const pricing = calculatePricing(
+    activeSize ? activeSize.regularPrice : currentProduct.regularPrice,
+    activeSize ? activeSize.salePrice : currentProduct.salePrice,
+    1
+  );
 
-  const regularPrice = Number(
-    activeSize
-      ? activeSize.regularPrice
-      : currentProduct.regularPrice
-  ) || currentPrice;
-
-  const hasDiscount = regularPrice > currentPrice;
+  const currentPrice = pricing.unitPrice;
+  const regularPrice = pricing.regularPrice;
+  const hasDiscount = pricing.hasDiscount;
 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -112,15 +110,22 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
       productName: currentProduct.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: 1,
-      price: currentPrice,
-      total: currentPrice,
-      availableSizes: sizes.map((s: any) => ({
-        id: s.id,
-        sizeName: s.sizeName,
-        price: Number(s.salePrice || s.regularPrice) || currentPrice,
-        regularPrice: Number(s.regularPrice) || currentPrice,
-        stock: Number(s.stock) || 0,
-      })),
+      price: pricing.unitPrice,
+      total: pricing.totalPrice,
+      regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
+      regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
+      savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
+      availableSizes: sizes.map((s: any) => {
+        const sp = calculatePricing(s.regularPrice, s.salePrice, 1);
+        return {
+          id: s.id,
+          sizeName: s.sizeName,
+          price: sp.unitPrice,
+          regularPrice: sp.regularPrice,
+          salePrice: sp.hasDiscount ? sp.unitPrice : undefined,
+          stock: Number(s.stock) || 0,
+        };
+      }),
     });
   };
 
@@ -147,7 +152,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
             </span>
             {hasDiscount && (
               <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold tracking-wider uppercase">
-                Sale
+                {pricing.discountPercent}% OFF
               </span>
             )}
           </div>
@@ -202,20 +207,26 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
           {currentProduct.sizes && currentProduct.sizes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-medium text-tea-muted mr-1">Weight:</span>
-              {currentProduct.sizes.map((sz, idx) => (
-                <button
-                  key={sz.id}
-                  type="button"
-                  onClick={() => setSelectedSizeIndex(idx)}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition ${
-                    selectedSizeIndex === idx
-                      ? "border-tea-forest bg-tea-forest text-white shadow-xs"
-                      : "border-tea-border bg-tea-surface/60 text-tea-dark hover:border-tea-leaf"
-                  }`}
-                >
-                  {sz.sizeName}
-                </button>
-              ))}
+              {currentProduct.sizes.map((sz, idx) => {
+                const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
+                return (
+                  <button
+                    key={sz.id}
+                    type="button"
+                    onClick={() => setSelectedSizeIndex(idx)}
+                    className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition flex items-center gap-1 ${
+                      selectedSizeIndex === idx
+                        ? "border-tea-forest bg-tea-forest text-white shadow-xs"
+                        : "border-tea-border bg-tea-surface/60 text-tea-dark hover:border-tea-leaf"
+                    }`}
+                  >
+                    <span>{sz.sizeName}</span>
+                    <span className={`text-[10px] ${selectedSizeIndex === idx ? "text-emerald-200" : "text-tea-forest font-bold"}`}>
+                      Rs. {szPricing.unitPrice.toLocaleString("en-US")}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 

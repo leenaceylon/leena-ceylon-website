@@ -24,11 +24,13 @@ export default function AdminProductsPage() {
     isOpen: boolean;
     product: any | null;
     newPrice: number;
+    newOfferPrice: number | string;
     newStock: number;
   }>({
     isOpen: false,
     product: null,
     newPrice: 0,
+    newOfferPrice: "",
     newStock: 0,
   });
 
@@ -90,17 +92,32 @@ export default function AdminProductsPage() {
   const handleSaveQuickPrice = async () => {
     if (!quickPriceModal.product) return;
     try {
+      const offerNum =
+        quickPriceModal.newOfferPrice !== "" &&
+        quickPriceModal.newOfferPrice !== null &&
+        quickPriceModal.newOfferPrice !== undefined &&
+        Number(quickPriceModal.newOfferPrice) > 0
+          ? Number(quickPriceModal.newOfferPrice)
+          : null;
+
       const res = await fetch(`/api/products/${quickPriceModal.product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           regularPrice: Number(quickPriceModal.newPrice),
+          salePrice: offerNum,
           stock: Number(quickPriceModal.newStock),
         }),
       });
       if (res.ok) {
-        showNotice("Product price and stock updated successfully.");
-        setQuickPriceModal({ isOpen: false, product: null, newPrice: 0, newStock: 0 });
+        showNotice("Product price, offer, and stock updated successfully.");
+        setQuickPriceModal({
+          isOpen: false,
+          product: null,
+          newPrice: 0,
+          newOfferPrice: "",
+          newStock: 0,
+        });
         loadProducts();
       }
     } catch (e) {
@@ -226,16 +243,32 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
 
-                    {/* Base Price */}
+                    {/* Price & Offer */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <div>
-                          <span className="font-bold text-tea-forest text-sm">
-                            Rs. {p.regularPrice.toLocaleString()}
-                          </span>
-                          {p.salePrice && (
-                            <span className="text-[10px] text-amber-600 block">
-                              Sale: Rs. {p.salePrice.toLocaleString()}
+                          {p.salePrice && p.salePrice < p.regularPrice ? (
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-emerald-700 text-sm">
+                                  Rs. {p.salePrice.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] text-tea-muted line-through">
+                                  Rs. {p.regularPrice.toLocaleString()}
+                                </span>
+                              </div>
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
+                                Offer: Save Rs. {(p.regularPrice - p.salePrice).toLocaleString()}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="font-bold text-tea-forest text-sm">
+                              Rs. {p.regularPrice.toLocaleString()}
+                            </span>
+                          )}
+                          {p.sizes && p.sizes.length > 0 && (
+                            <span className="text-[10px] text-tea-muted block mt-0.5">
+                              {p.sizes.length} pack size(s)
                             </span>
                           )}
                         </div>
@@ -246,6 +279,7 @@ export default function AdminProductsPage() {
                               isOpen: true,
                               product: p,
                               newPrice: p.regularPrice,
+                              newOfferPrice: p.salePrice || "",
                               newStock: p.stock,
                             })
                           }
@@ -328,7 +362,7 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-tea-border">
             <h3 className="font-serif font-bold text-base text-tea-dark">
-              Quick Price & Stock Update
+              Quick Price & Offer Update
             </h3>
             <p className="text-xs text-tea-muted">
               Updating <strong>{quickPriceModal.product.name}</strong>. Changes immediately appear on the live website.
@@ -349,9 +383,46 @@ export default function AdminProductsPage() {
                       newPrice: Number(e.target.value),
                     })
                   }
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-semibold"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-emerald-800 mb-1">
+                  Offer Price (Rs.) <span className="font-normal text-tea-muted">(Optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 480"
+                  value={quickPriceModal.newOfferPrice}
+                  onChange={(e) =>
+                    setQuickPriceModal({
+                      ...quickPriceModal,
+                      newOfferPrice: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-emerald-300 bg-emerald-50/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-bold text-emerald-900"
+                />
+              </div>
+
+              {/* Live Preview in modal */}
+              {Number(quickPriceModal.newOfferPrice) > 0 &&
+                Number(quickPriceModal.newOfferPrice) < Number(quickPriceModal.newPrice) && (
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900 space-y-0.5">
+                    <p className="font-semibold">🟢 Active Special Offer:</p>
+                    <p>
+                      Customer pays <strong>Rs. {Number(quickPriceModal.newOfferPrice).toLocaleString()}</strong> (was{" "}
+                      <span className="line-through text-tea-muted">
+                        Rs. {Number(quickPriceModal.newPrice).toLocaleString()}
+                      </span>
+                      )
+                    </p>
+                    <p className="text-emerald-700 font-bold">
+                      Discount: Save Rs. {(Number(quickPriceModal.newPrice) - Number(quickPriceModal.newOfferPrice)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
 
               <div>
                 <label className="block text-xs font-semibold text-tea-dark mb-1">
@@ -383,7 +454,13 @@ export default function AdminProductsPage() {
               <button
                 type="button"
                 onClick={() =>
-                  setQuickPriceModal({ isOpen: false, product: null, newPrice: 0, newStock: 0 })
+                  setQuickPriceModal({
+                    isOpen: false,
+                    product: null,
+                    newPrice: 0,
+                    newOfferPrice: "",
+                    newStock: 0,
+                  })
                 }
                 className="py-2 px-4 rounded-xl border border-tea-border text-tea-muted hover:text-tea-dark text-xs font-semibold transition"
               >

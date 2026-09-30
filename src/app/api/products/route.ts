@@ -92,7 +92,13 @@ export async function POST(req: NextRequest) {
                 sizeName: s.sizeName,
                 weightGram: Number(s.weightGram) || 0,
                 regularPrice: Number(s.regularPrice) || Number(regularPrice),
-                salePrice: s.salePrice ? Number(s.salePrice) : null,
+                salePrice:
+                  s.salePrice !== "" &&
+                  s.salePrice !== null &&
+                  s.salePrice !== undefined &&
+                  Number(s.salePrice) > 0
+                    ? Number(s.salePrice)
+                    : null,
                 stock: Number(s.stock) || 50,
                 sku: s.sku || null,
               })),

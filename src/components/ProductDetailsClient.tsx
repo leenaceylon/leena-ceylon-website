@@ -17,6 +17,7 @@ import {
   Minus,
 } from "lucide-react";
 import { compileBankTransferWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
+import { calculatePricing } from "@/lib/pricing";
 
 export default function ProductDetailsClient({
   product,
@@ -61,19 +62,12 @@ export default function ProductDetailsClient({
   const sizes = Array.isArray(product.sizes) ? product.sizes : [];
   const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
-  const currentPrice = Number(
-    activeSize
-      ? activeSize.salePrice || activeSize.regularPrice
-      : product.salePrice || product.regularPrice
-  ) || 0;
+  const pricing = calculatePricing(
+    activeSize ? activeSize.regularPrice : product.regularPrice,
+    activeSize ? activeSize.salePrice : product.salePrice,
+    quantity
+  );
 
-  const regularPrice = Number(
-    activeSize
-      ? activeSize.regularPrice
-      : product.regularPrice
-  ) || currentPrice;
-
-  const hasDiscount = regularPrice > currentPrice;
   const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
   const isOutOfStock = currentStock <= 0;
 
@@ -97,15 +91,22 @@ export default function ProductDetailsClient({
       productName: product.name,
       size: activeSize?.sizeName || "Standard",
       quantity: quantity,
-      price: currentPrice,
-      total: currentPrice * quantity,
-      availableSizes: sizes.map((s) => ({
-        id: s.id,
-        sizeName: s.sizeName,
-        price: Number(s.salePrice || s.regularPrice) || currentPrice,
-        regularPrice: Number(s.regularPrice) || currentPrice,
-        stock: Number(s.stock) || 0,
-      })),
+      price: pricing.unitPrice,
+      regularPrice: pricing.regularPrice,
+      total: pricing.totalPrice,
+      regularTotal: pricing.totalRegularPrice,
+      savings: pricing.totalSavings,
+      availableSizes: sizes.map((s) => {
+        const szP = calculatePricing(s.regularPrice, s.salePrice, 1);
+        return {
+          id: s.id,
+          sizeName: s.sizeName,
+          price: szP.unitPrice,
+          regularPrice: szP.regularPrice,
+          salePrice: szP.hasDiscount ? szP.unitPrice : null,
+          stock: Number(s.stock) || 0,
+        };
+      }),
     });
   };
 
@@ -115,13 +116,13 @@ export default function ProductDetailsClient({
       customerName: "",
       phone: "",
       address: "",
-      total: currentPrice * quantity,
+      total: pricing.totalPrice,
       items: [
         {
           name: product.name,
           size: activeSize?.sizeName || "Standard",
           quantity: quantity,
-          price: currentPrice,
+          price: pricing.unitPrice,
         },
       ],
       bankDetails:
@@ -196,13 +197,19 @@ export default function ProductDetailsClient({
         </div>
 
         {/* Price Row */}
-        <div className="flex items-baseline gap-3 pb-4 border-b border-tea-border/60">
-          <span className="text-3xl font-bold text-tea-forest font-serif">
-            Rs. {currentPrice.toLocaleString("en-US")}
+        <div className="flex flex-wrap items-baseline gap-3 pb-4 border-b border-tea-border/60">
+          <span className="text-3xl sm:text-4xl font-bold text-tea-forest font-serif">
+            Rs. {pricing.unitPrice.toLocaleString("en-US")}
           </span>
-          {hasDiscount && (
-            <span className="text-base text-tea-muted line-through">
-              Rs. {regularPrice.toLocaleString("en-US")}
+          {pricing.hasDiscount && (
+            <span className="text-lg text-tea-muted line-through">
+              Rs. {pricing.regularPrice.toLocaleString("en-US")}
+            </span>
+          )}
+          {pricing.hasDiscount && (
+            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-300 flex items-center gap-1 shadow-xs">
+              <Sparkles className="w-3 h-3 text-emerald-600" />
+              Save Rs. {pricing.savingsPerUnit.toLocaleString("en-US")} ({pricing.discountPercent}% OFF)
             </span>
           )}
           {activeSize && (
@@ -217,37 +224,53 @@ export default function ProductDetailsClient({
           {product.shortDescription}
         </p>
 
-        {/* Size Selection (Admin-controlled) */}
+        {/* Size Selection (Admin-controlled Gram-wise Options) */}
         {product.sizes && product.sizes.length > 0 && (
           <div className="space-y-2.5">
             <div className="flex justify-between items-center text-xs">
               <span className="font-bold text-tea-dark uppercase tracking-wider">
-                Select Size:
+                Select Size / Pack:
               </span>
-              <span className="text-tea-muted">
-                {activeSize?.sizeName} (Rs. {currentPrice})
+              <span className="text-tea-forest font-semibold">
+                {activeSize?.sizeName} — Rs. {pricing.unitPrice.toLocaleString("en-US")}
+                {pricing.hasDiscount && (
+                  <span className="text-tea-muted line-through ml-1 text-[11px]">
+                    (Rs. {pricing.regularPrice.toLocaleString("en-US")})
+                  </span>
+                )}
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {product.sizes.map((sz, idx) => (
-                <button
-                  key={sz.id}
-                  type="button"
-                  onClick={() => setSelectedSizeIndex(idx)}
-                  className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition flex items-center gap-1.5 ${
-                    selectedSizeIndex === idx
-                      ? "border-tea-forest bg-tea-forest text-white shadow-sm"
-                      : "border-tea-border bg-white text-tea-dark hover:border-tea-leaf"
-                  }`}
-                >
-                  <span>{sz.sizeName}</span>
-                  {sz.regularPrice && (
-                    <span className="text-[10px] opacity-80">
-                      — Rs. {sz.salePrice || sz.regularPrice}
+              {product.sizes.map((sz, idx) => {
+                const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
+                const isSelected = selectedSizeIndex === idx;
+                return (
+                  <button
+                    key={sz.id}
+                    type="button"
+                    onClick={() => setSelectedSizeIndex(idx)}
+                    className={`px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition flex items-center gap-2 ${
+                      isSelected
+                        ? "border-tea-forest bg-tea-forest text-white shadow-sm"
+                        : "border-tea-border bg-white text-tea-dark hover:border-tea-leaf"
+                    }`}
+                  >
+                    <span>{sz.sizeName}</span>
+                    <span className={`text-[11px] font-normal ${isSelected ? "text-emerald-200" : "text-tea-muted"}`}>
+                      Rs. {szPricing.unitPrice.toLocaleString("en-US")}
                     </span>
-                  )}
-                </button>
-              ))}
+                    {szPricing.hasDiscount && (
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                          isSelected ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        Offer
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -256,7 +279,7 @@ export default function ProductDetailsClient({
         <div className="flex items-center gap-6 pt-2">
           <div className="space-y-1">
             <span className="block text-xs font-bold text-tea-dark uppercase tracking-wider">
-              Quantity:
+              Quantity (Packs):
             </span>
             <div className="flex items-center border border-tea-border rounded-xl overflow-hidden bg-white">
               <button
@@ -283,7 +306,7 @@ export default function ProductDetailsClient({
 
           <div className="space-y-1">
             <span className="block text-xs font-bold text-tea-dark uppercase tracking-wider">
-              Status:
+              Stock Status:
             </span>
             {isOutOfStock ? (
               <span className="inline-block px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
@@ -299,6 +322,44 @@ export default function ProductDetailsClient({
               </span>
             )}
           </div>
+        </div>
+
+        {/* Live Qty-wise & Gram-wise Order Summary Card */}
+        <div className="p-4 bg-tea-surface/80 rounded-2xl border border-tea-border space-y-2 text-xs">
+          <div className="flex justify-between items-center">
+            <span className="text-tea-muted font-medium">Order Selection:</span>
+            <span className="font-bold text-tea-dark">
+              {quantity} × {activeSize?.sizeName || "Standard Pack"}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-tea-muted font-medium">Unit Price:</span>
+            <span className="font-semibold text-tea-dark">
+              Rs. {pricing.unitPrice.toLocaleString("en-US")} each{" "}
+              {pricing.hasDiscount && (
+                <span className="line-through text-tea-muted text-[10px] ml-1">
+                  (Reg: Rs. {pricing.regularPrice.toLocaleString("en-US")})
+                </span>
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between items-center pt-2 border-t border-tea-border/60 text-sm font-bold">
+            <span className="text-tea-dark">Total Order Amount:</span>
+            <span className="text-tea-forest font-serif text-lg">
+              Rs. {pricing.totalPrice.toLocaleString("en-US")}
+            </span>
+          </div>
+          {pricing.hasDiscount && (
+            <div className="pt-1 flex items-center justify-between text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-semibold">
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Special Promotion Discount</span>
+              </span>
+              <span>
+                You Save Rs. {pricing.totalSavings.toLocaleString("en-US")} ({pricing.discountPercent}% OFF)!
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Direct WhatsApp & Bank Transfer Action Buttons */}
