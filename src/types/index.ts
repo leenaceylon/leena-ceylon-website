@@ -30,6 +30,12 @@ export interface WhatsAppOrderDetails {
   regularTotal?: number;
   savings?: number;
   availableSizes?: WhatsAppOrderSizeOption[];
+  couponCode?: string;
+  couponDiscount?: number;
+  deliveryMethod?: "COURIER" | "PICKUP";
+  deliveryCharge?: number;
+  finalTotal?: number;
+  totalSavings?: number;
 }
 
 export interface SiteSettingsMap {

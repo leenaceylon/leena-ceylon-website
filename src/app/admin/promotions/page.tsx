@@ -137,7 +137,11 @@ export default function AdminPromotionsPage() {
                     </td>
                     <td className="py-3 px-4 text-tea-dark">{c.discountType}</td>
                     <td className="py-3 px-4 font-bold text-tea-dark">
-                      {c.discountType === "PERCENTAGE" ? `${c.discountValue}%` : `Rs. ${c.discountValue}`}
+                      {c.discountType === "FREE_SHIPPING"
+                        ? "Free Delivery"
+                        : c.discountType === "PERCENTAGE"
+                        ? `${c.discountValue}%`
+                        : `Rs. ${c.discountValue}`}
                     </td>
                     <td className="py-3 px-4 text-tea-muted">
                       {c.minOrder ? `Rs. ${c.minOrder}` : "None"}
@@ -198,6 +202,7 @@ export default function AdminPromotionsPage() {
                   >
                     <option value="PERCENTAGE">Percentage (%)</option>
                     <option value="FIXED">Fixed Amount (Rs.)</option>
+                    <option value="FREE_SHIPPING">Free Islandwide Delivery</option>
                   </select>
                 </div>
 

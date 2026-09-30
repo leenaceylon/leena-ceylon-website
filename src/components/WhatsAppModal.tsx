@@ -19,6 +19,9 @@ import {
   User,
   Phone,
   Sparkles,
+  Tag,
+  Loader2,
+  Building,
 } from "lucide-react";
 import { WhatsAppOrderDetails, WhatsAppOrderSizeOption } from "@/types";
 
@@ -36,11 +39,25 @@ export default function WhatsAppModal({
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"COD" | "BANK">("COD");
+  const [deliveryMethod, setDeliveryMethod] = useState<"COURIER" | "PICKUP">("COURIER");
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState("");
   const [unitPrice, setUnitPrice] = useState(0);
   const [regularUnitPrice, setRegularUnitPrice] = useState<number | undefined>(undefined);
   const [copiedAccount, setCopiedAccount] = useState(false);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountType: string;
+    discountValue: number;
+    discountAmount: number;
+    isFreeShipping?: boolean;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
   // Sync state whenever modal is opened with new product details
   useEffect(() => {
@@ -50,8 +67,15 @@ export default function WhatsAppModal({
       setUnitPrice(whatsAppModal.details.price || 0);
       setRegularUnitPrice(whatsAppModal.details.regularPrice ?? whatsAppModal.details.price);
       setPaymentMethod("COD");
+      setDeliveryMethod("COURIER");
+      setCouponError(null);
+      setCouponSuccess(null);
     } else {
       setCopiedAccount(false);
+      setAppliedCoupon(null);
+      setCouponInput("");
+      setCouponError(null);
+      setCouponSuccess(null);
     }
   }, [whatsAppModal.isOpen, whatsAppModal.details]);
 
@@ -87,12 +111,79 @@ export default function WhatsAppModal({
 
   // Calculate live pricing with offer discounts and quantity scaling
   const pricing = calculatePricing(regularUnitPrice ?? unitPrice, unitPrice, quantity);
-  const currentTotal = pricing.totalPrice;
+  const itemsSubtotal = pricing.totalPrice;
+  const offerSavings = pricing.totalSavings;
+
+  // Re-calculate coupon discount according to live itemsSubtotal
+  let couponDiscount = 0;
+  if (appliedCoupon) {
+    if (appliedCoupon.discountType === "PERCENTAGE") {
+      couponDiscount = Math.round((itemsSubtotal * appliedCoupon.discountValue) / 100);
+    } else if (appliedCoupon.discountType === "FIXED") {
+      couponDiscount = Math.min(appliedCoupon.discountValue, itemsSubtotal);
+    }
+  }
+
+  // Delivery charge calculation
+  const isFreeDeliveryCoupon = Boolean(appliedCoupon?.isFreeShipping);
+  const qualifiesForFreeDelivery = itemsSubtotal >= 3500 || isFreeDeliveryCoupon;
+  const standardDeliveryFee = 350;
+  const deliveryFee =
+    deliveryMethod === "PICKUP" || qualifiesForFreeDelivery ? 0 : standardDeliveryFee;
+
+  // Final Payable Amount
+  const finalTotal = Math.max(0, itemsSubtotal - couponDiscount + deliveryFee);
+  const totalSavings =
+    offerSavings +
+    couponDiscount +
+    (qualifiesForFreeDelivery && deliveryMethod === "COURIER" ? standardDeliveryFee : 0);
 
   const handleSelectSize = (sz: WhatsAppOrderSizeOption) => {
     setSelectedSize(sz.sizeName);
     setUnitPrice(sz.price);
     setRegularUnitPrice(sz.regularPrice ?? sz.price);
+  };
+
+  const handleApplyCoupon = async (codeToUse?: string) => {
+    const code = (codeToUse || couponInput).trim().toUpperCase();
+    if (!code) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponSuccess(null);
+
+    try {
+      const res = await fetch("/api/promotions/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, subtotal: itemsSubtotal }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.valid && data.coupon) {
+        setAppliedCoupon(data.coupon);
+        setCouponInput(data.coupon.code);
+        setCouponSuccess(data.message || `Code ${data.coupon.code} applied!`);
+        setCouponError(null);
+      } else {
+        setCouponError(data.message || "Invalid coupon code");
+        setAppliedCoupon(null);
+      }
+    } catch {
+      setCouponError("Could not validate coupon. Please try again.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponSuccess(null);
+    setCouponError(null);
   };
 
   const handleContinue = () => {
@@ -101,11 +192,17 @@ export default function WhatsAppModal({
       size: selectedSize || details.size,
       quantity: quantity,
       price: pricing.unitPrice,
-      total: pricing.totalPrice,
+      total: itemsSubtotal,
       regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
       regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
       savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
       availableSizes: details.availableSizes,
+      couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+      couponDiscount: couponDiscount > 0 ? couponDiscount : undefined,
+      deliveryMethod: deliveryMethod,
+      deliveryCharge: deliveryFee,
+      finalTotal: finalTotal,
+      totalSavings: totalSavings,
     };
 
     const message = compileSingleProductWhatsAppOrder({
@@ -130,7 +227,7 @@ export default function WhatsAppModal({
       aria-labelledby="whatsapp-modal-title"
     >
       <div
-        className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-tea-border overflow-hidden transform transition-all animate-scale-up max-h-[92vh] flex flex-col"
+        className="w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-tea-border overflow-hidden transform transition-all animate-scale-up max-h-[94vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -156,9 +253,9 @@ export default function WhatsAppModal({
         </div>
 
         {/* Scrollable Content Body */}
-        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 space-y-3.5 overflow-y-auto flex-1">
           {/* 1. Product Summary & Options */}
-          <div className="bg-tea-bg/70 rounded-xl p-4 border border-tea-border/80 space-y-3.5">
+          <div className="bg-tea-bg/70 rounded-xl p-3.5 border border-tea-border/80 space-y-3">
             {/* Product Name */}
             <div className="flex justify-between items-start text-sm">
               <span className="text-tea-muted font-medium text-xs uppercase tracking-wider">Product</span>
@@ -211,8 +308,8 @@ export default function WhatsAppModal({
                 </div>
               </div>
             ) : (
-              <div className="flex justify-between items-center text-sm border-t border-tea-border/60 pt-2.5">
-                <span className="text-tea-muted font-medium">Pack / Weight</span>
+              <div className="flex justify-between items-center text-sm border-t border-tea-border/60 pt-2">
+                <span className="text-tea-muted font-medium text-xs">Pack / Weight</span>
                 <span className="inline-block px-2.5 py-0.5 rounded-full bg-tea-leaf/10 text-tea-forest font-semibold text-xs">
                   {selectedSize}
                 </span>
@@ -220,7 +317,7 @@ export default function WhatsAppModal({
             )}
 
             {/* Quantity Selector with Plus / Minus & Direct Number Input */}
-            <div className="border-t border-tea-border/60 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="border-t border-tea-border/60 pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <span className="text-tea-muted font-medium text-xs block">Quantity (Packs)</span>
                 <span className="text-[11px] text-tea-muted/80">Choose how many you need</span>
@@ -279,58 +376,270 @@ export default function WhatsAppModal({
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Price Breakdown */}
-            <div className="flex justify-between items-center text-xs border-t border-tea-border/60 pt-2 text-tea-muted">
-              <span>Unit Price</span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-tea-dark">Rs. {pricing.unitPrice.toLocaleString("en-US")} each</span>
-                {pricing.hasDiscount && (
-                  <span className="text-tea-muted line-through text-[11px]">
-                    Rs. {pricing.regularPrice.toLocaleString("en-US")}
-                  </span>
+          {/* 2. Delivery Method Selection */}
+          <div className="space-y-1.5 bg-tea-bg/50 p-3 rounded-xl border border-tea-border/70">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-tea-forest font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-tea-leaf" />
+                <span>Delivery Method</span>
+              </span>
+              <span className="text-[11px] text-tea-muted">
+                {itemsSubtotal >= 3500 ? (
+                  <strong className="text-emerald-700 font-bold">🎉 FREE Delivery Qualified!</strong>
+                ) : (
+                  <span>Free delivery over Rs. 3,500</span>
                 )}
-              </div>
+              </span>
             </div>
 
-            {/* Special Offer Savings Banner */}
-            {pricing.hasDiscount && (
-              <div className="flex items-center justify-between text-xs bg-emerald-50 text-emerald-900 border border-emerald-200/80 px-3 py-2 rounded-xl font-medium animate-fade-in">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                  <span>
-                    Special Offer ({pricing.discountPercent}% OFF
-                    {quantity > 1 ? ` • Rs. ${pricing.savingsPerUnit} off/pack` : ""})
+            <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
+              {/* Courier Delivery */}
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("COURIER")}
+                className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 transition text-left ${
+                  deliveryMethod === "COURIER"
+                    ? "border-tea-forest bg-white text-tea-dark font-semibold ring-2 ring-tea-leaf/20 shadow-xs"
+                    : "border-tea-border bg-white/70 text-tea-muted hover:border-tea-leaf"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Courier Delivery</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-700">
+                    {deliveryFee === 0 ? "FREE" : "Rs. 350"}
                   </span>
                 </div>
-                <span className="font-bold text-emerald-800">
-                  Save Rs. {pricing.totalSavings.toLocaleString("en-US")}
+                <span className="text-[10px] text-tea-muted">Islandwide delivery in 24–48h</span>
+              </button>
+
+              {/* Office Pick-up */}
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("PICKUP")}
+                className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 transition text-left ${
+                  deliveryMethod === "PICKUP"
+                    ? "border-tea-forest bg-white text-tea-dark font-semibold ring-2 ring-tea-leaf/20 shadow-xs"
+                    : "border-tea-border bg-white/70 text-tea-muted hover:border-tea-leaf"
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1">
+                    <Building className="w-3.5 h-3.5 text-tea-leaf" />
+                    <span>Office Pick-up</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-emerald-700">FREE</span>
+                </div>
+                <span className="text-[10px] text-tea-muted">Kekirawa Head Office</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. Coupon Code Option */}
+          <div className="bg-white p-3.5 rounded-xl border border-tea-border/80 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <label className="font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-tea-leaf" />
+                <span>Coupon / Promo Code</span>
+              </label>
+              {appliedCoupon && (
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold transition"
+                >
+                  ✕ Remove
+                </button>
+              )}
+            </div>
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-xs text-emerald-950 font-medium animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                  <span>
+                    Coupon <strong className="font-mono text-emerald-800 font-bold">{appliedCoupon.code}</strong> Applied:
+                  </span>
+                  <strong className="text-emerald-700 font-bold">
+                    {appliedCoupon.isFreeShipping
+                      ? "Free Delivery Waiver"
+                      : `- Rs. ${couponDiscount.toLocaleString("en-US")}`}
+                  </strong>
+                </div>
+                <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                  Applied
                 </span>
               </div>
-            )}
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                    <input
+                      type="text"
+                      placeholder="Enter code (e.g. LEENA10)"
+                      value={couponInput}
+                      onChange={(e) => {
+                        setCouponInput(e.target.value.toUpperCase());
+                        setCouponError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleApplyCoupon();
+                        }
+                      }}
+                      className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs font-mono font-semibold uppercase"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCoupon()}
+                    disabled={couponLoading || !couponInput.trim()}
+                    className="px-4 py-2 bg-tea-dark hover:bg-tea-forest disabled:opacity-50 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 shrink-0"
+                  >
+                    {couponLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span>Apply</span>
+                    )}
+                  </button>
+                </div>
 
-            {/* Order Total Highlight */}
-            <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-2.5 text-tea-dark">
-              <span className="flex items-center gap-1.5">
-                <span>Total Amount:</span>
-                <span className="text-xs font-normal text-tea-muted">
-                  ({quantity} {quantity === 1 ? "pack" : "packs"} × Rs. {pricing.unitPrice.toLocaleString("en-US")})
-                </span>
-              </span>
-              <div className="text-right">
-                <span className="text-tea-forest text-lg font-serif block">
-                  Rs. {pricing.totalPrice.toLocaleString("en-US")}
-                </span>
-                {pricing.hasDiscount && (
-                  <span className="text-[11px] text-tea-muted line-through font-normal block -mt-1">
-                    Reg. Rs. {pricing.totalRegularPrice.toLocaleString("en-US")}
-                  </span>
+                {couponError && (
+                  <p className="text-[11px] text-rose-600 font-medium animate-fade-in">
+                    ⚠️ {couponError}
+                  </p>
                 )}
+
+                {/* Quick Coupon Tap suggestions */}
+                <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-tea-muted flex-wrap">
+                  <span>Available Coupons:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCoupon("LEENA10")}
+                    className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
+                  >
+                    LEENA10 (10% OFF)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApplyCoupon("WELCOME50")}
+                    className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
+                  >
+                    WELCOME50 (Rs. 50 OFF)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Complete Transparent Order Bill & Final Amount */}
+          <div className="bg-white rounded-xl p-3.5 border border-tea-border/80 shadow-xs space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5 pb-1 border-b border-tea-border/60">
+              <Sparkles className="w-3.5 h-3.5 text-tea-leaf" />
+              <span>Order Calculation & Final Amount</span>
+            </h4>
+
+            <div className="space-y-1.5 text-xs text-tea-muted">
+              {/* Unit Price */}
+              <div className="flex justify-between items-center">
+                <span>Unit Price</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-semibold text-tea-dark">
+                    Rs. {pricing.unitPrice.toLocaleString("en-US")} each
+                  </span>
+                  {pricing.hasDiscount && (
+                    <span className="text-tea-muted line-through text-[11px]">
+                      Rs. {pricing.regularPrice.toLocaleString("en-US")}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Items Subtotal */}
+              <div className="flex justify-between items-center">
+                <span>
+                  Items Subtotal ({quantity} {quantity === 1 ? "pack" : "packs"})
+                </span>
+                <span className="font-semibold text-tea-dark">
+                  Rs. {itemsSubtotal.toLocaleString("en-US")}
+                </span>
+              </div>
+
+              {/* Special Offer Savings (if any) */}
+              {pricing.hasDiscount && (
+                <div className="flex justify-between items-center text-emerald-800">
+                  <span className="flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    <span>Special Offer Discount ({pricing.discountPercent}% OFF)</span>
+                  </span>
+                  <span className="font-bold">
+                    - Rs. {offerSavings.toLocaleString("en-US")}
+                  </span>
+                </div>
+              )}
+
+              {/* Coupon Discount (if any) */}
+              {appliedCoupon && couponDiscount > 0 && (
+                <div className="flex justify-between items-center text-emerald-800">
+                  <span className="flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-emerald-600" />
+                    <span>Coupon ({appliedCoupon.code})</span>
+                  </span>
+                  <span className="font-bold">
+                    - Rs. {couponDiscount.toLocaleString("en-US")}
+                  </span>
+                </div>
+              )}
+
+              {/* Delivery Fee */}
+              <div className="flex justify-between items-center">
+                <span>
+                  Delivery Charge ({deliveryMethod === "PICKUP" ? "Office Pick-up" : "Islandwide Courier"})
+                </span>
+                <span>
+                  {deliveryFee === 0 ? (
+                    <strong className="text-emerald-700 font-bold uppercase text-[11px]">FREE</strong>
+                  ) : (
+                    <span className="font-semibold text-tea-dark">
+                      + Rs. {deliveryFee.toLocaleString("en-US")}
+                    </span>
+                  )}
+                </span>
+              </div>
+
+              {/* FINAL PAYABLE TOTAL */}
+              <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-2.5 text-tea-dark">
+                <div>
+                  <span className="block text-sm sm:text-base font-bold text-tea-dark">
+                    Final Payable Amount:
+                  </span>
+                  {totalSavings > 0 && (
+                    <span className="text-[11px] font-bold text-emerald-700 block">
+                      🎉 Total You Save: Rs. {totalSavings.toLocaleString("en-US")}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span className="text-tea-forest text-xl font-serif font-bold block">
+                    Rs. {finalTotal.toLocaleString("en-US")}
+                  </span>
+                  {pricing.hasDiscount && (
+                    <span className="text-[11px] text-tea-muted line-through font-normal block -mt-1">
+                      Reg. Rs. {(pricing.totalRegularPrice + (deliveryMethod === "COURIER" ? 350 : 0)).toLocaleString("en-US")}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 2. Delivery & Customer Details */}
+          {/* 5. Customer & Delivery Details */}
           <div className="space-y-2.5 bg-white p-3.5 rounded-xl border border-tea-border/70 shadow-xs">
             <h4 className="text-xs font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-tea-leaf" />
@@ -358,13 +667,17 @@ export default function WhatsAppModal({
               {/* Delivery Address / City */}
               <div>
                 <label className="block text-tea-muted font-medium mb-1">
-                  Delivery Address / Nearest City
+                  {deliveryMethod === "PICKUP" ? "Your City / Contact Notes" : "Delivery Address / Nearest City"}
                 </label>
                 <div className="relative">
                   <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
                   <input
                     type="text"
-                    placeholder="e.g. Kekirawa, Kandy, Colombo 03, etc."
+                    placeholder={
+                      deliveryMethod === "PICKUP"
+                        ? "e.g. Collecting from Kekirawa Office today"
+                        : "e.g. Kekirawa, Kandy, Colombo 03, etc."
+                    }
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
@@ -391,7 +704,7 @@ export default function WhatsAppModal({
             </div>
           </div>
 
-          {/* 3. Payment Method Selection */}
+          {/* 6. Payment Method Selection */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-tea-forest">
               Payment Method
@@ -409,7 +722,9 @@ export default function WhatsAppModal({
               >
                 <Truck className="w-4 h-4 text-emerald-600" />
                 <span className="font-semibold text-xs">Cash on Delivery</span>
-                <span className="text-[10px] text-tea-muted font-normal">Pay when package arrives</span>
+                <span className="text-[10px] text-tea-muted font-normal">
+                  Pay Rs. {finalTotal.toLocaleString("en-US")} on arrival
+                </span>
               </button>
 
               {/* Direct Bank Transfer */}
@@ -455,10 +770,10 @@ export default function WhatsAppModal({
                   <p><span className="text-tea-muted">Account Name:</span> <strong className="text-tea-dark">LEENA CEYLON (PVT) LTD</strong></p>
                   <p><span className="text-tea-muted">Account Number:</span> <strong className="font-mono text-tea-forest font-bold text-xs">1000 2489 7120</strong></p>
                   <p><span className="text-tea-muted">Branch:</span> <strong>Kekirawa Branch (Swift: CCEYLKLX)</strong></p>
-                  <p><span className="text-tea-muted">Amount to Transfer:</span> <strong className="text-emerald-700 font-bold">Rs. {currentTotal.toLocaleString("en-US")}</strong></p>
+                  <p><span className="text-tea-muted">Amount to Transfer:</span> <strong className="text-emerald-700 font-bold">Rs. {finalTotal.toLocaleString("en-US")}</strong></p>
                 </div>
                 <p className="text-[10px] text-amber-800 bg-amber-100/70 p-1.5 rounded-md">
-                  💡 Transfer Rs. {currentTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.
+                  💡 Transfer Rs. {finalTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.
                 </p>
               </div>
             )}
@@ -484,7 +799,7 @@ export default function WhatsAppModal({
             className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-[0.99]"
           >
             <MessageSquare className="w-5 h-5 fill-current" />
-            <span>CONTINUE TO WHATSAPP • RS. {currentTotal.toLocaleString("en-US")}</span>
+            <span>CONTINUE TO WHATSAPP • RS. {finalTotal.toLocaleString("en-US")}</span>
           </button>
           <button
             onClick={closeWhatsAppModal}

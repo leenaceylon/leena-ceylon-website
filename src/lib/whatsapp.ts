@@ -33,52 +33,77 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   } = params;
   const isBank = paymentMethod === "BANK";
 
-  const hasDiscount = Boolean(details.regularPrice && details.regularPrice > details.price);
-  const totalSavings = hasDiscount
+  const hasOfferDiscount = Boolean(details.regularPrice && details.regularPrice > details.price);
+  const offerSavings = hasOfferDiscount
     ? (details.regularPrice! - details.price) * details.quantity
     : 0;
+
+  const itemSubtotal = details.total;
+  const couponDiscount = details.couponDiscount || 0;
+  const deliveryCharge = details.deliveryCharge !== undefined ? details.deliveryCharge : 350;
+  const finalPayable = details.finalTotal !== undefined
+    ? details.finalTotal
+    : Math.max(0, itemSubtotal - couponDiscount + deliveryCharge);
+
+  const grandSavings = offerSavings + couponDiscount + (details.deliveryCharge === 0 && details.deliveryMethod !== "PICKUP" ? 350 : 0);
 
   const lines: string[] = [
     `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🛍️ *Order Item:*`,
+    `🛍️ *Order Summary:*`,
     `• *Product:* ${details.productName}`,
     `• *Weight / Size:* ${details.size}`,
     `• *Quantity:* ${details.quantity} pack(s)`,
-    hasDiscount
+    hasOfferDiscount
       ? `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")} (Special Offer • Regular Rs. ${details.regularPrice!.toLocaleString("en-US")})`
       : `• *Unit Price:* Rs. ${details.price.toLocaleString("en-US")}`,
-    hasDiscount
-      ? `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}* (🎉 You Save Rs. ${totalSavings.toLocaleString("en-US")}!)`
-      : `• *Order Total:* *Rs. ${details.total.toLocaleString("en-US")}*`,
-    ``,
+    `• *Items Subtotal:* Rs. ${itemSubtotal.toLocaleString("en-US")}`,
   ];
+
+  if (details.couponCode && couponDiscount > 0) {
+    lines.push(`• *Coupon Code:* ${details.couponCode} (-Rs. ${couponDiscount.toLocaleString("en-US")})`);
+  }
+
+  if (details.deliveryMethod === "PICKUP") {
+    lines.push(`• *Delivery:* Office Pick-up (Kekirawa Head Office) (FREE)`);
+  } else if (deliveryCharge === 0) {
+    lines.push(`• *Delivery:* Islandwide Courier (*FREE Delivery Applied*)`);
+  } else {
+    lines.push(`• *Delivery Charge:* Rs. ${deliveryCharge.toLocaleString("en-US")} (Islandwide Courier)`);
+  }
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`💰 *FINAL PAYABLE AMOUNT:* *Rs. ${finalPayable.toLocaleString("en-US")}*`);
+  if (grandSavings > 0) {
+    lines.push(`🎉 *(Total Savings: Rs. ${grandSavings.toLocaleString("en-US")}!)*`);
+  }
+  lines.push(``);
 
   if (customerName || customerAddress || customerPhone) {
     lines.push(`📍 *Customer & Delivery Details:*`);
-    if (customerName) lines.push(`• *Name:* ${customerName}`);
+    if (customerName) lines.push(`• *Customer Name:* ${customerName}`);
     if (customerPhone) lines.push(`• *Contact Phone:* ${customerPhone}`);
     if (customerAddress) lines.push(`• *Delivery Address / City:* ${customerAddress}`);
     lines.push(``);
   }
 
   if (isBank) {
-    lines.push(`💳 *Payment Preference:* *Direct Bank Transfer*`);
+    lines.push(`💳 *Payment Method:* *Direct Bank Transfer*`);
     lines.push(``);
     lines.push(`--- *LEENA CEYLON BANK DETAILS* ---`);
     lines.push(`Bank: Commercial Bank of Ceylon PLC`);
     lines.push(`Account Name: LEENA CEYLON (PVT) LTD`);
     lines.push(`Account No: 1000 2489 7120`);
     lines.push(`Branch: Kekirawa Branch (Swift: CCEYLKLX)`);
-    lines.push(`Amount to Transfer: Rs. ${details.total.toLocaleString("en-US")}`);
+    lines.push(`Amount to Transfer: Rs. ${finalPayable.toLocaleString("en-US")}`);
     lines.push(``);
-    lines.push(`I will transfer Rs. ${details.total.toLocaleString("en-US")} to this account and send my deposit slip / transfer screenshot here.`);
+    lines.push(`I will transfer Rs. ${finalPayable.toLocaleString("en-US")} and share payment slip / screenshot here.`);
   } else {
-    lines.push(`💳 *Payment Preference:* *Cash on Delivery (COD)* (Islandwide Delivery)`);
+    lines.push(`💳 *Payment Method:* *Cash on Delivery (COD)* (Pay Rs. ${finalPayable.toLocaleString("en-US")} on package arrival)`);
   }
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`Please confirm my order and share dispatch details. Thank you!`);
+  lines.push(`Please confirm my order and share dispatch tracking details. Thank you!`);
 
   return lines.join("\n").trim();
 }
