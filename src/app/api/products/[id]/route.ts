@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 
@@ -151,6 +152,12 @@ export async function PUT(
       });
     } catch {}
 
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/products");
+      revalidatePath(`/products/${updated.slug}`);
+    } catch {}
+
     return NextResponse.json({ success: true, product: updated });
   } catch (err: any) {
     console.error("Update product error:", err);
@@ -199,6 +206,11 @@ export async function DELETE(
           entityId: params.id,
         },
       });
+    } catch {}
+
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/products");
     } catch {}
 
     return NextResponse.json({ success: true });

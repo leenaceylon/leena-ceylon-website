@@ -39,13 +39,9 @@ export default function ProductForm({
   });
 
   const [sizes, setSizes] = useState<any[]>(
-    initialData?.sizes && initialData.sizes.length > 0
+    initialData?.sizes && Array.isArray(initialData.sizes)
       ? initialData.sizes
-      : [
-          { sizeName: "100g", weightGram: 100, regularPrice: 200, salePrice: null, stock: 50 },
-          { sizeName: "250g", weightGram: 250, regularPrice: 490, salePrice: null, stock: 50 },
-          { sizeName: "500g", weightGram: 500, regularPrice: 950, salePrice: null, stock: 30 },
-        ]
+      : []
   );
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -485,7 +481,34 @@ export default function ProductForm({
           </button>
         </div>
 
-        <div className="space-y-3">
+        {sizes.length === 0 ? (
+          <div className="p-5 bg-tea-surface/60 rounded-xl border border-dashed border-tea-border text-center space-y-2.5">
+            <p className="text-xs font-bold text-tea-dark">
+              No Separate Packaging Sizes Configured (Single Standard Pack)
+            </p>
+            <p className="text-[11px] text-tea-muted max-w-lg mx-auto leading-relaxed">
+              The customer storefront will use your <strong>Base Pricing</strong> from Section 2 directly:
+              <br />
+              Regular Price: <strong>Rs. {formData.regularPrice}</strong>
+              {formData.salePrice ? (
+                <> • Active Offer Price: <strong className="text-emerald-700">Rs. {formData.salePrice}</strong></>
+              ) : null}
+              {` `}• Stock: <strong>{formData.stock} units</strong>
+            </p>
+            <p className="text-[11px] text-tea-forest font-medium">
+              If this tea comes in multiple weights (e.g. 50g, 100g, 200g, 250g, 500g, 1kg), click below to add sizes with individual offer prices:
+            </p>
+            <button
+              type="button"
+              onClick={handleAddSize}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-tea-forest text-white text-xs font-semibold hover:bg-tea-dark transition shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Packaging Size</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
           {sizes.map((sz, idx) => {
             const szPricing = calculatePricing(sz.regularPrice, sz.salePrice);
             return (
@@ -586,6 +609,7 @@ export default function ProductForm({
             );
           })}
         </div>
+      )}
       </div>
 
       {/* Media & Images */}

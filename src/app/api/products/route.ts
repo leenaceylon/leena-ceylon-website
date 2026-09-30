@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 import { FALLBACK_PRODUCTS } from "@/lib/fallback-data";
@@ -119,6 +120,11 @@ export async function POST(req: NextRequest) {
           entityId: product.id,
         },
       });
+    } catch {}
+
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/products");
     } catch {}
 
     return NextResponse.json({ success: true, product });
