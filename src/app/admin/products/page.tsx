@@ -13,12 +13,14 @@ import {
   Eye,
   DollarSign,
   Package,
+  Clock,
 } from "lucide-react";
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "coming_soon" | "out_of_stock">("all");
   const [notification, setNotification] = useState<string | null>(null);
   const [quickPriceModal, setQuickPriceModal] = useState<{
     isOpen: boolean;
@@ -67,6 +69,25 @@ export default function AdminProductsPage() {
       });
       if (res.ok) {
         showNotice(`Product ${!p.isActive ? "enabled" : "disabled"} successfully.`);
+        loadProducts();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleComingSoon = async (p: any) => {
+    try {
+      const nextStatus = !p.isComingSoon;
+      const res = await fetch(`/api/products/${p.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isComingSoon: nextStatus }),
+      });
+      if (res.ok) {
+        showNotice(
+          `Product "${p.name}" ${nextStatus ? "marked as Coming Soon (Pre-Launch)" : "restored to Standard Available"}.`
+        );
         loadProducts();
       }
     } catch (e) {
@@ -125,12 +146,22 @@ export default function AdminProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter(
-    (p) =>
+  const countActive = products.filter((p) => p.isActive && !p.isComingSoon).length;
+  const countComingSoon = products.filter((p) => Boolean(p.isComingSoon)).length;
+  const countOutOfStock = products.filter((p) => p.stock <= 0).length;
+
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
-      p.teaGrade?.toLowerCase().includes(search.toLowerCase())
-  );
+      p.teaGrade?.toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (statusFilter === "active") return p.isActive && !p.isComingSoon;
+    if (statusFilter === "coming_soon") return Boolean(p.isComingSoon);
+    if (statusFilter === "out_of_stock") return p.stock <= 0;
+    return true;
+  });
 
   return (
     <div className="p-6 sm:p-8 space-y-6">
@@ -166,8 +197,73 @@ export default function AdminProductsPage() {
       )}
 
       {/* Search and Filters */}
-      <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-tea-border shadow-subtle">
-        <div className="relative flex-1">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-tea-border shadow-subtle">
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 order-2 md:order-1">
+          <button
+            type="button"
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              statusFilter === "all"
+                ? "bg-tea-dark text-white shadow-xs"
+                : "bg-tea-surface text-tea-dark border border-tea-border hover:bg-tea-bg"
+            }`}
+          >
+            <span>All</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/20 text-inherit font-semibold">
+              {products.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter("active")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              statusFilter === "active"
+                ? "bg-emerald-700 text-white shadow-xs"
+                : "bg-tea-surface text-emerald-800 border border-emerald-200 hover:bg-emerald-50"
+            }`}
+          >
+            <span>Active</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+              {countActive}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter("coming_soon")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              statusFilter === "coming_soon"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "bg-tea-surface text-amber-900 border border-amber-300 hover:bg-amber-50"
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            <span>Coming Soon</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-semibold">
+              {countComingSoon}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter("out_of_stock")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              statusFilter === "out_of_stock"
+                ? "bg-rose-700 text-white shadow-xs"
+                : "bg-tea-surface text-rose-800 border border-rose-200 hover:bg-rose-50"
+            }`}
+          >
+            <span>Out of Stock</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold">
+              {countOutOfStock}
+            </span>
+          </button>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative flex-1 max-w-md order-1 md:order-2">
           <input
             type="text"
             placeholder="Search products by name, SKU, or grade..."
@@ -176,9 +272,6 @@ export default function AdminProductsPage() {
             className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
           />
           <Search className="w-4 h-4 text-tea-muted absolute left-3 top-2.5" />
-        </div>
-        <div className="text-xs text-tea-muted font-medium">
-          {filteredProducts.length} items
         </div>
       </div>
 
@@ -221,9 +314,16 @@ export default function AdminProductsPage() {
                           />
                         </div>
                         <div>
-                          <h4 className="font-bold text-tea-dark hover:text-tea-forest">
-                            {p.name}
-                          </h4>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="font-bold text-tea-dark hover:text-tea-forest">
+                              {p.name}
+                            </h4>
+                            {p.isComingSoon && (
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300 shrink-0">
+                                <Clock className="w-2.5 h-2.5" /> Soon
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[10px] text-tea-muted block">
                             SKU: {p.sku}
                           </span>
@@ -306,19 +406,35 @@ export default function AdminProductsPage() {
                       </span>
                     </td>
 
-                    {/* Status Toggle */}
+                    {/* Status & Coming Soon Toggles */}
                     <td className="py-3 px-4">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(p)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase transition ${
-                          p.isActive
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
-                      >
-                        {p.isActive ? "Active" : "Disabled"}
-                      </button>
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(p)}
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase transition ${
+                            p.isActive
+                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          }`}
+                        >
+                          {p.isActive ? "Active" : "Disabled"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleComingSoon(p)}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase transition border flex items-center gap-1 shadow-xs ${
+                            p.isComingSoon
+                              ? "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200"
+                              : "bg-tea-surface text-tea-muted border-tea-border hover:text-tea-dark hover:border-amber-300"
+                          }`}
+                          title="Click to toggle Coming Soon pre-order status"
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                          {p.isComingSoon ? "Coming Soon" : "Set Coming Soon"}
+                        </button>
+                      </div>
                     </td>
 
                     {/* Actions */}

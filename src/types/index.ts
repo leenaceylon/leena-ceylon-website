@@ -36,6 +36,7 @@ export interface WhatsAppOrderDetails {
   deliveryCharge?: number;
   finalTotal?: number;
   totalSavings?: number;
+  isComingSoon?: boolean;
 }
 
 export interface SiteSettingsMap {

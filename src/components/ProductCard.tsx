@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
-import { MessageSquare, ArrowRight, Sparkles } from "lucide-react";
+import { MessageSquare, ArrowRight, Sparkles, Clock } from "lucide-react";
 import { calculatePricing } from "@/lib/pricing";
 
 export interface ProductCardProps {
@@ -19,6 +19,7 @@ export interface ProductCardProps {
     mainImage: string;
     teaGrade?: string;
     teaType?: string;
+    isComingSoon?: boolean;
     sizes: Array<{
       id: string;
       sizeName: string;
@@ -36,6 +37,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   if (!product) return null;
 
+  const isComingSoon = Boolean(product.isComingSoon);
   const sizes = Array.isArray(product.sizes) ? product.sizes : [];
   const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
 
@@ -59,6 +61,7 @@ export default function ProductCard({ product }: ProductCardProps) {
       total: pricing.totalPrice,
       regularTotal: pricing.totalRegularPrice,
       savings: pricing.totalSavings,
+      isComingSoon: isComingSoon,
       availableSizes: sizes.map((s) => {
         const szP = calculatePricing(s.regularPrice, s.salePrice, 1);
         return {
@@ -104,7 +107,12 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Availability Badge */}
         <div className="absolute top-2.5 right-2.5 z-10">
-          {isOutOfStock ? (
+          {isComingSoon ? (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white flex items-center gap-1 shadow-xs">
+              <Clock className="w-2.5 h-2.5" />
+              Coming Soon
+            </span>
+          ) : isOutOfStock ? (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white">
               Out of Stock
             </span>
@@ -250,15 +258,26 @@ export default function ProductCard({ product }: ProductCardProps) {
             <button
               type="button"
               onClick={handleOrderWhatsApp}
-              disabled={isOutOfStock}
+              disabled={!isComingSoon && isOutOfStock}
               className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl font-bold text-[11px] sm:text-xs uppercase tracking-wider transition ${
-                isOutOfStock
+                isComingSoon
+                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs active:scale-[0.98]"
+                  : isOutOfStock
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                   : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs active:scale-[0.98]"
               }`}
             >
-              <MessageSquare className="w-3.5 h-3.5 fill-current" />
-              <span>Shop Now</span>
+              {isComingSoon ? (
+                <>
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Pre-Order</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-3.5 h-3.5 fill-current" />
+                  <span>Shop Now</span>
+                </>
+              )}
             </button>
           </div>
         </div>

@@ -46,12 +46,18 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     : Math.max(0, itemSubtotal - couponDiscount + deliveryCharge);
 
   const grandSavings = offerSavings + couponDiscount + (details.deliveryCharge === 0 && details.deliveryMethod !== "PICKUP" ? 350 : 0);
+  const isComingSoon = Boolean(details.isComingSoon);
 
   const lines: string[] = [
-    `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
+    isComingSoon
+      ? `⏳ *COMING SOON PRE-ORDER INQUIRY — ${brandName}* ⏳`
+      : `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    `🛍️ *Order Summary:*`,
-    `• *Product:* ${details.productName}`,
+    ...(isComingSoon
+      ? [`✨ *Pre-Order / Advance Reservation Request* (Item Launching Soon)`]
+      : []),
+    `🛍️ *${isComingSoon ? "Pre-Order Item Details" : "Order Summary"}:*`,
+    `• *Product:* ${details.productName}${isComingSoon ? " *(Coming Soon)*" : ""}`,
     `• *Weight / Size:* ${details.size}`,
     `• *Quantity:* ${details.quantity} pack(s)`,
     hasOfferDiscount
@@ -73,7 +79,7 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   }
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`💰 *FINAL PAYABLE AMOUNT:* *Rs. ${finalPayable.toLocaleString("en-US")}*`);
+  lines.push(`💰 *${isComingSoon ? "ESTIMATED TOTAL PAYABLE" : "FINAL PAYABLE AMOUNT"}:* *Rs. ${finalPayable.toLocaleString("en-US")}*`);
   if (grandSavings > 0) {
     lines.push(`🎉 *(Total Savings: Rs. ${grandSavings.toLocaleString("en-US")}!)*`);
   }
@@ -103,7 +109,11 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   }
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`Please confirm my order and share dispatch tracking details. Thank you!`);
+  if (isComingSoon) {
+    lines.push(`Please reserve my pre-order and inform me as soon as the fresh batch is ready for delivery. Thank you!`);
+  } else {
+    lines.push(`Please confirm my order and share dispatch tracking details. Thank you!`);
+  }
 
   return lines.join("\n").trim();
 }

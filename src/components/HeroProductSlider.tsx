@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Sparkles, Clock } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { calculatePricing } from "@/lib/pricing";
 
@@ -19,6 +19,7 @@ export interface HeroSlideItem {
   teaGrade?: string | null;
   teaType?: string | null;
   origin?: string | null;
+  isComingSoon?: boolean | null;
   category?: { name: string; slug: string } | null;
   sizes: Array<{
     id: string;
@@ -104,6 +105,8 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
   const regularPrice = pricing.regularPrice;
   const hasDiscount = pricing.hasDiscount;
 
+  const isComingSoon = Boolean(currentProduct.isComingSoon);
+
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
@@ -115,6 +118,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
       regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
       regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
       savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
+      isComingSoon: isComingSoon,
       availableSizes: sizes.map((s: any) => {
         const sp = calculatePricing(s.regularPrice, s.salePrice, 1);
         return {
@@ -157,10 +161,17 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-            <span>In Stock</span>
-          </div>
+          {isComingSoon ? (
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300 shadow-xs">
+              <Clock className="w-3.5 h-3.5 text-amber-700" />
+              <span>Coming Soon</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              <span>In Stock</span>
+            </div>
+          )}
         </div>
 
         {/* Large Product Image with Authentic Aspect Ratio */}
@@ -230,15 +241,28 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
             </div>
           )}
 
-          {/* Action Buttons: SHOP NOW & WhatsApp */}
+          {/* Action Buttons: SHOP NOW / PRE-ORDER & WhatsApp */}
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               type="button"
               onClick={handleWhatsApp}
-              className="w-full inline-flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-card hover:shadow-hover active:scale-[0.98]"
+              className={`w-full inline-flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl text-white font-bold text-xs uppercase tracking-wider transition shadow-card hover:shadow-hover active:scale-[0.98] ${
+                isComingSoon
+                  ? "bg-amber-600 hover:bg-amber-700"
+                  : "bg-emerald-600 hover:bg-emerald-700"
+              }`}
             >
-              <MessageSquare className="w-3.5 h-3.5 fill-current" />
-              <span>Shop Now</span>
+              {isComingSoon ? (
+                <>
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Pre-Order</span>
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-3.5 h-3.5 fill-current" />
+                  <span>Shop Now</span>
+                </>
+              )}
             </button>
 
             <Link

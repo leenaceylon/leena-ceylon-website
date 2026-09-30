@@ -42,6 +42,7 @@ export interface FallbackProduct {
   salePrice: number | null;
   stock: number;
   isFeatured: boolean;
+  isComingSoon: boolean;
   isActive: boolean;
   mainImage: string;
   brewingGuide?: string;
@@ -115,6 +116,7 @@ export const FALLBACK_PRODUCTS: FallbackProduct[] = [
     salePrice: null,
     stock: 250,
     isFeatured: true,
+    isComingSoon: false,
     isActive: true,
     mainImage: "/uploads/leena-tea-powder-200g.jpeg",
     brewingGuide: "1. Boil fresh water to a rolling boil.\n2. Use 1 teaspoon (2g) of Leena Ceylon Tea per cup.\n3. Steep for 3-5 minutes.\n4. Enjoy your perfect cup of pure Ceylon Tea.",
@@ -149,6 +151,7 @@ export const FALLBACK_PRODUCTS: FallbackProduct[] = [
     salePrice: null,
     stock: 140,
     isFeatured: true,
+    isComingSoon: false,
     isActive: true,
     mainImage: "/uploads/leena-bopf-tin-250g.jpeg",
     brewingGuide: "Bring fresh water to 100°C boil. Add 2g of Leena BOPF tea into a warmed teapot. Steep for 3-5 minutes.",
@@ -178,6 +181,7 @@ export const FALLBACK_PRODUCTS: FallbackProduct[] = [
     salePrice: 690,
     stock: 180,
     isFeatured: true,
+    isComingSoon: false,
     isActive: true,
     mainImage: "/uploads/leena-lemon-tea-500g.jpeg",
     brewingGuide: "Steep 1 teaspoon in 95°C water for 3 minutes. Can be served hot or cooled over ice for a revitalizing iced tea.",
@@ -207,6 +211,7 @@ export const FALLBACK_PRODUCTS: FallbackProduct[] = [
     salePrice: null,
     stock: 90,
     isFeatured: false,
+    isComingSoon: false,
     isActive: true,
     mainImage: "/uploads/leena-tea-powder-50g-flat.jpeg",
     brewingGuide: "Add half a stick of Ceylon Cinnamon to your hot tea or steep in hot water with honey for a restorative warm infusion.",

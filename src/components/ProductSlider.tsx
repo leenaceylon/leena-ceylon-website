@@ -11,6 +11,7 @@ import {
   Sparkles,
   Pause,
   Play,
+  Clock,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { calculatePricing } from "@/lib/pricing";
@@ -27,6 +28,7 @@ export interface SliderProduct {
   teaGrade?: string | null;
   teaType?: string | null;
   origin?: string | null;
+  isComingSoon?: boolean | null;
   category?: { name: string; slug: string } | null;
   sizes: Array<{
     id: string;
@@ -270,6 +272,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
             const hasDiscount = pricing.hasDiscount;
             const discountPercent = pricing.discountPercent;
             const totalSavings = pricing.totalSavings;
+            const isComingSoon = Boolean(product.isComingSoon);
             const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
             const isOutOfStock = currentStock <= 0;
 
@@ -284,6 +287,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                 regularPrice: pricing.hasDiscount ? pricing.regularPrice : undefined,
                 regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
                 savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
+                isComingSoon: isComingSoon,
                 availableSizes: (product.sizes || []).map((s: any) => {
                   const sp = calculatePricing(s.regularPrice, s.salePrice, 1);
                   return {
@@ -334,22 +338,31 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                       )}
                     </div>
 
-                    {/* Right Badges: Savings Pill & Stock Status */}
+                    {/* Right Badges: Savings Pill & Stock / Coming Soon Status */}
                     <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1 z-10 pointer-events-none">
-                      {hasDiscount && totalSavings > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-700 text-white shadow-xs">
-                          Save Rs. {totalSavings}
-                        </span>
-                      )}
-                      {isOutOfStock ? (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-600 text-white">
-                          Out of Stock
+                      {isComingSoon ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 text-white flex items-center gap-1 shadow-xs">
+                          <Clock className="w-2.5 h-2.5" />
+                          Coming Soon
                         </span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                          In Stock
-                        </span>
+                        <>
+                          {hasDiscount && totalSavings > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-700 text-white shadow-xs">
+                              Save Rs. {totalSavings}
+                            </span>
+                          )}
+                          {isOutOfStock ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-600 text-white">
+                              Out of Stock
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shadow-xs">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                              In Stock
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -458,10 +471,23 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                         <button
                           type="button"
                           onClick={handleOrder}
-                          className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide transition shadow-xs hover:shadow-subtle"
+                          className={`w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-white font-semibold text-xs tracking-wide transition shadow-xs hover:shadow-subtle ${
+                            isComingSoon
+                              ? "bg-amber-600 hover:bg-amber-700 active:scale-[0.98]"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          }`}
                         >
-                          <MessageSquare className="w-3.5 h-3.5 fill-current" />
-                          <span>WhatsApp</span>
+                          {isComingSoon ? (
+                            <>
+                              <Clock className="w-3.5 h-3.5" />
+                              <span>Pre-Order</span>
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare className="w-3.5 h-3.5 fill-current" />
+                              <span>WhatsApp</span>
+                            </>
+                          )}
                         </button>
 
                         <Link

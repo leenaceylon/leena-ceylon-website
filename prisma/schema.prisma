@@ -82,6 +82,7 @@ model Product {
   stock             Int              @default(100)
   lowStockThreshold Int              @default(10)
   isFeatured        Boolean          @default(false)
+  isComingSoon      Boolean          @default(false)
   isActive          Boolean          @default(true)
   mainImage         String
   brewingGuide      String?

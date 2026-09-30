@@ -33,6 +33,7 @@ export default function ProductForm({
     stock: initialData?.stock || 100,
     lowStockThreshold: initialData?.lowStockThreshold || 10,
     isFeatured: initialData?.isFeatured || false,
+    isComingSoon: initialData?.isComingSoon !== undefined ? initialData.isComingSoon : false,
     isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
     mainImage: initialData?.mainImage || "/uploads/leena-tea-powder-200g.jpeg",
     brewingGuide: initialData?.brewingGuide || "",
@@ -673,15 +674,15 @@ export default function ProductForm({
         </div>
       </div>
 
-      {/* Toggles: Featured & Active */}
-      <div className="bg-white p-6 rounded-2xl border border-tea-border shadow-subtle flex flex-col sm:flex-row gap-6">
-        <label className="flex items-center gap-3 cursor-pointer">
+      {/* Toggles: Featured, Coming Soon, & Active */}
+      <div className="bg-white p-6 rounded-2xl border border-tea-border shadow-subtle grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             name="isFeatured"
             checked={formData.isFeatured}
             onChange={handleChange}
-            className="w-4 h-4 rounded text-tea-forest focus:ring-tea-leaf"
+            className="w-4 h-4 mt-0.5 rounded text-tea-forest focus:ring-tea-leaf"
           />
           <div>
             <span className="font-bold text-xs text-tea-dark block">Feature on Homepage</span>
@@ -691,18 +692,39 @@ export default function ProductForm({
           </div>
         </label>
 
-        <label className="flex items-center gap-3 cursor-pointer">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            name="isComingSoon"
+            checked={formData.isComingSoon}
+            onChange={handleChange}
+            className="w-4 h-4 mt-0.5 rounded text-amber-600 focus:ring-amber-500"
+          />
+          <div>
+            <span className="font-bold text-xs text-amber-800 flex items-center gap-1.5">
+              <span>Coming Soon Status</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                Pre-launch
+              </span>
+            </span>
+            <span className="text-[11px] text-tea-muted block">
+              Displays &quot;Coming Soon&quot; badge, disables direct checkout, and enables pre-order inquiry via WhatsApp
+            </span>
+          </div>
+        </label>
+
+        <label className="flex items-start gap-3 cursor-pointer">
           <input
             type="checkbox"
             name="isActive"
             checked={formData.isActive}
             onChange={handleChange}
-            className="w-4 h-4 rounded text-tea-forest focus:ring-tea-leaf"
+            className="w-4 h-4 mt-0.5 rounded text-tea-forest focus:ring-tea-leaf"
           />
           <div>
-            <span className="font-bold text-xs text-tea-dark block">Active & Available</span>
+            <span className="font-bold text-xs text-tea-dark block">Active & Visible</span>
             <span className="text-[11px] text-tea-muted block">
-              Visible for customers to purchase and order via WhatsApp
+              Product is visible to customers across the store and catalog
             </span>
           </div>
         </label>

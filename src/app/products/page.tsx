@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { FALLBACK_PRODUCTS, FALLBACK_CATEGORIES } from "@/lib/fallback-data";
 import ProductCard from "@/components/ProductCard";
 import Link from "next/link";
-import { Filter, Search } from "lucide-react";
+import { Filter, Search, Clock } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
 export const revalidate = 0; // Dynamic to reflect database changes immediately
@@ -79,6 +79,7 @@ export default async function ProductsPage({
     type?: string;
     grade?: string;
     sort?: string;
+    filter?: string;
   };
 }) {
   const categorySlug = searchParams?.category;
@@ -86,11 +87,16 @@ export default async function ProductsPage({
   const teaType = searchParams?.type;
   const teaGrade = searchParams?.grade;
   const sort = searchParams?.sort || "featured";
+  const filter = searchParams?.filter;
 
   // Build where filter
   const where: any = {
     isActive: true,
   };
+
+  if (filter === "coming-soon") {
+    where.isComingSoon = true;
+  }
 
   if (categorySlug) {
     where.category = { slug: categorySlug };
@@ -161,6 +167,9 @@ export default async function ProductsPage({
       products = filtered;
     }
   }
+  if (filter === "coming-soon" && Array.isArray(products)) {
+    products = products.filter((p: any) => Boolean(p.isComingSoon));
+  }
   if (searchQuery && Array.isArray(products)) {
     const q = searchQuery.toLowerCase();
     const filtered = products.filter(
@@ -208,10 +217,12 @@ export default async function ProductsPage({
           Direct From Sri Lanka
         </span>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-tea-dark">
-          Ceylon Tea Catalogue
+          {filter === "coming-soon" ? "Coming Soon Collection" : "Ceylon Tea Catalogue"}
         </h1>
         <p className="text-xs sm:text-sm text-tea-muted max-w-2xl">
-          Browse our handpicked collection of 100% Pure Ceylon orthodox teas, tea powders, and estate-crafted botanical blends.
+          {filter === "coming-soon"
+            ? "Preview our upcoming artisanal Ceylon tea releases and reserve early batches through WhatsApp."
+            : "Browse our handpicked collection of 100% Pure Ceylon orthodox teas, tea powders, and estate-crafted botanical blends."}
         </p>
       </div>
 
@@ -222,19 +233,30 @@ export default async function ProductsPage({
           <Link
             href="/products"
             className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-              !categorySlug
+              !categorySlug && filter !== "coming-soon"
                 ? "bg-tea-dark text-white"
                 : "bg-tea-surface text-tea-dark hover:bg-tea-bg border border-tea-border"
             }`}
           >
             All Products
           </Link>
+          <Link
+            href="/products?filter=coming-soon"
+            className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition flex items-center gap-1.5 ${
+              filter === "coming-soon"
+                ? "bg-amber-600 text-white shadow-xs font-bold"
+                : "bg-tea-surface text-amber-900 hover:bg-amber-50 border border-amber-300"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Coming Soon</span>
+          </Link>
           {categories.map((c) => (
             <Link
               key={c.id}
               href={`/products?category=${c.slug}`}
               className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                categorySlug === c.slug
+                categorySlug === c.slug && filter !== "coming-soon"
                   ? "bg-tea-dark text-white"
                   : "bg-tea-surface text-tea-dark hover:bg-tea-bg border border-tea-border"
               }`}

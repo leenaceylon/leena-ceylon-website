@@ -71,6 +71,7 @@ export async function PUT(
         stock: body.stock !== undefined ? Number(body.stock) : existing.stock,
         lowStockThreshold: body.lowStockThreshold !== undefined ? Number(body.lowStockThreshold) : existing.lowStockThreshold,
         isFeatured: body.isFeatured !== undefined ? Boolean(body.isFeatured) : existing.isFeatured,
+        isComingSoon: body.isComingSoon !== undefined ? Boolean(body.isComingSoon) : existing.isComingSoon,
         isActive: body.isActive !== undefined ? Boolean(body.isActive) : existing.isActive,
         mainImage: body.mainImage !== undefined ? body.mainImage : existing.mainImage,
         brewingGuide: body.brewingGuide !== undefined ? body.brewingGuide : existing.brewingGuide,

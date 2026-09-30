@@ -15,6 +15,7 @@ import {
   Star,
   Plus,
   Minus,
+  Clock,
 } from "lucide-react";
 import { compileBankTransferWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
 import { calculatePricing } from "@/lib/pricing";
@@ -37,6 +38,7 @@ export default function ProductDetailsClient({
     stock: number;
     mainImage: string;
     brewingGuide?: string | null;
+    isComingSoon?: boolean | null;
     images: Array<{ id: string; url: string; altText?: string | null }>;
     sizes: Array<{
       id: string;
@@ -68,8 +70,9 @@ export default function ProductDetailsClient({
     quantity
   );
 
+  const isComingSoon = Boolean(product.isComingSoon);
   const currentStock = Number(activeSize ? activeSize.stock : product.stock) || 0;
-  const isOutOfStock = currentStock <= 0;
+  const isOutOfStock = !isComingSoon && currentStock <= 0;
 
   const rawGallery = [
     product.mainImage,
@@ -96,6 +99,7 @@ export default function ProductDetailsClient({
       total: pricing.totalPrice,
       regularTotal: pricing.totalRegularPrice,
       savings: pricing.totalSavings,
+      isComingSoon: isComingSoon,
       availableSizes: sizes.map((s) => {
         const szP = calculatePricing(s.regularPrice, s.salePrice, 1);
         return {
@@ -152,6 +156,12 @@ export default function ProductDetailsClient({
           {product.teaGrade && (
             <span className="absolute top-4 left-4 px-3 py-1 rounded-full bg-tea-dark/85 backdrop-blur-xs text-white text-xs font-semibold">
               {product.teaGrade}
+            </span>
+          )}
+          {isComingSoon && (
+            <span className="absolute top-4 right-4 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-bold shadow-md flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              Coming Soon
             </span>
           )}
         </div>
@@ -308,7 +318,12 @@ export default function ProductDetailsClient({
             <span className="block text-xs font-bold text-tea-dark uppercase tracking-wider">
               Stock Status:
             </span>
-            {isOutOfStock ? (
+            {isComingSoon ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-900 text-xs font-bold border border-amber-300 shadow-xs">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                Coming Soon (Pre-Order Available)
+              </span>
+            ) : isOutOfStock ? (
               <span className="inline-block px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
                 Out of Stock
               </span>
@@ -362,28 +377,54 @@ export default function ProductDetailsClient({
           )}
         </div>
 
+        {/* Pre-Launch / Coming Soon Notice */}
+        {isComingSoon && (
+          <div className="p-3.5 bg-gradient-to-r from-amber-50 via-amber-50/80 to-tea-surface border border-amber-300 rounded-2xl text-xs text-amber-950 flex items-start gap-3 shadow-xs">
+            <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <strong className="block font-serif text-sm font-bold text-amber-950">
+                Pre-Launch Edition / Coming Soon
+              </strong>
+              <p className="text-amber-900/90 leading-relaxed text-[11px]">
+                This tea is currently in preparation. You can place a WhatsApp pre-order inquiry to reserve your freshly packed caddy before the public launch.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Direct WhatsApp & Bank Transfer Action Buttons */}
         <div className="space-y-3 pt-4 border-t border-tea-border/60">
-          {/* Primary ORDER VIA WHATSAPP Button */}
+          {/* Primary ORDER / PRE-ORDER Button */}
           <button
             type="button"
             onClick={handleOrderWhatsApp}
-            disabled={isOutOfStock}
+            disabled={!isComingSoon && isOutOfStock}
             className={`w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-xl text-white text-xs sm:text-sm font-bold uppercase tracking-wider transition active:scale-[0.99] ${
-              isOutOfStock
+              isComingSoon
+                ? "bg-amber-600 hover:bg-amber-700 shadow-card hover:shadow-hover"
+                : isOutOfStock
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : "bg-emerald-600 hover:bg-emerald-700 shadow-card hover:shadow-hover"
             }`}
           >
-            <MessageSquare className="w-5 h-5 fill-current" />
-            <span>ORDER VIA WHATSAPP</span>
+            {isComingSoon ? (
+              <>
+                <Clock className="w-5 h-5" />
+                <span>PRE-ORDER INQUIRY VIA WHATSAPP</span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-5 h-5 fill-current" />
+                <span>ORDER VIA WHATSAPP</span>
+              </>
+            )}
           </button>
 
           {/* Secondary Direct Bank Transfer Order Button */}
           <button
             type="button"
             onClick={handleBankTransferWhatsApp}
-            disabled={isOutOfStock}
+            disabled={!isComingSoon && isOutOfStock}
             className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl border-2 border-tea-forest text-tea-forest hover:bg-tea-forest hover:text-white text-xs font-bold uppercase tracking-wider transition active:scale-[0.99] bg-white shadow-sm"
           >
             <Building className="w-4 h-4" />
