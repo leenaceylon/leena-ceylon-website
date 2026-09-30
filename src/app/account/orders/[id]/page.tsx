@@ -101,7 +101,18 @@ export default async function OrderDetailPage({
           grandTotal={order.grandTotal}
           paymentStatus={order.paymentStatus}
           bankDetails={settings.bankDetails}
+          bankName={settings.bankName}
+          bankAccountName={settings.bankAccountName}
+          bankAccountNumber={settings.bankAccountNumber}
+          bankBranch={settings.bankBranch}
+          bankSwiftCode={settings.bankSwiftCode}
+          bankInstructions={settings.bankInstructions}
+          bank2Name={settings.bank2Name}
+          bank2AccountName={settings.bank2AccountName}
+          bank2AccountNumber={settings.bank2AccountNumber}
+          bank2Branch={settings.bank2Branch}
           whatsappNumber={settings.whatsappNumber}
+          brandName={settings.brandName}
         />
       )}
 

@@ -9,6 +9,7 @@ import ProductReviews from "@/components/ProductReviews";
 import ProductCard from "@/components/ProductCard";
 import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
+import { getSiteSettings } from "@/lib/settings";
 
 export const revalidate = 0;
 
@@ -91,6 +92,7 @@ export default async function ProductDetailPage({
 }) {
   let product: any = null;
   let relatedProducts: any[] = [];
+  const settings = await getSiteSettings();
 
   try {
     product = await prisma.product.findUnique({
@@ -258,7 +260,7 @@ export default async function ProductDetailPage({
       </nav>
 
       {/* Main Interactive Product Section */}
-      <ProductDetailsClient product={product as any} />
+      <ProductDetailsClient product={product as any} bankSettings={settings} />
 
       {/* Tabs / Detailed Information: Full Description, Brewing Guide, Origin */}
       <div className="pt-8 border-t border-tea-border grid grid-cols-1 lg:grid-cols-12 gap-8">

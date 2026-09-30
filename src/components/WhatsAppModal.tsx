@@ -59,6 +59,42 @@ export default function WhatsAppModal({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
+  // Dynamic Bank Settings from Admin
+  const [bankInfo, setBankInfo] = useState({
+    bankName: "Commercial Bank of Ceylon PLC",
+    bankAccountName: "LEENA CEYLON (PVT) LTD",
+    bankAccountNumber: "1000 2489 7120",
+    bankBranch: "Kekirawa Branch",
+    bankSwiftCode: "CCEYLKLX",
+    bankInstructions: "Please transfer the total amount and share your payment receipt / bank slip screenshot in the WhatsApp chat.",
+    bank2Name: "",
+    bank2AccountName: "",
+    bank2AccountNumber: "",
+    bank2Branch: "",
+  });
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.settings) {
+          setBankInfo({
+            bankName: data.settings.bankName || "Commercial Bank of Ceylon PLC",
+            bankAccountName: data.settings.bankAccountName || "LEENA CEYLON (PVT) LTD",
+            bankAccountNumber: data.settings.bankAccountNumber || "1000 2489 7120",
+            bankBranch: data.settings.bankBranch || "Kekirawa Branch",
+            bankSwiftCode: data.settings.bankSwiftCode || "CCEYLKLX",
+            bankInstructions: data.settings.bankInstructions || "",
+            bank2Name: data.settings.bank2Name || "",
+            bank2AccountName: data.settings.bank2AccountName || "",
+            bank2AccountNumber: data.settings.bank2AccountNumber || "",
+            bank2Branch: data.settings.bank2Branch || "",
+          });
+        }
+      })
+      .catch((err) => console.warn("Failed to load settings in WhatsApp modal:", err));
+  }, []);
+
   // Sync state whenever modal is opened with new product details
   useEffect(() => {
     if (whatsAppModal.isOpen && whatsAppModal.details) {
@@ -96,10 +132,11 @@ export default function WhatsAppModal({
     };
   }, [whatsAppModal.isOpen, closeWhatsAppModal]);
 
-  const handleCopyAccount = (e: React.MouseEvent) => {
+  const handleCopyAccount = (e: React.MouseEvent, accNumber?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    navigator.clipboard.writeText("100024897120");
+    const targetAcc = accNumber || bankInfo.bankAccountNumber || "100024897120";
+    navigator.clipboard.writeText(targetAcc.replace(/\s+/g, ""));
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2000);
   };
@@ -215,6 +252,7 @@ export default function WhatsAppModal({
       customerAddress: customerAddress.trim(),
       customerPhone: customerPhone.trim(),
       paymentMethod: paymentMethod,
+      bankInfo: bankInfo,
     });
 
     const url = getWhatsAppUrl(whatsappNumber, message);
@@ -809,7 +847,9 @@ export default function WhatsAppModal({
               >
                 <CreditCard className="w-4 h-4 text-amber-700" />
                 <span className="font-semibold text-xs">Bank Transfer</span>
-                <span className="text-[10px] text-tea-muted font-normal">Commercial Bank of Ceylon</span>
+                <span className="text-[10px] text-tea-muted font-normal truncate max-w-[130px]">
+                  {bankInfo.bankName || "Commercial Bank of Ceylon"}
+                </span>
               </button>
             </div>
 
@@ -817,10 +857,12 @@ export default function WhatsAppModal({
             {paymentMethod === "BANK" && (
               <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl p-3 text-xs space-y-2 text-tea-dark animate-fade-in">
                 <div className="flex justify-between items-center pb-1.5 border-b border-amber-200/70">
-                  <span className="font-bold text-tea-forest text-xs">Commercial Bank of Ceylon PLC</span>
+                  <span className="font-bold text-tea-forest text-xs">
+                    {bankInfo.bankName || "Commercial Bank of Ceylon PLC"}
+                  </span>
                   <button
                     type="button"
-                    onClick={handleCopyAccount}
+                    onClick={(e) => handleCopyAccount(e, bankInfo.bankAccountNumber)}
                     className="flex items-center gap-1 text-[11px] text-tea-leaf hover:text-tea-dark font-medium px-2 py-0.5 rounded-md bg-white border border-amber-300 shadow-xs active:scale-95 transition"
                   >
                     {copiedAccount ? (
@@ -837,13 +879,46 @@ export default function WhatsAppModal({
                   </button>
                 </div>
                 <div className="space-y-0.5 text-[11px]">
-                  <p><span className="text-tea-muted">Account Name:</span> <strong className="text-tea-dark">LEENA CEYLON (PVT) LTD</strong></p>
-                  <p><span className="text-tea-muted">Account Number:</span> <strong className="font-mono text-tea-forest font-bold text-xs">1000 2489 7120</strong></p>
-                  <p><span className="text-tea-muted">Branch:</span> <strong>Kekirawa Branch (Swift: CCEYLKLX)</strong></p>
-                  <p><span className="text-tea-muted">Amount to Transfer:</span> <strong className="text-emerald-700 font-bold">Rs. {finalTotal.toLocaleString("en-US")}</strong></p>
+                  <p>
+                    <span className="text-tea-muted">Account Name:</span>{" "}
+                    <strong className="text-tea-dark">{bankInfo.bankAccountName || "LEENA CEYLON (PVT) LTD"}</strong>
+                  </p>
+                  <p>
+                    <span className="text-tea-muted">Account Number:</span>{" "}
+                    <strong className="font-mono text-tea-forest font-bold text-xs select-all">
+                      {bankInfo.bankAccountNumber || "1000 2489 7120"}
+                    </strong>
+                  </p>
+                  <p>
+                    <span className="text-tea-muted">Branch:</span>{" "}
+                    <strong>
+                      {bankInfo.bankBranch || "Kekirawa Branch"}
+                      {bankInfo.bankSwiftCode ? ` (Swift: ${bankInfo.bankSwiftCode})` : ""}
+                    </strong>
+                  </p>
+                  <p>
+                    <span className="text-tea-muted">Amount to Transfer:</span>{" "}
+                    <strong className="text-emerald-700 font-bold">Rs. {finalTotal.toLocaleString("en-US")}</strong>
+                  </p>
                 </div>
+
+                {bankInfo.bank2Name && bankInfo.bank2AccountNumber && (
+                  <div className="pt-1.5 border-t border-amber-200/70 text-[10.5px] flex items-center justify-between gap-1 text-tea-dark">
+                    <span>
+                      Alt Bank: <strong>{bankInfo.bank2Name}</strong> — <span className="font-mono font-bold">{bankInfo.bank2AccountNumber}</span> {bankInfo.bank2Branch && `(${bankInfo.bank2Branch})`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopyAccount(e, bankInfo.bank2AccountNumber)}
+                      className="text-tea-leaf hover:text-tea-dark font-semibold underline text-[10px]"
+                    >
+                      Copy Alt
+                    </button>
+                  </div>
+                )}
+
                 <p className="text-[10px] text-amber-800 bg-amber-100/70 p-1.5 rounded-md">
-                  💡 Transfer Rs. {finalTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.
+                  💡 {bankInfo.bankInstructions || `Transfer Rs. ${finalTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.`}
                 </p>
               </div>
             )}

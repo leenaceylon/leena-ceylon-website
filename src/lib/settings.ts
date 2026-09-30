@@ -21,6 +21,16 @@ export const DEFAULT_SETTINGS: SiteSettingsMap = {
   minOrderAmount: 500,
   cashOnDeliveryEnabled: true,
   bankTransferEnabled: true,
+  bankName: "Commercial Bank of Ceylon PLC",
+  bankAccountName: "LEENA CEYLON (PVT) LTD",
+  bankAccountNumber: "1000 2489 7120",
+  bankBranch: "Kekirawa Branch",
+  bankSwiftCode: "CCEYLKLX",
+  bankInstructions: "Please transfer the total amount and share your payment receipt / bank slip screenshot on WhatsApp.",
+  bank2Name: "",
+  bank2AccountName: "",
+  bank2AccountNumber: "",
+  bank2Branch: "",
   bankDetails:
     "Bank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch\nSwift: CCEYLKLX",
   whatsappButtonText: "ORDER VIA WHATSAPP",
@@ -49,6 +59,15 @@ export async function getSiteSettings(): Promise<SiteSettingsMap> {
       } else {
         (map as any)[s.key] = s.value;
       }
+    }
+
+    // Ensure bankDetails stays formatted and synchronized from structured fields
+    if (map.bankName && map.bankAccountNumber) {
+      let bDetails = `Bank: ${map.bankName}\nAccount Name: ${map.bankAccountName || "LEENA CEYLON (PVT) LTD"}\nAccount No: ${map.bankAccountNumber}\nBranch: ${map.bankBranch || "Kekirawa Branch"}${map.bankSwiftCode ? ` (Swift: ${map.bankSwiftCode})` : ""}`;
+      if (map.bank2Name && map.bank2AccountNumber) {
+        bDetails += `\n\nSecondary Account:\nBank: ${map.bank2Name}\nAccount Name: ${map.bank2AccountName || map.bankAccountName || "LEENA CEYLON (PVT) LTD"}\nAccount No: ${map.bank2AccountNumber}\nBranch: ${map.bank2Branch || ""}`;
+      }
+      map.bankDetails = bDetails;
     }
 
     return map;

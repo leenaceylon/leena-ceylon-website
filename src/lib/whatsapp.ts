@@ -13,6 +13,19 @@ export function formatWhatsAppNumber(phone: string): string {
   return cleaned;
 }
 
+export interface WhatsAppOrderBankInfo {
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankBranch?: string;
+  bankSwiftCode?: string;
+  bankInstructions?: string;
+  bank2Name?: string;
+  bank2AccountName?: string;
+  bank2AccountNumber?: string;
+  bank2Branch?: string;
+}
+
 export interface WhatsAppOrderCompilationParams {
   details: WhatsAppOrderDetails;
   customerName?: string;
@@ -20,6 +33,8 @@ export interface WhatsAppOrderCompilationParams {
   customerPhone?: string;
   paymentMethod?: "COD" | "BANK";
   brandName?: string;
+  bankInfo?: WhatsAppOrderBankInfo;
+  bankDetails?: string;
 }
 
 export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilationParams): string {
@@ -110,11 +125,30 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   if (isBank) {
     lines.push(`💳 *Payment Method:* *Direct Bank Transfer*`);
     lines.push(``);
-    lines.push(`--- *LEENA CEYLON BANK DETAILS* ---`);
-    lines.push(`Bank: Commercial Bank of Ceylon PLC`);
-    lines.push(`Account Name: LEENA CEYLON (PVT) LTD`);
-    lines.push(`Account No: 1000 2489 7120`);
-    lines.push(`Branch: Kekirawa Branch (Swift: CCEYLKLX)`);
+    lines.push(`--- *${brandName.toUpperCase()} BANK DETAILS* ---`);
+    if (params.bankInfo && params.bankInfo.bankAccountNumber) {
+      if (params.bankInfo.bankName) lines.push(`Bank: ${params.bankInfo.bankName}`);
+      if (params.bankInfo.bankAccountName) lines.push(`Account Name: ${params.bankInfo.bankAccountName}`);
+      lines.push(`Account No: ${params.bankInfo.bankAccountNumber}`);
+      if (params.bankInfo.bankBranch) {
+        lines.push(`Branch: ${params.bankInfo.bankBranch}${params.bankInfo.bankSwiftCode ? ` (Swift: ${params.bankInfo.bankSwiftCode})` : ""}`);
+      }
+      if (params.bankInfo.bank2Name && params.bankInfo.bank2AccountNumber) {
+        lines.push(``);
+        lines.push(`*Alternative Bank Account:*`);
+        lines.push(`Bank: ${params.bankInfo.bank2Name}`);
+        if (params.bankInfo.bank2AccountName) lines.push(`Account Name: ${params.bankInfo.bank2AccountName}`);
+        lines.push(`Account No: ${params.bankInfo.bank2AccountNumber}`);
+        if (params.bankInfo.bank2Branch) lines.push(`Branch: ${params.bankInfo.bank2Branch}`);
+      }
+    } else if (params.bankDetails) {
+      lines.push(params.bankDetails);
+    } else {
+      lines.push(`Bank: Commercial Bank of Ceylon PLC`);
+      lines.push(`Account Name: LEENA CEYLON (PVT) LTD`);
+      lines.push(`Account No: 1000 2489 7120`);
+      lines.push(`Branch: Kekirawa Branch (Swift: CCEYLKLX)`);
+    }
     lines.push(`Amount to Transfer: Rs. ${finalPayable.toLocaleString("en-US")}`);
     lines.push(``);
     lines.push(`I will transfer Rs. ${finalPayable.toLocaleString("en-US")} and share payment slip / screenshot here.`);
@@ -209,12 +243,32 @@ export function compileBankTransferWhatsAppMessage(options: {
   total: number;
   items?: Array<{ name: string; size: string; quantity: number; price?: number }>;
   bankDetails?: string;
+  bankInfo?: WhatsAppOrderBankInfo;
   brandName?: string;
 }): string {
   const brand = options.brandName || "LEENA CEYLON";
-  const defaultBank =
-    "Bank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch\nSwift: CCEYLKLX";
-  const bank = options.bankDetails || defaultBank;
+  let bank = options.bankDetails;
+  if (options.bankInfo && options.bankInfo.bankAccountNumber) {
+    const bLines: string[] = [];
+    if (options.bankInfo.bankName) bLines.push(`Bank: ${options.bankInfo.bankName}`);
+    if (options.bankInfo.bankAccountName) bLines.push(`Account Name: ${options.bankInfo.bankAccountName}`);
+    bLines.push(`Account No: ${options.bankInfo.bankAccountNumber}`);
+    if (options.bankInfo.bankBranch) {
+      bLines.push(`Branch: ${options.bankInfo.bankBranch}${options.bankInfo.bankSwiftCode ? ` (Swift: ${options.bankInfo.bankSwiftCode})` : ""}`);
+    }
+    if (options.bankInfo.bank2Name && options.bankInfo.bank2AccountNumber) {
+      bLines.push(``);
+      bLines.push(`*Alternative Bank Account:*`);
+      bLines.push(`Bank: ${options.bankInfo.bank2Name}`);
+      if (options.bankInfo.bank2AccountName) bLines.push(`Account Name: ${options.bankInfo.bank2AccountName}`);
+      bLines.push(`Account No: ${options.bankInfo.bank2AccountNumber}`);
+      if (options.bankInfo.bank2Branch) bLines.push(`Branch: ${options.bankInfo.bank2Branch}`);
+    }
+    bank = bLines.join("\n");
+  } else if (!bank) {
+    bank =
+      "Bank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch\nSwift: CCEYLKLX";
+  }
 
   const lines: string[] = [
     `Hello ${brand},`,

@@ -19,9 +19,11 @@ import {
 } from "lucide-react";
 import { compileBankTransferWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
 import { calculatePricing } from "@/lib/pricing";
+import { SiteSettingsMap } from "@/types";
 
 export default function ProductDetailsClient({
   product,
+  bankSettings,
 }: {
   product: {
     id: string;
@@ -50,8 +52,17 @@ export default function ProductDetailsClient({
     }>;
     category?: { name: string; slug: string } | null;
   };
+  bankSettings?: SiteSettingsMap;
 }) {
   const { openWhatsAppModal } = useCart();
+
+  const bankName = bankSettings?.bankName || "Commercial Bank of Ceylon PLC";
+  const bankAccountName = bankSettings?.bankAccountName || "LEENA CEYLON (PVT) LTD";
+  const bankAccountNumber = bankSettings?.bankAccountNumber || "1000 2489 7120";
+  const bankBranch = bankSettings?.bankBranch || "Kekirawa Branch";
+  const bankSwiftCode = bankSettings?.bankSwiftCode || "CCEYLKLX";
+  const whatsappNumber = bankSettings?.whatsappNumber || "071 777 4717";
+  const brandName = bankSettings?.brandName || "LEENA CEYLON";
 
   const fallbackImg = "/uploads/leena-tea-powder-200g.jpeg";
   const initialImg = product.images?.[0]?.url || product.mainImage || fallbackImg;
@@ -84,7 +95,7 @@ export default function ProductDetailsClient({
   }
 
   const handleCopyAccount = () => {
-    navigator.clipboard.writeText("100024897120");
+    navigator.clipboard.writeText(bankAccountNumber.replace(/\s+/g, ""));
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2500);
   };
@@ -129,11 +140,21 @@ export default function ProductDetailsClient({
           price: pricing.unitPrice,
         },
       ],
-      bankDetails:
-        "Bank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch\nSwift: CCEYLKLX",
-      brandName: "LEENA CEYLON",
+      bankInfo: {
+        bankName,
+        bankAccountName,
+        bankAccountNumber,
+        bankBranch,
+        bankSwiftCode,
+        bank2Name: bankSettings?.bank2Name,
+        bank2AccountName: bankSettings?.bank2AccountName,
+        bank2AccountNumber: bankSettings?.bank2AccountNumber,
+        bank2Branch: bankSettings?.bank2Branch,
+      },
+      bankDetails: bankSettings?.bankDetails,
+      brandName,
     });
-    const url = getWhatsAppUrl("071 777 4717", waMsg);
+    const url = getWhatsAppUrl(whatsappNumber, waMsg);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -436,7 +457,7 @@ export default function ProductDetailsClient({
             <div className="flex items-center justify-between pb-1.5 border-b border-tea-border/60">
               <span className="font-bold text-tea-forest flex items-center gap-1.5 text-[11px]">
                 <Building className="w-3.5 h-3.5 text-tea-leaf" />
-                Commercial Bank Account Details
+                {bankName} Details
               </span>
               <button
                 type="button"
@@ -459,12 +480,27 @@ export default function ProductDetailsClient({
             <div className="grid grid-cols-2 gap-2 text-[11px] text-tea-dark">
               <div>
                 <span className="text-tea-muted block">Account Name:</span>
-                <span className="font-semibold">LEENA CEYLON (PVT) LTD</span>
+                <span className="font-semibold">{bankAccountName}</span>
               </div>
               <div>
                 <span className="text-tea-muted block">Account Number:</span>
-                <span className="font-mono font-bold text-tea-forest select-all">1000 2489 7120</span>
+                <span className="font-mono font-bold text-tea-forest select-all">{bankAccountNumber}</span>
               </div>
+              <div>
+                <span className="text-tea-muted block">Branch:</span>
+                <span className="font-semibold">{bankBranch}{bankSwiftCode ? ` (${bankSwiftCode})` : ""}</span>
+              </div>
+              {bankSettings?.bank2Name && bankSettings?.bank2AccountNumber ? (
+                <div>
+                  <span className="text-tea-muted block">Alt Account:</span>
+                  <span className="font-semibold">{bankSettings.bank2Name} ({bankSettings.bank2AccountNumber})</span>
+                </div>
+              ) : (
+                <div>
+                  <span className="text-tea-muted block">Status:</span>
+                  <span className="text-emerald-700 font-semibold">Active Corporate Bank</span>
+                </div>
+              )}
             </div>
             <p className="text-[10px] text-tea-muted italic pt-1">
               Select your pack size and quantity above, then click either button to connect directly with our dispatch team on WhatsApp.

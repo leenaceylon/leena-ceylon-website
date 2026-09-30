@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageSquare, Copy, Check, Building, AlertCircle } from "lucide-react";
+import { MessageSquare, Copy, Check, Building, Landmark, AlertCircle } from "lucide-react";
 import { compileBankTransferWhatsAppMessage, getWhatsAppUrl } from "@/lib/whatsapp";
 
 interface BankTransferNoticeProps {
@@ -12,7 +12,18 @@ interface BankTransferNoticeProps {
   grandTotal: number;
   paymentStatus: string;
   bankDetails?: string;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankBranch?: string;
+  bankSwiftCode?: string;
+  bankInstructions?: string;
+  bank2Name?: string;
+  bank2AccountName?: string;
+  bank2AccountNumber?: string;
+  bank2Branch?: string;
   whatsappNumber?: string;
+  brandName?: string;
 }
 
 export default function BankTransferNotice({
@@ -23,24 +34,37 @@ export default function BankTransferNotice({
   grandTotal,
   paymentStatus,
   bankDetails,
+  bankName = "Commercial Bank of Ceylon PLC",
+  bankAccountName = "LEENA CEYLON (PVT) LTD",
+  bankAccountNumber = "1000 2489 7120",
+  bankBranch = "Kekirawa Branch",
+  bankSwiftCode = "CCEYLKLX",
+  bankInstructions = "Please transfer the total amount and share your payment slip screenshot on WhatsApp for fast dispatch.",
+  bank2Name,
+  bank2AccountName,
+  bank2AccountNumber,
+  bank2Branch,
   whatsappNumber = "071 777 4717",
+  brandName = "LEENA CEYLON",
 }: BankTransferNoticeProps) {
   const [copied, setCopied] = useState(false);
+  const [copiedAlt, setCopiedAlt] = useState(false);
 
-  const defaultBankDetails =
-    bankDetails ||
-    "Bank: Commercial Bank of Ceylon PLC\nAccount Name: LEENA CEYLON (PVT) LTD\nAccount No: 1000 2489 7120\nBranch: Kekirawa Branch\nSwift: CCEYLKLX";
+  // If structured fields aren't provided but bankDetails string is, attempt to parse
+  const effectiveBankName = bankName || "Commercial Bank of Ceylon PLC";
+  const effectiveAccountName = bankAccountName || "LEENA CEYLON (PVT) LTD";
+  const effectiveAccountNumber = bankAccountNumber || "1000 2489 7120";
+  const effectiveBranch = bankBranch || "Kekirawa Branch";
 
-  // Account number for quick copy
-  const accountNumberMatch = defaultBankDetails.match(/Account No:\s*([0-9\s]+)/i);
-  const rawAccountNumber = accountNumberMatch
-    ? accountNumberMatch[1].replace(/\s+/g, "")
-    : "100024897120";
-
-  const handleCopyAccount = () => {
-    navigator.clipboard.writeText(rawAccountNumber);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopyAccount = (acc: string, isAlt = false) => {
+    navigator.clipboard.writeText(acc.replace(/\s+/g, ""));
+    if (isAlt) {
+      setCopiedAlt(true);
+      setTimeout(() => setCopiedAlt(false), 2500);
+    } else {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
   };
 
   const whatsappMessage = compileBankTransferWhatsAppMessage({
@@ -49,19 +73,31 @@ export default function BankTransferNotice({
     phone: customerPhone,
     address: shippingAddress,
     total: grandTotal,
-    bankDetails: defaultBankDetails,
-    brandName: "LEENA CEYLON",
+    bankInfo: {
+      bankName: effectiveBankName,
+      bankAccountName: effectiveAccountName,
+      bankAccountNumber: effectiveAccountNumber,
+      bankBranch: effectiveBranch,
+      bankSwiftCode,
+      bankInstructions,
+      bank2Name,
+      bank2AccountName,
+      bank2AccountNumber,
+      bank2Branch,
+    },
+    bankDetails,
+    brandName,
   });
 
   const whatsappUrl = getWhatsAppUrl(whatsappNumber, whatsappMessage);
 
   return (
-    <div className="bg-gradient-to-br from-amber-50/70 via-white to-emerald-50/40 p-6 rounded-2xl border-2 border-tea-gold/40 shadow-sm space-y-5">
+    <div className="bg-gradient-to-br from-amber-50/70 via-white to-emerald-50/40 p-6 rounded-2xl border-2 border-tea-gold/40 shadow-sm space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-full bg-tea-gold/20 text-tea-dark flex items-center justify-center shrink-0">
-            <Building className="w-5 h-5 text-tea-forest" />
+            <Landmark className="w-5 h-5 text-tea-forest" />
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold tracking-widest text-tea-leaf">
@@ -85,20 +121,20 @@ export default function BankTransferNotice({
       </div>
 
       <p className="text-xs text-tea-muted leading-relaxed">
-        Please transfer <strong className="text-tea-dark">Rs. {grandTotal.toLocaleString("en-US")}</strong> to the LEENA CEYLON corporate bank account below, then click the green button to <strong>send your bank payment slip via WhatsApp</strong> for immediate order confirmation.
+        Please transfer <strong className="text-tea-dark">Rs. {grandTotal.toLocaleString("en-US")}</strong> to the {brandName} corporate bank account below, then click the green button to <strong>send your bank payment slip via WhatsApp</strong> for immediate order confirmation.
       </p>
 
       {/* Bank Account Details Card */}
-      <div className="bg-white rounded-xl p-4 border border-tea-border space-y-3">
+      <div className="bg-white rounded-xl p-4 sm:p-5 border border-tea-border space-y-3 shadow-xs">
         <div className="flex items-center justify-between pb-2 border-b border-tea-border/60">
           <span className="text-xs font-bold text-tea-forest flex items-center gap-1.5">
-            <Building className="w-3.5 h-3.5" />
-            LEENA CEYLON Corporate Account
+            <Landmark className="w-4 h-4 text-tea-leaf" />
+            {effectiveBankName}
           </span>
           <button
             type="button"
-            onClick={handleCopyAccount}
-            className="flex items-center gap-1 text-[11px] font-semibold text-tea-leaf hover:text-tea-dark transition px-2.5 py-1 rounded-lg hover:bg-tea-leaf/10 border border-tea-border/80"
+            onClick={() => handleCopyAccount(effectiveAccountNumber, false)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-tea-leaf hover:text-tea-dark transition px-2.5 py-1 rounded-lg hover:bg-tea-leaf/10 border border-tea-border/80 active:scale-95"
           >
             {copied ? (
               <>
@@ -114,26 +150,54 @@ export default function BankTransferNotice({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div>
             <span className="text-tea-muted block text-[11px]">Bank Name:</span>
-            <span className="font-semibold text-tea-dark">Commercial Bank of Ceylon PLC</span>
+            <span className="font-semibold text-tea-dark">{effectiveBankName}</span>
           </div>
           <div>
             <span className="text-tea-muted block text-[11px]">Account Name:</span>
-            <span className="font-semibold text-tea-dark">LEENA CEYLON (PVT) LTD</span>
+            <span className="font-semibold text-tea-dark">{effectiveAccountName}</span>
           </div>
           <div>
             <span className="text-tea-muted block text-[11px]">Account Number:</span>
             <span className="font-mono font-bold text-sm text-tea-forest select-all">
-              1000 2489 7120
+              {effectiveAccountNumber}
             </span>
           </div>
           <div>
             <span className="text-tea-muted block text-[11px]">Branch / Swift:</span>
-            <span className="font-semibold text-tea-dark">Kekirawa Branch (Swift: CCEYLKLX)</span>
+            <span className="font-semibold text-tea-dark">
+              {effectiveBranch}
+              {bankSwiftCode ? ` (Swift: ${bankSwiftCode})` : ""}
+            </span>
           </div>
         </div>
+
+        {/* Secondary Account if present */}
+        {bank2Name && bank2AccountNumber && (
+          <div className="pt-2.5 border-t border-tea-border/60 flex flex-wrap items-center justify-between gap-2 text-xs text-tea-dark">
+            <div>
+              <span className="text-tea-muted block text-[10px] uppercase font-bold">Alternative Account:</span>
+              <span className="font-semibold">{bank2Name}</span> — Acc:{" "}
+              <span className="font-mono font-bold text-tea-forest">{bank2AccountNumber}</span>
+              {bank2Branch && ` (${bank2Branch})`}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopyAccount(bank2AccountNumber, true)}
+              className="text-[11px] font-semibold text-tea-leaf hover:underline"
+            >
+              {copiedAlt ? "Alt Copied!" : "Copy Alt Acc"}
+            </button>
+          </div>
+        )}
+
+        {bankInstructions && (
+          <p className="text-[11px] text-amber-900 bg-amber-50 p-2 rounded-lg border border-amber-200/50">
+            💡 {bankInstructions}
+          </p>
+        )}
       </div>
 
       {/* Direct WhatsApp Action Button */}

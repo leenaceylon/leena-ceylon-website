@@ -10,6 +10,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Save,
+  Landmark,
+  Eye,
+  Copy,
 } from "lucide-react";
 
 export default function AdminSettingsPage() {
@@ -17,6 +20,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [copiedPreview, setCopiedPreview] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -29,7 +33,27 @@ export default function AdminSettingsPage() {
   }, []);
 
   const handleChange = (field: string, val: any) => {
-    setSettings({ ...settings, [field]: val });
+    setSettings((prev: any) => {
+      const updated = { ...prev, [field]: val };
+      if (
+        field === "bankName" ||
+        field === "bankAccountName" ||
+        field === "bankAccountNumber" ||
+        field === "bankBranch" ||
+        field === "bankSwiftCode" ||
+        field === "bank2Name" ||
+        field === "bank2AccountName" ||
+        field === "bank2AccountNumber" ||
+        field === "bank2Branch"
+      ) {
+        let bDetails = `Bank: ${updated.bankName || ""}\nAccount Name: ${updated.bankAccountName || ""}\nAccount No: ${updated.bankAccountNumber || ""}\nBranch: ${updated.bankBranch || ""}${updated.bankSwiftCode ? ` (Swift: ${updated.bankSwiftCode})` : ""}`;
+        if (updated.bank2Name && updated.bank2AccountNumber) {
+          bDetails += `\n\nSecondary Account:\nBank: ${updated.bank2Name}\nAccount Name: ${updated.bank2AccountName || updated.bankAccountName || ""}\nAccount No: ${updated.bank2AccountNumber}\nBranch: ${updated.bank2Branch || ""}`;
+        }
+        updated.bankDetails = bDetails;
+      }
+      return updated;
+    });
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -258,47 +282,331 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      {/* 4. Payment & Bank Transfer Details */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-tea-border shadow-subtle space-y-4">
-        <div className="flex items-center gap-2.5 pb-3 border-b border-tea-border">
-          <CreditCard className="w-5 h-5 text-tea-forest" />
-          <h3 className="font-serif text-base font-bold text-tea-dark">Payment Options</h3>
+      {/* 4. Payment & Bank Account Details */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-tea-border shadow-subtle space-y-6">
+        <div className="flex items-center justify-between pb-3 border-b border-tea-border">
+          <div className="flex items-center gap-2.5">
+            <Landmark className="w-5 h-5 text-tea-forest" />
+            <div>
+              <h3 className="font-serif text-base font-bold text-tea-dark">Payment & Bank Account Settings</h3>
+              <p className="text-[11px] text-tea-muted">
+                Changes here immediately update bank details displayed on Checkout, WhatsApp Modal, Product Pages, and WhatsApp Order Messages across the entire store.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            Real-Time Sync
+          </span>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-tea-dark">
-              <input
-                type="checkbox"
-                checked={settings.cashOnDeliveryEnabled}
-                onChange={(e) => handleChange("cashOnDeliveryEnabled", e.target.checked)}
-                className="w-4 h-4 rounded text-tea-forest"
-              />
-              Cash on Delivery (COD) Enabled
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-tea-dark">
-              <input
-                type="checkbox"
-                checked={settings.bankTransferEnabled}
-                onChange={(e) => handleChange("bankTransferEnabled", e.target.checked)}
-                className="w-4 h-4 rounded text-tea-forest"
-              />
-              Bank Transfer Enabled
-            </label>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-tea-dark mb-1">
-              Bank Account Details (Displayed to Customers on Checkout)
-            </label>
-            <textarea
-              rows={4}
-              value={settings.bankDetails}
-              onChange={(e) => handleChange("bankDetails", e.target.value)}
-              className="w-full font-mono text-xs px-3.5 py-2.5 rounded-xl border border-tea-border bg-tea-surface"
+        {/* Enabled Payment Gateways */}
+        <div className="flex flex-wrap gap-6 p-4 rounded-2xl bg-tea-surface/60 border border-tea-border">
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-tea-dark">
+            <input
+              type="checkbox"
+              checked={settings.cashOnDeliveryEnabled}
+              onChange={(e) => handleChange("cashOnDeliveryEnabled", e.target.checked)}
+              className="w-4 h-4 rounded text-tea-forest"
             />
+            <span>Cash on Delivery (COD) Enabled</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-tea-dark">
+            <input
+              type="checkbox"
+              checked={settings.bankTransferEnabled}
+              onChange={(e) => handleChange("bankTransferEnabled", e.target.checked)}
+              className="w-4 h-4 rounded text-tea-forest"
+            />
+            <span>Direct Bank Transfer Enabled</span>
+          </label>
+        </div>
+
+        {/* Primary Bank Account Form */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-tea-leaf" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-tea-dark">
+              Primary Corporate Bank Account
+            </h4>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Bank Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Commercial Bank of Ceylon PLC"
+                value={settings.bankName || ""}
+                onChange={(e) => handleChange("bankName", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30 font-medium"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                Official registered bank name
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Account Holder / Beneficiary Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. LEENA CEYLON (PVT) LTD"
+                value={settings.bankAccountName || ""}
+                onChange={(e) => handleChange("bankAccountName", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30 font-medium"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                Exact account name for customer fund transfers
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Account Number *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 1000 2489 7120"
+                value={settings.bankAccountNumber || ""}
+                onChange={(e) => handleChange("bankAccountNumber", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30 font-mono font-bold text-tea-forest"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                Customers copy this number to transfer via banking apps
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Branch Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Kekirawa Branch"
+                value={settings.bankBranch || ""}
+                onChange={(e) => handleChange("bankBranch", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                Bank branch location (e.g. Kekirawa, Colombo, Kandy)
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Swift / Branch Code (Optional)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. CCEYLKLX"
+                value={settings.bankSwiftCode || ""}
+                onChange={(e) => handleChange("bankSwiftCode", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30 font-mono"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                For international or inter-bank online transfers
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Transfer Instructions for Customers
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Transfer the total amount and share your payment slip on WhatsApp."
+                value={settings.bankInstructions || ""}
+                onChange={(e) => handleChange("bankInstructions", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:ring-2 focus:ring-tea-leaf/30"
+              />
+              <span className="text-[10px] text-tea-muted block mt-0.5">
+                Short note guiding the customer on slip submission
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary / Alternative Bank Account (Optional) */}
+        <div className="pt-3 border-t border-tea-border/60 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-tea-muted">
+              Secondary Bank Account (Optional)
+            </h4>
+            <span className="text-[10px] text-tea-muted">Leave blank if using only 1 bank</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Secondary Bank Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Bank of Ceylon / Sampath Bank"
+                value={settings.bank2Name || ""}
+                onChange={(e) => handleChange("bank2Name", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Secondary Account Holder
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. LEENA CEYLON (PVT) LTD"
+                value={settings.bank2AccountName || ""}
+                onChange={(e) => handleChange("bank2AccountName", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Secondary Account Number
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 849204810"
+                value={settings.bank2AccountNumber || ""}
+                onChange={(e) => handleChange("bank2AccountNumber", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-tea-dark mb-1">
+                Secondary Branch Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Anuradhapura Branch"
+                value={settings.bank2Branch || ""}
+                onChange={(e) => handleChange("bank2Branch", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Live Customer Preview */}
+        <div className="pt-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye className="w-4 h-4 text-amber-700" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+              Live Preview: How Customers See Bank Details on Storefront
+            </h4>
+          </div>
+
+          <div className="bg-gradient-to-br from-amber-50 via-white to-amber-50/40 border-2 border-amber-200/90 rounded-2xl p-4 sm:p-5 text-xs space-y-3 shadow-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <Landmark className="w-4 h-4" />
+                </div>
+                <span className="font-bold text-tea-dark text-sm">
+                  {settings.bankName || "Commercial Bank of Ceylon PLC"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (settings.bankAccountNumber) {
+                    navigator.clipboard.writeText(settings.bankAccountNumber.replace(/\s+/g, ""));
+                    setCopiedPreview(true);
+                    setTimeout(() => setCopiedPreview(false), 2000);
+                  }
+                }}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-900 bg-white border border-amber-300 px-3 py-1 rounded-lg hover:bg-amber-50 transition shadow-xs"
+              >
+                {copiedPreview ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-amber-800" />
+                    <span>Test Copy Account</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[12px]">
+              <div>
+                <span className="text-tea-muted block text-[10px] uppercase font-bold tracking-wider">
+                  Beneficiary / Account Name
+                </span>
+                <strong className="text-tea-dark">
+                  {settings.bankAccountName || "LEENA CEYLON (PVT) LTD"}
+                </strong>
+              </div>
+
+              <div>
+                <span className="text-tea-muted block text-[10px] uppercase font-bold tracking-wider">
+                  Account Number
+                </span>
+                <strong className="font-mono text-tea-forest font-bold text-sm tracking-wide">
+                  {settings.bankAccountNumber || "1000 2489 7120"}
+                </strong>
+              </div>
+
+              <div>
+                <span className="text-tea-muted block text-[10px] uppercase font-bold tracking-wider">
+                  Branch
+                </span>
+                <span className="text-tea-dark font-medium">
+                  {settings.bankBranch || "Kekirawa Branch"}
+                  {settings.bankSwiftCode ? ` (Swift: ${settings.bankSwiftCode})` : ""}
+                </span>
+              </div>
+
+              {settings.bankInstructions && (
+                <div>
+                  <span className="text-tea-muted block text-[10px] uppercase font-bold tracking-wider">
+                    Instructions
+                  </span>
+                  <span className="text-amber-900 text-[11px]">
+                    {settings.bankInstructions}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {settings.bank2Name && settings.bank2AccountNumber && (
+              <div className="pt-2.5 border-t border-amber-200/70 text-[11px] flex flex-wrap items-center gap-2 text-tea-dark">
+                <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]">
+                  Alternative Bank:
+                </span>
+                <strong>{settings.bank2Name}</strong>
+                <span>• Acc: <span className="font-mono font-bold">{settings.bank2AccountNumber}</span></span>
+                {settings.bank2Branch && <span>• {settings.bank2Branch}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Formatted Text Representation (Auto-synced) */}
+        <div className="pt-2">
+          <label className="block text-xs font-semibold text-tea-dark mb-1">
+            Formatted Bank Details String (Auto-Synchronized for WhatsApp & Legacy Readers)
+          </label>
+          <textarea
+            rows={4}
+            value={settings.bankDetails || ""}
+            onChange={(e) => handleChange("bankDetails", e.target.value)}
+            className="w-full font-mono text-xs px-3.5 py-2.5 rounded-xl border border-tea-border bg-tea-surface/80"
+          />
+          <span className="text-[10px] text-tea-muted block mt-1">
+            Auto-generated from your bank fields above. You can also customize this plain text directly if needed.
+          </span>
         </div>
       </div>
 

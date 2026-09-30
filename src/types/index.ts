@@ -59,6 +59,16 @@ export interface SiteSettingsMap {
   minOrderAmount: number;
   cashOnDeliveryEnabled: boolean;
   bankTransferEnabled: boolean;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
+  bankBranch?: string;
+  bankSwiftCode?: string;
+  bankInstructions?: string;
+  bank2Name?: string;
+  bank2AccountName?: string;
+  bank2AccountNumber?: string;
+  bank2Branch?: string;
   bankDetails: string;
   whatsappButtonText: string;
   whatsappTemplate: string;
