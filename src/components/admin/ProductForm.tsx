@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle, Tag, Percent } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CheckCircle2, AlertCircle, Tag, Percent, Upload, HardDrive, RefreshCw } from "lucide-react";
 import { calculatePricing } from "@/lib/pricing";
 
 export default function ProductForm({
@@ -47,6 +47,8 @@ export default function ProductForm({
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadNotice, setImageUploadNotice] = useState<string | null>(null);
 
   useEffect(() => {
     // Load categories
@@ -104,6 +106,43 @@ export default function ProductForm({
 
   const handleRemoveSize = (idx: number) => {
     setSizes(sizes.filter((_, i) => i !== idx));
+  };
+
+  const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageUploading(true);
+    setImageUploadNotice(null);
+
+    try {
+      const formPayload = new FormData();
+      formPayload.append("file", file);
+
+      const res = await fetch("/api/media/upload", {
+        method: "POST",
+        body: formPayload,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to upload image.");
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, mainImage: data.media.url }));
+      if (data.media) {
+        setMediaList((prev) => [data.media, ...prev]);
+      }
+      setImageUploadNotice(`Image saved automatically to local disk (${data.localFilePath || "public/uploads/"})!`);
+      setTimeout(() => setImageUploadNotice(null), 6000);
+    } catch (err: any) {
+      console.error(err);
+      alert("Error uploading image file.");
+    } finally {
+      setImageUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -615,43 +654,84 @@ export default function ProductForm({
 
       {/* Media & Images */}
       <div className="bg-white p-6 sm:p-8 rounded-2xl border border-tea-border shadow-subtle space-y-4">
-        <h3 className="font-serif text-base font-bold text-tea-dark pb-2 border-b border-tea-border">
-          4. Product Image
-        </h3>
+        <div className="pb-3 border-b border-tea-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
+              <span>4. Product Image</span>
+            </h3>
+            <p className="text-xs text-tea-muted">
+              Select existing media or upload directly from your computer (auto-saved to local disk)
+            </p>
+          </div>
 
-        <div className="space-y-3">
+          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold transition shadow-sm self-start sm:self-auto">
+            {imageUploading ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Upload className="w-3.5 h-3.5" />
+            )}
+            <span>{imageUploading ? "Saving to Local Folder..." : "Upload from Computer"}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleDirectImageUpload}
+              className="hidden"
+              disabled={imageUploading}
+            />
+          </label>
+        </div>
+
+        {imageUploadNotice && (
+          <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-900 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{imageUploadNotice}</span>
+          </div>
+        )}
+
+        <div className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-tea-dark mb-1">
-              Main Image URL / Path
+              Main Image URL / Local Path
             </label>
             <input
               type="text"
               name="mainImage"
               value={formData.mainImage}
               onChange={handleChange}
-              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              placeholder="e.g. /uploads/1790331419153_tea-splash.jpg"
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono text-tea-dark"
             />
           </div>
 
           {/* Quick Select from uploaded catalog */}
           {mediaList.length > 0 && (
             <div>
-              <span className="block text-[11px] text-tea-muted mb-2 font-medium">
-                Or select from uploaded media:
-              </span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] text-tea-muted font-medium">
+                  Select from Media Library ({mediaList.length} files available):
+                </span>
+                <Link
+                  href="/admin/media"
+                  target="_blank"
+                  className="text-[11px] text-tea-forest hover:underline font-semibold"
+                >
+                  Open Media Library &rarr;
+                </Link>
+              </div>
               <div className="flex gap-2.5 overflow-x-auto pb-2">
                 {mediaList.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setFormData({ ...formData, mainImage: m.url })}
+                    title={m.originalName || m.filename}
                     className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 transition ${
                       formData.mainImage === m.url
-                        ? "border-tea-forest ring-2 ring-tea-forest/30"
+                        ? "border-tea-forest ring-2 ring-tea-forest/40 scale-105"
                         : "border-tea-border hover:opacity-80"
                     }`}
                   >
-                    <Image src={m.url} alt={m.originalName} fill className="object-cover" />
+                    <Image src={m.url} alt={m.originalName || "Media"} fill className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -659,15 +739,24 @@ export default function ProductForm({
           )}
 
           {formData.mainImage && (
-            <div className="pt-2">
-              <span className="block text-[11px] text-tea-muted mb-1">Preview:</span>
-              <div className="relative w-28 h-28 rounded-xl overflow-hidden border border-tea-border bg-tea-surface">
+            <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-3 rounded-xl bg-tea-surface/60 border border-tea-border">
+              <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-tea-border bg-white shrink-0">
                 <Image
                   src={formData.mainImage}
                   alt="Preview"
                   fill
                   className="object-cover"
                 />
+              </div>
+              <div className="text-xs space-y-1">
+                <span className="font-bold text-tea-dark block">Active Product Image Preview</span>
+                <p className="font-mono text-[11px] text-tea-forest flex items-center gap-1">
+                  <HardDrive className="w-3.5 h-3.5 text-tea-muted shrink-0" />
+                  <span>Local File: public{formData.mainImage}</span>
+                </p>
+                <p className="text-[11px] text-tea-muted">
+                  Stored directly on your PC disk and loaded statically for optimal speed and reliability.
+                </p>
               </div>
             </div>
           )}
