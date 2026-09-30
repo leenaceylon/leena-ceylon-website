@@ -68,7 +68,7 @@ export default function AdminMediaPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Upload failed");
+        showNotice(data.error || "Upload failed. Please check the file format and try again.", "error");
         return;
       }
 
@@ -79,7 +79,7 @@ export default function AdminMediaPage() {
       );
       loadMedia();
     } catch (err: any) {
-      alert("Failed to upload image.");
+      showNotice(err?.message || "Failed to upload image.", "error");
     } finally {
       setUploading(false);
       setLogoUploading(false);
@@ -105,7 +105,7 @@ export default function AdminMediaPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to update image file.");
+        showNotice(data.error || "Failed to update image file.", "error");
         return;
       }
 
@@ -118,7 +118,7 @@ export default function AdminMediaPage() {
       loadMedia();
     } catch (err: any) {
       console.error(err);
-      alert("Failed to replace image file.");
+      showNotice(err?.message || "Failed to replace image file.", "error");
     } finally {
       setUpdatingId(null);
       e.target.value = "";

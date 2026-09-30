@@ -48,7 +48,7 @@ export default function ProductForm({
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
-  const [imageUploadNotice, setImageUploadNotice] = useState<string | null>(null);
+  const [imageUploadNotice, setImageUploadNotice] = useState<{ message: string; isError?: boolean } | null>(null);
 
   useEffect(() => {
     // Load categories
@@ -126,7 +126,10 @@ export default function ProductForm({
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to upload image.");
+        setImageUploadNotice({
+          message: data.error || "Failed to upload image. Please check file format and size.",
+          isError: true,
+        });
         return;
       }
 
@@ -134,11 +137,17 @@ export default function ProductForm({
       if (data.media) {
         setMediaList((prev) => [data.media, ...prev]);
       }
-      setImageUploadNotice(`Image saved automatically to local disk (${data.localFilePath || "public/uploads/"})!`);
+      setImageUploadNotice({
+        message: `Image saved automatically (${data.localFilePath || "public/uploads/"})!`,
+        isError: false,
+      });
       setTimeout(() => setImageUploadNotice(null), 6000);
     } catch (err: any) {
       console.error(err);
-      alert("Error uploading image file.");
+      setImageUploadNotice({
+        message: err?.message || "Error uploading image file.",
+        isError: true,
+      });
     } finally {
       setImageUploading(false);
       e.target.value = "";
@@ -682,9 +691,19 @@ export default function ProductForm({
         </div>
 
         {imageUploadNotice && (
-          <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-900 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-medium">{imageUploadNotice}</span>
+          <div
+            className={`p-3 rounded-xl text-xs flex items-center gap-2 border ${
+              imageUploadNotice.isError
+                ? "bg-rose-50 border-rose-300 text-rose-900"
+                : "bg-emerald-50 border-emerald-300 text-emerald-900"
+            }`}
+          >
+            {imageUploadNotice.isError ? (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            )}
+            <span className="font-medium">{imageUploadNotice.message}</span>
           </div>
         )}
 
