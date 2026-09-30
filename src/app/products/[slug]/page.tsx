@@ -11,6 +11,7 @@ import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 import { getSiteSettings } from "@/lib/settings";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function generateMetadata({

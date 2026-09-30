@@ -23,14 +23,16 @@ import {
   Loader2,
   Building,
 } from "lucide-react";
-import { WhatsAppOrderDetails, WhatsAppOrderSizeOption } from "@/types";
+import { WhatsAppOrderDetails, WhatsAppOrderSizeOption, SiteSettingsMap } from "@/types";
 
 export default function WhatsAppModal({
   whatsappNumber = "071 777 4717",
   whatsappTemplate,
+  settings,
 }: {
   whatsappNumber?: string;
   whatsappTemplate?: string;
+  settings?: SiteSettingsMap;
 }) {
   const { whatsAppModal, closeWhatsAppModal } = useCart();
 
@@ -61,39 +63,60 @@ export default function WhatsAppModal({
 
   // Dynamic Bank Settings from Admin
   const [bankInfo, setBankInfo] = useState({
-    bankName: "Commercial Bank of Ceylon PLC",
-    bankAccountName: "LEENA CEYLON (PVT) LTD",
-    bankAccountNumber: "1000 2489 7120",
-    bankBranch: "Kekirawa Branch",
-    bankSwiftCode: "CCEYLKLX",
-    bankInstructions: "Please transfer the total amount and share your payment receipt / bank slip screenshot in the WhatsApp chat.",
-    bank2Name: "",
-    bank2AccountName: "",
-    bank2AccountNumber: "",
-    bank2Branch: "",
+    bankName: settings?.bankName || "Commercial Bank of Ceylon PLC",
+    bankAccountName: settings?.bankAccountName || "LEENA CEYLON (PVT) LTD",
+    bankAccountNumber: settings?.bankAccountNumber || "1000 2489 7120",
+    bankBranch: settings?.bankBranch || "Kekirawa Branch",
+    bankSwiftCode: settings?.bankSwiftCode || "CCEYLKLX",
+    bankInstructions: settings?.bankInstructions || "Please transfer the total amount and share your payment receipt / bank slip screenshot in the WhatsApp chat.",
+    bank2Name: settings?.bank2Name || "",
+    bank2AccountName: settings?.bank2AccountName || "",
+    bank2AccountNumber: settings?.bank2AccountNumber || "",
+    bank2Branch: settings?.bank2Branch || "",
   });
 
+  // Re-sync from settings prop if it changes
   useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.settings) {
-          setBankInfo({
-            bankName: data.settings.bankName || "Commercial Bank of Ceylon PLC",
-            bankAccountName: data.settings.bankAccountName || "LEENA CEYLON (PVT) LTD",
-            bankAccountNumber: data.settings.bankAccountNumber || "1000 2489 7120",
-            bankBranch: data.settings.bankBranch || "Kekirawa Branch",
-            bankSwiftCode: data.settings.bankSwiftCode || "CCEYLKLX",
-            bankInstructions: data.settings.bankInstructions || "",
-            bank2Name: data.settings.bank2Name || "",
-            bank2AccountName: data.settings.bank2AccountName || "",
-            bank2AccountNumber: data.settings.bank2AccountNumber || "",
-            bank2Branch: data.settings.bank2Branch || "",
-          });
-        }
-      })
-      .catch((err) => console.warn("Failed to load settings in WhatsApp modal:", err));
-  }, []);
+    if (settings) {
+      setBankInfo({
+        bankName: settings.bankName || "Commercial Bank of Ceylon PLC",
+        bankAccountName: settings.bankAccountName || "LEENA CEYLON (PVT) LTD",
+        bankAccountNumber: settings.bankAccountNumber || "1000 2489 7120",
+        bankBranch: settings.bankBranch || "Kekirawa Branch",
+        bankSwiftCode: settings.bankSwiftCode || "CCEYLKLX",
+        bankInstructions: settings.bankInstructions || "",
+        bank2Name: settings.bank2Name || "",
+        bank2AccountName: settings.bank2AccountName || "",
+        bank2AccountNumber: settings.bank2AccountNumber || "",
+        bank2Branch: settings.bank2Branch || "",
+      });
+    }
+  }, [settings]);
+
+  // Always re-fetch fresh settings without caching whenever modal opens
+  useEffect(() => {
+    if (whatsAppModal.isOpen) {
+      fetch("/api/settings", { cache: "no-store" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.settings) {
+            setBankInfo({
+              bankName: data.settings.bankName || "Commercial Bank of Ceylon PLC",
+              bankAccountName: data.settings.bankAccountName || "LEENA CEYLON (PVT) LTD",
+              bankAccountNumber: data.settings.bankAccountNumber || "1000 2489 7120",
+              bankBranch: data.settings.bankBranch || "Kekirawa Branch",
+              bankSwiftCode: data.settings.bankSwiftCode || "CCEYLKLX",
+              bankInstructions: data.settings.bankInstructions || "",
+              bank2Name: data.settings.bank2Name || "",
+              bank2AccountName: data.settings.bank2AccountName || "",
+              bank2AccountNumber: data.settings.bank2AccountNumber || "",
+              bank2Branch: data.settings.bank2Branch || "",
+            });
+          }
+        })
+        .catch((err) => console.warn("Failed to load settings in WhatsApp modal:", err));
+    }
+  }, [whatsAppModal.isOpen]);
 
   // Sync state whenever modal is opened with new product details
   useEffect(() => {

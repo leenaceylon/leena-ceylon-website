@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Filter, Search, Clock } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Dynamic to reflect database changes immediately
 
 export async function generateMetadata({

@@ -42,6 +42,28 @@ export const DEFAULT_SETTINGS: SiteSettingsMap = {
     "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, and flavoured teas directly from Ceylon.",
 };
 
+export function parseBankDetails(text: string): Partial<SiteSettingsMap> {
+  if (!text) return {};
+  const res: Partial<SiteSettingsMap> = {};
+
+  const bankMatch = text.match(/(?:Bank(?:\s*Name)?)\s*:\s*([^\r\n]+)/i);
+  if (bankMatch) res.bankName = bankMatch[1].trim();
+
+  const accNameMatch = text.match(/(?:Account\s*Name|Beneficiary(?:\s*Name)?|Acc\s*Name|Holder)\s*:\s*([^\r\n]+)/i);
+  if (accNameMatch) res.bankAccountName = accNameMatch[1].trim();
+
+  const accNoMatch = text.match(/(?:Account\s*No(?:\.|mber)?|Acc\s*No(?:\.|mber)?|Acc\s*#|Account)\s*:\s*([0-9\s]+)/i);
+  if (accNoMatch) res.bankAccountNumber = accNoMatch[1].trim();
+
+  const branchMatch = text.match(/(?:Branch(?:\s*Name)?)\s*:\s*([^\r\n(]+)/i);
+  if (branchMatch) res.bankBranch = branchMatch[1].trim();
+
+  const swiftMatch = text.match(/(?:Swift(?:\s*Code)?)\s*:\s*([^\r\n)]+)/i);
+  if (swiftMatch) res.bankSwiftCode = swiftMatch[1].trim();
+
+  return res;
+}
+
 export async function getSiteSettings(): Promise<SiteSettingsMap> {
   try {
     const settings = await prisma.siteSetting.findMany();
@@ -61,8 +83,25 @@ export async function getSiteSettings(): Promise<SiteSettingsMap> {
       }
     }
 
-    // Ensure bankDetails stays formatted and synchronized from structured fields
-    if (map.bankName && map.bankAccountNumber) {
+    const hasDbBankDetails = settings.some((s) => s.key === "bankDetails" && Boolean(s.value?.trim()));
+    const hasDbBankName = settings.some((s) => s.key === "bankName" && Boolean(s.value?.trim()));
+    const hasDbBankAccNo = settings.some((s) => s.key === "bankAccountNumber" && Boolean(s.value?.trim()));
+    const hasDbBankAccountName = settings.some((s) => s.key === "bankAccountName" && Boolean(s.value?.trim()));
+    const hasDbBankBranch = settings.some((s) => s.key === "bankBranch" && Boolean(s.value?.trim()));
+    const hasDbBankSwift = settings.some((s) => s.key === "bankSwiftCode" && Boolean(s.value?.trim()));
+
+    // 1. If database has bankDetails string, extract any fields not explicitly set as rows in DB
+    if (hasDbBankDetails && map.bankDetails) {
+      const parsed = parseBankDetails(map.bankDetails);
+      if (parsed.bankName && !hasDbBankName) map.bankName = parsed.bankName;
+      if (parsed.bankAccountName && !hasDbBankAccountName) map.bankAccountName = parsed.bankAccountName;
+      if (parsed.bankAccountNumber && !hasDbBankAccNo) map.bankAccountNumber = parsed.bankAccountNumber;
+      if (parsed.bankBranch && !hasDbBankBranch) map.bankBranch = parsed.bankBranch;
+      if (parsed.bankSwiftCode && !hasDbBankSwift) map.bankSwiftCode = parsed.bankSwiftCode;
+    }
+
+    // 2. If structured fields were explicitly updated in DB, format bankDetails to match them
+    if (hasDbBankName || hasDbBankAccNo || hasDbBankAccountName) {
       let bDetails = `Bank: ${map.bankName}\nAccount Name: ${map.bankAccountName || "LEENA CEYLON (PVT) LTD"}\nAccount No: ${map.bankAccountNumber}\nBranch: ${map.bankBranch || "Kekirawa Branch"}${map.bankSwiftCode ? ` (Swift: ${map.bankSwiftCode})` : ""}`;
       if (map.bank2Name && map.bank2AccountNumber) {
         bDetails += `\n\nSecondary Account:\nBank: ${map.bank2Name}\nAccount Name: ${map.bank2AccountName || map.bankAccountName || "LEENA CEYLON (PVT) LTD"}\nAccount No: ${map.bank2AccountNumber}\nBranch: ${map.bank2Branch || ""}`;

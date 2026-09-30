@@ -19,6 +19,7 @@ import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { getSiteSettings } from "@/lib/settings";
 import BankTransferNotice from "@/components/BankTransferNotice";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Always fresh to show updated order status
 
 const ORDER_STEPS = [

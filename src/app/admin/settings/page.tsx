@@ -14,6 +14,7 @@ import {
   Eye,
   Copy,
 } from "lucide-react";
+import { parseBankDetails } from "@/lib/settings";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<any | null>(null);
@@ -23,7 +24,7 @@ export default function AdminSettingsPage() {
   const [copiedPreview, setCopiedPreview] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.settings) setSettings(data.settings);
@@ -35,7 +36,15 @@ export default function AdminSettingsPage() {
   const handleChange = (field: string, val: any) => {
     setSettings((prev: any) => {
       const updated = { ...prev, [field]: val };
-      if (
+
+      if (field === "bankDetails") {
+        const parsed = parseBankDetails(val);
+        if (parsed.bankName) updated.bankName = parsed.bankName;
+        if (parsed.bankAccountName) updated.bankAccountName = parsed.bankAccountName;
+        if (parsed.bankAccountNumber) updated.bankAccountNumber = parsed.bankAccountNumber;
+        if (parsed.bankBranch) updated.bankBranch = parsed.bankBranch;
+        if (parsed.bankSwiftCode) updated.bankSwiftCode = parsed.bankSwiftCode;
+      } else if (
         field === "bankName" ||
         field === "bankAccountName" ||
         field === "bankAccountNumber" ||
@@ -60,15 +69,26 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = { ...settings };
+      if (payload.bankDetails) {
+        const parsed = parseBankDetails(payload.bankDetails);
+        if (!payload.bankName && parsed.bankName) payload.bankName = parsed.bankName;
+        if (!payload.bankAccountName && parsed.bankAccountName) payload.bankAccountName = parsed.bankAccountName;
+        if (!payload.bankAccountNumber && parsed.bankAccountNumber) payload.bankAccountNumber = parsed.bankAccountNumber;
+        if (!payload.bankBranch && parsed.bankBranch) payload.bankBranch = parsed.bankBranch;
+        if (!payload.bankSwiftCode && parsed.bankSwiftCode) payload.bankSwiftCode = parsed.bankSwiftCode;
+      }
+
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (res.ok) {
-        setNotice("Settings saved successfully.");
+        if (data.settings) setSettings(data.settings);
+        setNotice("Settings saved successfully. All customer-facing pages updated!");
         setTimeout(() => setNotice(null), 4000);
       } else {
         alert(data.error || "Failed to save settings");

@@ -38,6 +38,7 @@ export default function CustomerLayoutWrapper({
         address={settings.address}
       />
       <WhatsAppModal
+        settings={settings}
         whatsappNumber={settings.whatsappNumber}
         whatsappTemplate={settings.whatsappTemplate}
       />

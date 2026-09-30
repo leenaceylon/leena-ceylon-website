@@ -27,6 +27,7 @@ import {
   Tag,
 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0; // Dynamic server rendering to always reflect live database updates
 
 import { SEO_KEYWORDS } from "@/lib/seo";

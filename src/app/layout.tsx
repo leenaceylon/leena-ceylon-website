@@ -6,6 +6,9 @@ import { getSiteSettings } from "@/lib/settings";
 import StructuredData from "@/components/StructuredData";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   const siteUrl = getBaseUrl();
