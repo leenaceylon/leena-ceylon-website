@@ -128,15 +128,19 @@ export default function WhatsAppModal({
   const isFreeDeliveryCoupon = Boolean(appliedCoupon?.isFreeShipping);
   const qualifiesForFreeDelivery = itemsSubtotal >= 3500 || isFreeDeliveryCoupon;
   const standardDeliveryFee = 350;
+  // If Office Pick-up is selected, delivery charge is completely removed (Rs. 0)
   const deliveryFee =
-    deliveryMethod === "PICKUP" || qualifiesForFreeDelivery ? 0 : standardDeliveryFee;
+    deliveryMethod === "PICKUP" ? 0 : (qualifiesForFreeDelivery ? 0 : standardDeliveryFee);
 
-  // Final Payable Amount
+  // Final Payable Amount: Items Subtotal - Coupon Discount + Delivery Fee
   const finalTotal = Math.max(0, itemsSubtotal - couponDiscount + deliveryFee);
-  const totalSavings =
-    offerSavings +
-    couponDiscount +
-    (qualifiesForFreeDelivery && deliveryMethod === "COURIER" ? standardDeliveryFee : 0);
+  
+  // Total Savings: Offer discount + Coupon discount + Delivery waiver (Rs. 350 saved on pickup or free delivery)
+  const deliverySavings =
+    deliveryMethod === "PICKUP"
+      ? standardDeliveryFee
+      : (qualifiesForFreeDelivery ? standardDeliveryFee : 0);
+  const totalSavings = offerSavings + couponDiscount + deliverySavings;
 
   const handleSelectSize = (sz: WhatsAppOrderSizeOption) => {
     setSelectedSize(sz.sizeName);
@@ -383,13 +387,13 @@ export default function WhatsAppModal({
             <div className="flex justify-between items-center text-xs">
               <span className="text-tea-forest font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Truck className="w-3.5 h-3.5 text-tea-leaf" />
-                <span>Delivery Method</span>
+                <span>Delivery or Shop Pick-up</span>
               </span>
               <span className="text-[11px] text-tea-muted">
-                {itemsSubtotal >= 3500 ? (
-                  <strong className="text-emerald-700 font-bold">🎉 FREE Delivery Qualified!</strong>
+                {qualifiesForFreeDelivery ? (
+                  <strong className="text-emerald-700 font-bold">🎉 FREE Courier Delivery Qualified!</strong>
                 ) : (
-                  <span>Free delivery over Rs. 3,500</span>
+                  <span>Free courier over Rs. 3,500</span>
                 )}
               </span>
             </div>
@@ -399,44 +403,68 @@ export default function WhatsAppModal({
               <button
                 type="button"
                 onClick={() => setDeliveryMethod("COURIER")}
-                className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 transition text-left ${
+                className={`p-3 rounded-xl border flex flex-col items-start gap-1 transition text-left cursor-pointer ${
                   deliveryMethod === "COURIER"
-                    ? "border-tea-forest bg-white text-tea-dark font-semibold ring-2 ring-tea-leaf/20 shadow-xs"
-                    : "border-tea-border bg-white/70 text-tea-muted hover:border-tea-leaf"
+                    ? "border-tea-forest bg-emerald-50/50 text-tea-dark font-semibold ring-2 ring-tea-leaf/30 shadow-xs"
+                    : "border-tea-border bg-white text-tea-muted hover:border-tea-leaf"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Courier Delivery</span>
+                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1.5">
+                    <Truck className="w-4 h-4 text-emerald-600" />
+                    <span>Doorstep Courier</span>
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-700">
-                    {deliveryFee === 0 ? "FREE" : "Rs. 350"}
+                  <span
+                    className={`text-[11px] font-bold ${
+                      qualifiesForFreeDelivery
+                        ? "text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded"
+                        : "text-tea-dark"
+                    }`}
+                  >
+                    {qualifiesForFreeDelivery ? "FREE" : "Rs. 350"}
                   </span>
                 </div>
                 <span className="text-[10px] text-tea-muted">Islandwide delivery in 24–48h</span>
               </button>
 
-              {/* Office Pick-up */}
+              {/* Shop / Office Pick-up */}
               <button
                 type="button"
                 onClick={() => setDeliveryMethod("PICKUP")}
-                className={`p-2.5 rounded-xl border flex flex-col items-start gap-1 transition text-left ${
+                className={`p-3 rounded-xl border flex flex-col items-start gap-1 transition text-left cursor-pointer ${
                   deliveryMethod === "PICKUP"
-                    ? "border-tea-forest bg-white text-tea-dark font-semibold ring-2 ring-tea-leaf/20 shadow-xs"
-                    : "border-tea-border bg-white/70 text-tea-muted hover:border-tea-leaf"
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-950 font-bold ring-2 ring-emerald-500/30 shadow-xs"
+                    : "border-tea-border bg-white text-tea-muted hover:border-tea-leaf"
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1">
-                    <Building className="w-3.5 h-3.5 text-tea-leaf" />
-                    <span>Office Pick-up</span>
+                  <span className="font-bold text-xs text-tea-dark flex items-center gap-1.5">
+                    <Building className="w-4 h-4 text-emerald-700" />
+                    <span>Shop / Office Pick-up</span>
                   </span>
-                  <span className="text-[11px] font-bold text-emerald-700">FREE</span>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                    Rs. 0 • FREE
+                  </span>
                 </div>
-                <span className="text-[10px] text-tea-muted">Kekirawa Head Office</span>
+                <span className="text-[10px] text-tea-muted">Collect at Kekirawa Head Office</span>
               </button>
             </div>
+
+            {/* Active Pick-up Notice */}
+            {deliveryMethod === "PICKUP" && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 flex items-center justify-between animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Building className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>
+                    <strong>Shop / Office Pick-up Selected:</strong> Delivery charge is{" "}
+                    <strong className="text-emerald-800 underline font-bold">100% REMOVED (Rs. 0)</strong>!
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] font-bold bg-emerald-700 text-white px-2 py-0.5 rounded-full shrink-0">
+                  Save Rs. 350
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 3. Coupon Code Option */}
@@ -597,20 +625,39 @@ export default function WhatsAppModal({
                 </div>
               )}
 
-              {/* Delivery Fee */}
-              <div className="flex justify-between items-center">
-                <span>
-                  Delivery Charge ({deliveryMethod === "PICKUP" ? "Office Pick-up" : "Islandwide Courier"})
+              {/* Delivery Fee Calculation Line */}
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-tea-muted flex items-center gap-1.5">
+                  {deliveryMethod === "PICKUP" ? (
+                    <Building className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Truck className="w-3.5 h-3.5 text-tea-forest" />
+                  )}
+                  <span>
+                    Delivery Charge ({deliveryMethod === "PICKUP" ? "Shop / Office Pick-up" : "Doorstep Courier"}):
+                  </span>
                 </span>
-                <span>
-                  {deliveryFee === 0 ? (
-                    <strong className="text-emerald-700 font-bold uppercase text-[11px]">FREE</strong>
+                <div>
+                  {deliveryMethod === "PICKUP" ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="line-through text-tea-muted text-xs">Rs. 350</span>
+                      <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                        Rs. 0 (REMOVED)
+                      </strong>
+                    </div>
+                  ) : qualifiesForFreeDelivery ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="line-through text-tea-muted text-xs">Rs. 350</span>
+                      <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                        FREE (Rs. 0)
+                      </strong>
+                    </div>
                   ) : (
                     <span className="font-semibold text-tea-dark">
                       + Rs. {deliveryFee.toLocaleString("en-US")}
                     </span>
                   )}
-                </span>
+                </div>
               </div>
 
               {/* FINAL PAYABLE TOTAL */}
@@ -622,6 +669,7 @@ export default function WhatsAppModal({
                   {totalSavings > 0 && (
                     <span className="text-[11px] font-bold text-emerald-700 block">
                       🎉 Total You Save: Rs. {totalSavings.toLocaleString("en-US")}
+                      {deliveryMethod === "PICKUP" && " (Delivery Fee Removed)"}
                     </span>
                   )}
                 </div>
@@ -664,18 +712,24 @@ export default function WhatsAppModal({
                 </div>
               </div>
 
-              {/* Delivery Address / City */}
+              {/* Delivery Address / Pick-up Notes */}
               <div>
                 <label className="block text-tea-muted font-medium mb-1">
-                  {deliveryMethod === "PICKUP" ? "Your City / Contact Notes" : "Delivery Address / Nearest City"}
+                  {deliveryMethod === "PICKUP"
+                    ? "Pick-up Notes / Expected Date (Optional)"
+                    : "Delivery Address / Nearest City"}
                 </label>
                 <div className="relative">
-                  <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  {deliveryMethod === "PICKUP" ? (
+                    <Building className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-700" />
+                  ) : (
+                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  )}
                   <input
                     type="text"
                     placeholder={
                       deliveryMethod === "PICKUP"
-                        ? "e.g. Collecting from Kekirawa Office today"
+                        ? "e.g. Collecting from Kekirawa Office today / tomorrow"
                         : "e.g. Kekirawa, Kandy, Colombo 03, etc."
                     }
                     value={customerAddress}
@@ -683,6 +737,14 @@ export default function WhatsAppModal({
                     className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
                   />
                 </div>
+                {deliveryMethod === "PICKUP" && (
+                  <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <span>
+                      <strong>Pick-up Location:</strong> LEENA CEYLON Office, Kekirawa, Sri Lanka (No home address needed)
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* Contact Phone (Optional) */}
@@ -710,20 +772,28 @@ export default function WhatsAppModal({
               Payment Method
             </label>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              {/* Cash on Delivery */}
+              {/* Pay on Pick-up / Cash on Delivery */}
               <button
                 type="button"
                 onClick={() => setPaymentMethod("COD")}
-                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition text-center ${
+                className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition text-center cursor-pointer ${
                   paymentMethod === "COD"
                     ? "border-emerald-600 bg-emerald-50/70 text-emerald-950 font-bold ring-2 ring-emerald-500/20 shadow-xs"
                     : "border-tea-border bg-white text-tea-muted hover:border-tea-leaf"
                 }`}
               >
-                <Truck className="w-4 h-4 text-emerald-600" />
-                <span className="font-semibold text-xs">Cash on Delivery</span>
+                {deliveryMethod === "PICKUP" ? (
+                  <Building className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Truck className="w-4 h-4 text-emerald-600" />
+                )}
+                <span className="font-semibold text-xs">
+                  {deliveryMethod === "PICKUP" ? "Pay on Pick-up" : "Cash on Delivery"}
+                </span>
                 <span className="text-[10px] text-tea-muted font-normal">
-                  Pay Rs. {finalTotal.toLocaleString("en-US")} on arrival
+                  {deliveryMethod === "PICKUP"
+                    ? `Pay Rs. ${finalTotal.toLocaleString("en-US")} at office`
+                    : `Pay Rs. ${finalTotal.toLocaleString("en-US")} on arrival`}
                 </span>
               </button>
 

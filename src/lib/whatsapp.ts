@@ -40,12 +40,14 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
 
   const itemSubtotal = details.total;
   const couponDiscount = details.couponDiscount || 0;
-  const deliveryCharge = details.deliveryCharge !== undefined ? details.deliveryCharge : 350;
+  const isPickup = details.deliveryMethod === "PICKUP";
+  const deliveryCharge = isPickup ? 0 : (details.deliveryCharge !== undefined ? details.deliveryCharge : 350);
   const finalPayable = details.finalTotal !== undefined
     ? details.finalTotal
     : Math.max(0, itemSubtotal - couponDiscount + deliveryCharge);
 
-  const grandSavings = offerSavings + couponDiscount + (details.deliveryCharge === 0 && details.deliveryMethod !== "PICKUP" ? 350 : 0);
+  const deliverySavings = isPickup ? 350 : (details.deliveryCharge === 0 ? 350 : 0);
+  const grandSavings = offerSavings + couponDiscount + deliverySavings;
   const isComingSoon = Boolean(details.isComingSoon);
 
   const lines: string[] = [
@@ -70,12 +72,15 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     lines.push(`• *Coupon Code:* ${details.couponCode} (-Rs. ${couponDiscount.toLocaleString("en-US")})`);
   }
 
-  if (details.deliveryMethod === "PICKUP") {
-    lines.push(`• *Delivery:* Office Pick-up (Kekirawa Head Office) (FREE)`);
+  if (isPickup) {
+    lines.push(`• *Delivery Option:* 🏬 *Shop / Office Pick-up (Kekirawa Head Office)*`);
+    lines.push(`• *Delivery Charge:* *Rs. 0 (REMOVED — Free Pick-up)*`);
   } else if (deliveryCharge === 0) {
-    lines.push(`• *Delivery:* Islandwide Courier (*FREE Delivery Applied*)`);
+    lines.push(`• *Delivery Option:* 🚚 *Islandwide Courier Delivery*`);
+    lines.push(`• *Delivery Charge:* *Rs. 0 (FREE Delivery Applied)*`);
   } else {
-    lines.push(`• *Delivery Charge:* Rs. ${deliveryCharge.toLocaleString("en-US")} (Islandwide Courier)`);
+    lines.push(`• *Delivery Option:* 🚚 *Islandwide Courier Delivery*`);
+    lines.push(`• *Delivery Charge:* Rs. ${deliveryCharge.toLocaleString("en-US")} (Standard Courier)`);
   }
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -85,11 +90,20 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
   }
   lines.push(``);
 
-  if (customerName || customerAddress || customerPhone) {
-    lines.push(`📍 *Customer & Delivery Details:*`);
+  if (customerName || customerAddress || customerPhone || isPickup) {
+    lines.push(`📍 *Customer & Pick-up / Delivery Details:*`);
     if (customerName) lines.push(`• *Customer Name:* ${customerName}`);
     if (customerPhone) lines.push(`• *Contact Phone:* ${customerPhone}`);
-    if (customerAddress) lines.push(`• *Delivery Address / City:* ${customerAddress}`);
+    if (isPickup) {
+      lines.push(`• *Pick-up Location:* LEENA CEYLON Office, Kekirawa, Sri Lanka`);
+      if (customerAddress) {
+        lines.push(`• *Pick-up Notes / Customer City:* ${customerAddress}`);
+      } else {
+        lines.push(`• *Pick-up Notes:* Collecting directly from Kekirawa Office`);
+      }
+    } else {
+      if (customerAddress) lines.push(`• *Delivery Address / City:* ${customerAddress}`);
+    }
     lines.push(``);
   }
 
@@ -105,12 +119,18 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     lines.push(``);
     lines.push(`I will transfer Rs. ${finalPayable.toLocaleString("en-US")} and share payment slip / screenshot here.`);
   } else {
-    lines.push(`💳 *Payment Method:* *Cash on Delivery (COD)* (Pay Rs. ${finalPayable.toLocaleString("en-US")} on package arrival)`);
+    if (isPickup) {
+      lines.push(`💳 *Payment Method:* *Pay on Pick-up (Cash / Card at Kekirawa Office)* (Pay Rs. ${finalPayable.toLocaleString("en-US")} at collection)`);
+    } else {
+      lines.push(`💳 *Payment Method:* *Cash on Delivery (COD)* (Pay Rs. ${finalPayable.toLocaleString("en-US")} on package arrival)`);
+    }
   }
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   if (isComingSoon) {
-    lines.push(`Please reserve my pre-order and inform me as soon as the fresh batch is ready for delivery. Thank you!`);
+    lines.push(`Please reserve my pre-order and inform me as soon as the fresh batch is ready. Thank you!`);
+  } else if (isPickup) {
+    lines.push(`Please prepare my tea pack(s) for collection at the Kekirawa office. Thank you!`);
   } else {
     lines.push(`Please confirm my order and share dispatch tracking details. Thank you!`);
   }
