@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Star, ChevronLeft, ChevronRight, Quote, CheckCircle2 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface Testimonial {
   id: string;
@@ -67,6 +68,7 @@ const TESTIMONIALS: Testimonial[] = [
 ];
 
 export default function TestimonialsSlider() {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
@@ -132,7 +134,7 @@ export default function TestimonialsSlider() {
 
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{current.date}</span>
+              <span>{t("testimonials.verified", current.date)}</span>
             </span>
           </div>
 
@@ -148,7 +150,7 @@ export default function TestimonialsSlider() {
               <p className="text-xs text-tea-muted">{current.city}</p>
             </div>
             <div className="self-start sm:self-auto text-left sm:text-right">
-              <span className="text-[11px] text-tea-muted block">Purchased:</span>
+              <span className="text-[11px] text-tea-muted block">{t("testimonials.purchased", "Purchased:")}</span>
               <span className="text-xs font-semibold text-tea-forest">{current.product}</span>
             </div>
           </div>

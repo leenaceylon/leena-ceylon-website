@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, MessageSquare, ArrowRight, Sparkles, Clock } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { calculatePricing } from "@/lib/pricing";
 
 export interface HeroSlideItem {
@@ -36,6 +37,7 @@ interface HeroProductSliderProps {
 
 export default function HeroProductSlider({ products }: HeroProductSliderProps) {
   const { openWhatsAppModal } = useCart();
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [selectedSizeIndex, setSelectedSizeIndex] = useState<number>(0);
@@ -164,12 +166,12 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
           {isComingSoon ? (
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300 shadow-xs">
               <Clock className="w-3.5 h-3.5 text-amber-700" />
-              <span>Coming Soon</span>
+              <span>{t("product.comingSoon", "Coming Soon")}</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              <span>In Stock</span>
+              <span>{t("product.inStock", "In Stock")}</span>
             </div>
           )}
         </div>
@@ -217,7 +219,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
           {/* Size / Weight Selector Pills */}
           {sizes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-medium text-tea-muted mr-1">Weight:</span>
+              <span className="text-[11px] font-medium text-tea-muted mr-1">{t("hero.weight", "Weight:")}</span>
               {sizes.map((sz, idx) => {
                 const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
                 return (
@@ -255,12 +257,12 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
               {isComingSoon ? (
                 <>
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Pre-Order</span>
+                  <span>{t("hero.preOrder", "Pre-Order")}</span>
                 </>
               ) : (
                 <>
                   <MessageSquare className="w-3.5 h-3.5 fill-current" />
-                  <span>Shop Now</span>
+                  <span>{t("hero.shopNow", "Shop Now")}</span>
                 </>
               )}
             </button>
@@ -269,7 +271,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
               href={`/products/${currentProduct.slug}`}
               className="w-full inline-flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl border border-tea-border bg-tea-surface hover:bg-white text-tea-dark hover:text-tea-forest font-semibold text-xs uppercase tracking-wider transition"
             >
-              <span>Explore</span>
+              <span>{t("hero.explore", "Explore")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

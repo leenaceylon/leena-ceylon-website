@@ -2,15 +2,18 @@
 
 import React from "react";
 import { Sparkles, Truck, Tag, Phone, ShieldCheck, Leaf } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function PromoMarquee() {
+  const { t } = useLanguage();
+
   const items = [
-    { icon: Leaf, text: "100% Pure Ceylon Single-Origin Tea" },
-    { icon: Truck, text: "Free Islandwide Delivery on Orders Over Rs. 3,500" },
-    { icon: Tag, text: "Use Promo Code 'LEENA10' for 10% OFF" },
-    { icon: ShieldCheck, text: "Authentic Sri Lankan Tea Garden Quality" },
-    { icon: Phone, text: "Instant WhatsApp Ordering: 071 777 4717" },
-    { icon: Sparkles, text: "Fresh Highland Harvest Packed at Origin" },
+    { icon: Leaf, text: t("marquee.pure", "100% Pure Ceylon Single-Origin Tea") },
+    { icon: Truck, text: t("marquee.freeDelivery", "Free Islandwide Delivery on Orders Over Rs. 3,500") },
+    { icon: Tag, text: t("marquee.promoCode", "Use Promo Code 'LEENA10' for 10% OFF") },
+    { icon: ShieldCheck, text: t("marquee.teaGardenQuality", "Authentic Sri Lankan Tea Garden Quality") },
+    { icon: Phone, text: t("marquee.instantWhatsapp", "Instant WhatsApp Ordering: 071 777 4717") },
+    { icon: Sparkles, text: t("marquee.freshHighland", "Fresh Highland Harvest Packed at Origin") },
   ];
 
   return (

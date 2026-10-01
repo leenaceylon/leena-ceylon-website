@@ -15,6 +15,7 @@ import {
   Leaf,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface TeaGradeItem {
   id: string;
@@ -123,6 +124,7 @@ const TEA_GRADES: TeaGradeItem[] = [
 
 export default function TeaGradesSlider() {
   const { openWhatsAppModal } = useCart();
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
@@ -296,7 +298,7 @@ export default function TeaGradesSlider() {
                     <div className="grid grid-cols-2 gap-3 p-3 bg-tea-surface/50 rounded-2xl border border-tea-border/50 text-xs">
                       <div>
                         <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
-                          Elevation
+                          {t("grades.elevation", "Elevation")}
                         </span>
                         <span className="font-semibold text-tea-dark line-clamp-1">
                           {item.elevation}
@@ -304,7 +306,7 @@ export default function TeaGradesSlider() {
                       </div>
                       <div>
                         <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
-                          Briskness / Strength
+                          {t("grades.strength", "Briskness / Strength")}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5">
                           {[...Array(5)].map((_, i) => (
@@ -332,7 +334,7 @@ export default function TeaGradesSlider() {
                     {/* Flavor & Aroma Profile Pills */}
                     <div>
                       <div className="text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1.5">
-                        Aroma & Character:
+                        {t("grades.aroma", "Aroma & Character:")}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {item.flavorNotes.map((note, idx) => (
@@ -351,7 +353,7 @@ export default function TeaGradesSlider() {
                     <div className="pt-2 border-t border-tea-border/50 flex items-center justify-between text-xs text-tea-dark">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-tea-leaf" />
-                        <span>Steep: <strong>{item.steepTime}</strong></span>
+                        <span>{t("grades.steep", "Steep:")} <strong>{item.steepTime}</strong></span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
@@ -368,14 +370,14 @@ export default function TeaGradesSlider() {
                       className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs tracking-wide transition shadow-xs"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Order on WhatsApp</span>
+                      <span>{t("grades.orderWhatsapp", "Order on WhatsApp")}</span>
                     </button>
 
                     <Link
                       href={`/products?q=${encodeURIComponent(item.productSearchTerm)}`}
                       className="w-full inline-flex items-center justify-center gap-1 px-3 py-2.5 rounded-xl border border-tea-border bg-white hover:bg-tea-bg text-tea-dark font-medium text-xs transition"
                     >
-                      <span>View Products</span>
+                      <span>{t("grades.viewProducts", "View Products")}</span>
                       <ArrowRight className="w-3 h-3 text-tea-leaf" />
                     </Link>
                   </div>
