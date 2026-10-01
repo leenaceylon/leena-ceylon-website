@@ -33,12 +33,21 @@ interface HomePageContentProps {
     whatsappNumber?: string;
     [key: string]: any;
   };
+  activePromotion?: {
+    id?: string;
+    code: string;
+    discountType: string;
+    discountValue: number;
+    minOrder?: number | null;
+    maxDiscount?: number | null;
+  } | null;
 }
 
 export default function HomePageContent({
   products,
   categories,
   settings,
+  activePromotion,
 }: HomePageContentProps) {
   const { t, isRTL } = useLanguage();
   const whatsappNumber = settings.whatsappNumber || "071 777 4717";
@@ -67,7 +76,7 @@ export default function HomePageContent({
       {/* ================================================== */}
       {/* 0. PROMOTIONAL ANNOUNCEMENT TICKER MARQUEE */}
       {/* ================================================== */}
-      <PromoMarquee />
+      <PromoMarquee activePromotion={activePromotion} />
 
       {/* ================================================== */}
       {/* 1. HERO SECTION WITH CINEMATIC CEYLON PLANTATION */}
@@ -159,10 +168,25 @@ export default function HomePageContent({
                   <Truck className="w-3.5 h-3.5 text-tea-leaf" />
                   <span>{t("hero.cod", "Cash on Delivery")}</span>
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/90 border border-tea-border shadow-xs text-tea-dark font-semibold">
-                  <Tag className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{t("hero.coupon", "Coupon: LEENA10")}</span>
-                </span>
+                {activePromotion ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-50/90 border border-amber-300 shadow-xs text-amber-900 font-semibold">
+                    <Tag className="w-3.5 h-3.5 text-amber-600" />
+                    <span>
+                      Coupon: {activePromotion.code} (
+                      {activePromotion.discountType === "PERCENTAGE"
+                        ? `${activePromotion.discountValue}% OFF`
+                        : activePromotion.discountType === "FREE_SHIPPING"
+                        ? "FREE DELIVERY"
+                        : `Rs. ${activePromotion.discountValue} OFF`}
+                      )
+                    </span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/90 border border-tea-border shadow-xs text-tea-dark font-semibold">
+                    <Sparkles className="w-3.5 h-3.5 text-tea-gold" />
+                    <span>{t("hero.gardenFresh", "Highland Fresh Harvest")}</span>
+                  </span>
+                )}
               </div>
 
               {/* Action Buttons */}
@@ -574,15 +598,30 @@ export default function HomePageContent({
         <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-tea-dark via-tea-forest to-tea-dark text-white p-6 sm:p-10 shadow-hover">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(200,169,81,0.22),transparent_55%)]" />
           <div className={`relative z-10 max-w-2xl space-y-3 text-center ${isRTL ? "sm:text-right" : "sm:text-left"}`}>
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-tea-gold/20 text-tea-gold text-xs font-bold uppercase tracking-wider">
-              <Tag className="w-3.5 h-3.5" />
-              <span>{t("promo.badge", "Special Online Offer: Use Code 'LEENA10'")}</span>
-            </div>
+            {activePromotion ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-tea-gold/20 text-tea-gold text-xs font-bold uppercase tracking-wider">
+                <Tag className="w-3.5 h-3.5" />
+                <span>Special Online Offer: Use Code '{activePromotion.code}'</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>100% Pure Ceylon Single-Origin Harvest</span>
+              </div>
+            )}
             <h2 className="font-serif text-2xl sm:text-3xl font-bold leading-tight">
               {t("promo.heading", "BRING THE TASTE OF CEYLON HOME")}
             </h2>
             <p className="text-xs sm:text-sm text-tea-pale/85 leading-relaxed">
-              {t("promo.description", "Explore our full collection of authentic Sri Lankan tea. Enjoy 10% OFF and free islandwide delivery on orders over Rs. 3,500.")}
+              {activePromotion
+                ? `Explore our full collection of authentic Sri Lankan tea. Enjoy ${
+                    activePromotion.discountType === "PERCENTAGE"
+                      ? `${activePromotion.discountValue}% OFF`
+                      : activePromotion.discountType === "FREE_SHIPPING"
+                      ? "Free Islandwide Delivery"
+                      : `Rs. ${activePromotion.discountValue} OFF`
+                  } and free islandwide delivery on orders over Rs. 3,500.`
+                : "Explore our full collection of authentic Sri Lankan tea. Fresh highland harvest packed at source with free islandwide delivery on orders over Rs. 3,500."}
             </p>
             <div className={`pt-1 flex flex-col sm:flex-row items-center gap-2.5 ${isRTL ? "sm:justify-end" : ""}`}>
               <Link
@@ -594,7 +633,9 @@ export default function HomePageContent({
               </Link>
               <a
                 href={`https://wa.me/${cleanWhatsappNumber}?text=${encodeURIComponent(
-                  "Hello LEENA CEYLON,\n\nI would like to order Ceylon tea using promo code LEENA10."
+                  activePromotion
+                    ? `Hello LEENA CEYLON,\n\nI would like to order Ceylon tea using promo code ${activePromotion.code}.`
+                    : "Hello LEENA CEYLON,\n\nI would like to order Ceylon tea."
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

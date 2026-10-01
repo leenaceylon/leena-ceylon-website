@@ -85,6 +85,36 @@ export default async function HomePage() {
     categories = FALLBACK_CATEGORIES as any;
   }
 
+  // Fetch active promotion dynamically from database
+  let activePromotion: any = null;
+  try {
+    const now = new Date();
+    const activeCoupons = await prisma.coupon.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    const valid = activeCoupons.filter((c) => {
+      if (c.startDate && new Date(c.startDate) > now) return false;
+      if (c.endDate && new Date(c.endDate) < now) return false;
+      if (c.usageLimit && c.timesUsed >= c.usageLimit) return false;
+      return true;
+    });
+    if (valid.length > 0) {
+      activePromotion = {
+        id: valid[0].id,
+        code: valid[0].code,
+        discountType: valid[0].discountType,
+        discountValue: valid[0].discountValue,
+        minOrder: valid[0].minOrder,
+        maxDiscount: valid[0].maxDiscount,
+      };
+    }
+  } catch (promoErr) {
+    console.warn("Could not load promotions:", promoErr);
+  }
+
   // FAQ Schema for Google Rich Results
   const faqSchema = {
     "@context": "https://schema.org",
@@ -135,6 +165,7 @@ export default async function HomePage() {
         products={allAvailableProducts}
         categories={categories}
         settings={settings}
+        activePromotion={activePromotion}
       />
     </>
   );

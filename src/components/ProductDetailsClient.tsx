@@ -119,6 +119,9 @@ export default function ProductDetailsClient({
 
   const handleOrderWhatsApp = () => {
     openWhatsAppModal({
+      productId: product.id,
+      variantId: activeSize?.id,
+      image: product.mainImage,
       productName: product.name,
       size: activeSize?.sizeName || "Standard",
       quantity: quantity,

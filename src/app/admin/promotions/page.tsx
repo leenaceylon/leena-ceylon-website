@@ -78,6 +78,23 @@ export default function AdminPromotionsPage() {
     }
   };
 
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
+    try {
+      const res = await fetch("/api/promotions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isActive: !currentActive }),
+      });
+      if (res.ok) {
+        setNotice(`Coupon ${!currentActive ? "activated" : "deactivated"}.`);
+        setTimeout(() => setNotice(null), 3000);
+        loadCoupons();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="p-6 sm:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -126,6 +143,7 @@ export default function AdminPromotionsPage() {
                   <th className="py-3.5 px-4">Discount</th>
                   <th className="py-3.5 px-4">Min Spend</th>
                   <th className="py-3.5 px-4">Times Used</th>
+                  <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
@@ -147,11 +165,25 @@ export default function AdminPromotionsPage() {
                       {c.minOrder ? `Rs. ${c.minOrder}` : "None"}
                     </td>
                     <td className="py-3 px-4 text-tea-dark">{c.timesUsed} uses</td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleActive(c.id, c.isActive)}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition ${
+                          c.isActive
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200"
+                            : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                        }`}
+                      >
+                        {c.isActive ? "ACTIVE" : "INACTIVE"}
+                      </button>
+                    </td>
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
                         onClick={() => handleDelete(c.id)}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                        title="Delete Coupon"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

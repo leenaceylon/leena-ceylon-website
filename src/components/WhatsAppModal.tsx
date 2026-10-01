@@ -62,6 +62,8 @@ export default function WhatsAppModal({
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Dynamic Bank Settings from Admin
   const [bankInfo, setBankInfo] = useState({
@@ -118,6 +120,16 @@ export default function WhatsAppModal({
           }
         })
         .catch((err) => console.warn("Failed to load settings in WhatsApp modal:", err));
+
+      // Fetch active coupons dynamically from database
+      fetch("/api/promotions?activeOnly=true")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && Array.isArray(data.coupons)) {
+            setAvailableCoupons(data.coupons);
+          }
+        })
+        .catch(() => {});
     }
   }, [whatsAppModal.isOpen]);
 
@@ -253,8 +265,76 @@ export default function WhatsAppModal({
     setCouponError(null);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
+
+    let createdOrderNumber: string | undefined = undefined;
+
+    try {
+      const orderPayload = {
+        fullName: customerName.trim() || "WhatsApp Customer",
+        mobileNumber: customerPhone.trim() || "Not Provided",
+        email: `whatsapp-${Date.now()}@order.leenaceylon.com`,
+        address:
+          customerAddress.trim() ||
+          (deliveryMethod === "PICKUP"
+            ? "LEENA CEYLON Office, Kekirawa, Sri Lanka (Office Pick-up)"
+            : "Islandwide Courier Delivery"),
+        city: deliveryMethod === "PICKUP" ? "Kekirawa" : (customerAddress.trim() || "Sri Lanka"),
+        district: "Sri Lanka",
+        postalCode: "",
+        deliveryNotes: `${
+          deliveryMethod === "PICKUP"
+            ? "Office Pick-up (Kekirawa Head Office)"
+            : "Islandwide Courier Delivery"
+        }${appliedCoupon ? ` | Coupon: ${appliedCoupon.code} (-Rs. ${couponDiscount})` : ""}${
+          customerAddress ? ` | Notes: ${customerAddress}` : ""
+        }`,
+        paymentMethod:
+          paymentMethod === "BANK"
+            ? "BANK_TRANSFER"
+            : deliveryMethod === "PICKUP"
+            ? "PAY_ON_PICKUP"
+            : "CASH_ON_DELIVERY",
+        cartItems: [
+          {
+            productId: details.productId || null,
+            variantId: details.variantId || null,
+            name: details.productName,
+            size: selectedSize || details.size,
+            price: pricing.unitPrice,
+            quantity: quantity,
+            image: details.image || null,
+          },
+        ],
+        subtotal: itemsSubtotal,
+        discount: couponDiscount,
+        deliveryCharge: deliveryFee,
+        grandTotal: finalTotal,
+        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        deliveryMethod: deliveryMethod,
+      };
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderPayload),
+      });
+
+      const data = await res.json();
+      if (res.ok && data?.orderNumber) {
+        createdOrderNumber = data.orderNumber;
+      }
+    } catch (e) {
+      console.warn("Order recording failed, proceeding with WhatsApp message:", e);
+    }
+
     const orderDetails: WhatsAppOrderDetails = {
+      productId: details.productId,
+      variantId: details.variantId,
+      image: details.image,
+      orderNumber: createdOrderNumber,
       productName: details.productName,
       size: selectedSize || details.size,
       quantity: quantity,
@@ -279,10 +359,12 @@ export default function WhatsAppModal({
       customerPhone: customerPhone.trim(),
       paymentMethod: paymentMethod,
       bankInfo: bankInfo,
+      orderNumber: createdOrderNumber,
     });
 
     const url = getWhatsAppUrl(whatsappNumber, message);
     window.open(url, "_blank", "noopener,noreferrer");
+    setIsSubmittingOrder(false);
     closeWhatsAppModal();
   };
 
@@ -614,24 +696,28 @@ export default function WhatsAppModal({
                   </p>
                 )}
 
-                {/* Quick Coupon Tap suggestions */}
-                <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-tea-muted flex-wrap">
-                  <span>Available Coupons:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyCoupon("LEENA10")}
-                    className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
-                  >
-                    LEENA10 (10% OFF)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyCoupon("WELCOME50")}
-                    className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
-                  >
-                    WELCOME50 (Rs. 50 OFF)
-                  </button>
-                </div>
+                {/* Dynamic Quick Coupon Tap suggestions */}
+                {availableCoupons && availableCoupons.length > 0 && (
+                  <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-tea-muted flex-wrap">
+                    <span>{t("modal.availableCoupons", "Available Coupons:")}</span>
+                    {availableCoupons.map((cpn) => (
+                      <button
+                        key={cpn.id || cpn.code}
+                        type="button"
+                        onClick={() => handleApplyCoupon(cpn.code)}
+                        className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
+                      >
+                        {cpn.code} (
+                        {cpn.discountType === "PERCENTAGE"
+                          ? `${cpn.discountValue}% OFF`
+                          : cpn.discountType === "FREE_SHIPPING"
+                          ? "FREE DELIVERY"
+                          : `Rs. ${cpn.discountValue} OFF`}
+                        )
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -972,10 +1058,20 @@ export default function WhatsAppModal({
         <div className="p-4 sm:p-5 bg-tea-bg/80 border-t border-tea-border space-y-2 shrink-0">
           <button
             onClick={handleContinue}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-[0.99]"
+            disabled={isSubmittingOrder}
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-80 disabled:cursor-wait text-white font-bold text-sm uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-[0.99]"
           >
-            <MessageSquare className="w-5 h-5 fill-current" />
-            <span>{t("modal.sendOrderButton", "CONFIRM & SEND ORDER VIA WHATSAPP")} • RS. {finalTotal.toLocaleString("en-US")}</span>
+            {isSubmittingOrder ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Recording Order & Launching WhatsApp...</span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-5 h-5 fill-current" />
+                <span>{t("modal.sendOrderButton", "CONFIRM & SEND ORDER VIA WHATSAPP")} • RS. {finalTotal.toLocaleString("en-US")}</span>
+              </>
+            )}
           </button>
           <button
             onClick={closeWhatsAppModal}

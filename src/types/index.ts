@@ -21,6 +21,10 @@ export interface WhatsAppOrderSizeOption {
 }
 
 export interface WhatsAppOrderDetails {
+  productId?: string;
+  variantId?: string;
+  image?: string;
+  orderNumber?: string;
   productName: string;
   size: string;
   quantity: number;

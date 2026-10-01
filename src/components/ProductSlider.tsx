@@ -309,6 +309,9 @@ export default function ProductSlider({ products }: ProductSliderProps) {
             const handleOrder = (e: React.MouseEvent) => {
               e.preventDefault();
               openWhatsAppModal({
+                productId: product.id,
+                variantId: activeSize?.id,
+                image: product.mainImage,
                 productName: getProductTitle(product) || product.name || "Ceylon Tea",
                 size: activeSize?.sizeName || "Standard",
                 quantity: 1,

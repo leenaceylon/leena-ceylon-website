@@ -23,44 +23,14 @@ export async function POST(req: NextRequest) {
         where: { code: rawCode },
       });
     } catch (dbErr) {
-      console.warn("Coupon DB lookup failed, falling back to static codes:", dbErr);
-    }
-
-    // Default static coupons fallback if database doesn't have the coupon
-    if (!coupon) {
-      if (rawCode === "LEENA10") {
-        coupon = {
-          code: "LEENA10",
-          discountType: "PERCENTAGE",
-          discountValue: 10,
-          minOrder: 1000,
-          maxDiscount: 500,
-          isActive: true,
-        };
-      } else if (rawCode === "WELCOME50") {
-        coupon = {
-          code: "WELCOME50",
-          discountType: "FIXED",
-          discountValue: 50,
-          minOrder: 500,
-          isActive: true,
-        };
-      } else if (rawCode === "FREESHIP") {
-        coupon = {
-          code: "FREESHIP",
-          discountType: "FREE_SHIPPING",
-          discountValue: 350,
-          minOrder: 1500,
-          isActive: true,
-        };
-      }
+      console.warn("Coupon DB lookup failed:", dbErr);
     }
 
     if (!coupon || !coupon.isActive) {
       return NextResponse.json(
         {
           valid: false,
-          message: `Coupon "${rawCode}" is invalid or expired. Try "LEENA10" (10% OFF) or "WELCOME50" (Rs. 50 OFF).`,
+          message: `Coupon code "${rawCode}" is invalid or has expired.`,
         },
         { status: 404 }
       );

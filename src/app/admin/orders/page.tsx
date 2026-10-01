@@ -206,7 +206,13 @@ function AdminOrdersView() {
                             : "bg-amber-100 text-amber-800"
                         }`}
                       >
-                        {o.paymentStatus} ({o.paymentMethod === "CASH_ON_DELIVERY" ? "COD" : "Bank"})
+                        {o.paymentStatus} (
+                          {o.paymentMethod === "PAY_ON_PICKUP"
+                            ? "Pick-up"
+                            : o.paymentMethod === "CASH_ON_DELIVERY"
+                            ? "COD"
+                            : "Bank"}
+                        )
                       </span>
                     </td>
                     <td className="py-3 px-4">

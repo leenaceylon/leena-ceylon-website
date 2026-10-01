@@ -42,7 +42,7 @@ const TESTIMONIALS: Testimonial[] = [
     rating: 5,
     product: "LEENA Pure Tea Powder (500g)",
     comment:
-      "Used coupon code LEENA10 and got free islandwide delivery. The tea powder makes the strongest, most authentic Sri Lankan milk tea I have tasted in years. Excellent value.",
+      "Ordered directly online with a discount promo code and got free islandwide delivery. The tea powder makes the strongest, most authentic Sri Lankan milk tea I have tasted in years. Excellent value.",
     date: "Verified Buyer",
   },
   {

@@ -4,13 +4,39 @@ import React from "react";
 import { Sparkles, Truck, Tag, Phone, ShieldCheck, Leaf } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
-export default function PromoMarquee() {
+interface PromoMarqueeProps {
+  activePromotion?: {
+    code: string;
+    discountType: string;
+    discountValue: number;
+  } | null;
+}
+
+export default function PromoMarquee({ activePromotion }: PromoMarqueeProps) {
   const { t } = useLanguage();
+
+  const discountText = activePromotion
+    ? activePromotion.discountType === "PERCENTAGE"
+      ? `${activePromotion.discountValue}% OFF`
+      : activePromotion.discountType === "FREE_SHIPPING"
+      ? "FREE DELIVERY"
+      : `Rs. ${activePromotion.discountValue} OFF`
+    : "";
+
+  const promoItem = activePromotion
+    ? {
+        icon: Tag,
+        text: `Use Promo Code '${activePromotion.code}' for ${discountText}`,
+      }
+    : {
+        icon: ShieldCheck,
+        text: t("marquee.estateFresh", "Single-Origin Highland Harvest Packed at Source"),
+      };
 
   const items = [
     { icon: Leaf, text: t("marquee.pure", "100% Pure Ceylon Single-Origin Tea") },
     { icon: Truck, text: t("marquee.freeDelivery", "Free Islandwide Delivery on Orders Over Rs. 3,500") },
-    { icon: Tag, text: t("marquee.promoCode", "Use Promo Code 'LEENA10' for 10% OFF") },
+    promoItem,
     { icon: ShieldCheck, text: t("marquee.teaGardenQuality", "Authentic Sri Lankan Tea Garden Quality") },
     { icon: Phone, text: t("marquee.instantWhatsapp", "Instant WhatsApp Ordering: 071 777 4717") },
     { icon: Sparkles, text: t("marquee.freshHighland", "Fresh Highland Harvest Packed at Origin") },

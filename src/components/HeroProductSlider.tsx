@@ -120,6 +120,9 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
+      productId: currentProduct.id,
+      variantId: activeSize?.id,
+      image: currentProduct.mainImage,
       productName: getProductTitle(currentProduct) || currentProduct.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: 1,

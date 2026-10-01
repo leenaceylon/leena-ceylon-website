@@ -35,6 +35,7 @@ export interface WhatsAppOrderCompilationParams {
   brandName?: string;
   bankInfo?: WhatsAppOrderBankInfo;
   bankDetails?: string;
+  orderNumber?: string;
 }
 
 export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilationParams): string {
@@ -45,6 +46,7 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     customerPhone,
     paymentMethod = "COD",
     brandName = "LEENA CEYLON",
+    orderNumber = params.details.orderNumber,
   } = params;
   const isBank = paymentMethod === "BANK";
 
@@ -70,6 +72,13 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
       ? `⏳ *COMING SOON PRE-ORDER INQUIRY — ${brandName}* ⏳`
       : `🌿 *NEW TEA ORDER — ${brandName}* 🌿`,
     `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    ...(orderNumber
+      ? [
+          `📌 *Order Reference:* #${orderNumber}`,
+          `📋 *Status:* Registered in Store System (Pending Confirmation)`,
+          `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        ]
+      : []),
     ...(isComingSoon
       ? [`✨ *Pre-Order / Advance Reservation Request* (Item Launching Soon)`]
       : []),
