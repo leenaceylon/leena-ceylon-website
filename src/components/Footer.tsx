@@ -1,7 +1,11 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Phone, Mail, MapPin, MessageSquare, ShieldCheck, Heart } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Footer({
   logoUrl = "/brand/logo.png",
@@ -16,6 +20,8 @@ export default function Footer({
   email?: string;
   address?: string;
 }) {
+  const { t } = useLanguage();
+
   return (
     <footer className="bg-tea-dark text-white border-t border-tea-forest/40">
       {/* Upper Footer: Value Props */}
@@ -84,7 +90,7 @@ export default function Footer({
                 PURE CEYLON TEA
               </p>
               <p className="text-xs tracking-wider text-tea-pale/80 uppercase">
-                THE TASTE OF CEYLON
+                {t("footer.tagline", "THE TASTE OF CEYLON")}
               </p>
             </div>
 
@@ -92,28 +98,33 @@ export default function Footer({
               Discover the authentic taste, aroma and character of Pure Ceylon Tea from Sri Lanka. Carefully handpicked from the central mountain estates and delivered fresh to your teacup.
             </p>
 
-            <div className="pt-2 flex items-center gap-3">
+            <div className="pt-2 flex flex-col gap-3">
               <a
-                href={`https://wa.me/94717774717`}
+                href={`https://wa.me/${whatsappNumber.replace(/\D/g, "") || "94717774717"}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm w-fit"
               >
                 <MessageSquare className="w-4 h-4" />
                 Chat on WhatsApp
               </a>
+
+              {/* Language Selector in Footer */}
+              <div className="pt-2">
+                <LanguageSelector variant="footer" />
+              </div>
             </div>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
             <h4 className="font-serif text-sm font-semibold tracking-wider uppercase text-white">
-              Shop Tea
+              {t("footer.quickLinks", "Shop Tea")}
             </h4>
             <ul className="space-y-2.5 text-xs text-tea-pale/80">
               <li>
                 <Link href="/products" className="hover:text-white transition">
-                  All Products
+                  {t("nav.allTeas", "All Products")}
                 </Link>
               </li>
               <li>
@@ -147,7 +158,7 @@ export default function Footer({
           {/* Discover & Learn */}
           <div className="space-y-4">
             <h4 className="font-serif text-sm font-semibold tracking-wider uppercase text-white">
-              Explore Ceylon
+              {t("nav.ceylonTea", "Explore Ceylon")}
             </h4>
             <ul className="space-y-2.5 text-xs text-tea-pale/80">
               <li>
@@ -167,17 +178,17 @@ export default function Footer({
               </li>
               <li>
                 <Link href="/about" className="hover:text-white transition">
-                  Our Brand Story
+                  {t("nav.about", "Our Brand Story")}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition">
-                  Contact Us
+                  {t("nav.contact", "Contact Us")}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition">
-                  Customer Service
+                  {t("footer.customerService", "Customer Support")}
                 </Link>
               </li>
             </ul>
@@ -186,7 +197,7 @@ export default function Footer({
           {/* Contact Details */}
           <div className="space-y-4">
             <h4 className="font-serif text-sm font-semibold tracking-wider uppercase text-white">
-              Contact & Support
+              {t("footer.contactUs", "Contact & Support")}
             </h4>
             <ul className="space-y-3 text-xs text-tea-pale/80">
               <li className="flex items-start gap-2.5">
@@ -202,7 +213,7 @@ export default function Footer({
               <li className="flex items-center gap-2.5">
                 <MessageSquare className="w-4 h-4 text-emerald-400 shrink-0" />
                 <a
-                  href={`https://wa.me/94717774717`}
+                  href={`https://wa.me/${whatsappNumber.replace(/\D/g, "") || "94717774717"}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-white transition"
@@ -231,7 +242,7 @@ export default function Footer({
 
         {/* Bottom Legal bar */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-tea-pale/60">
-          <p>© {new Date().getFullYear()} LEENA CEYLON. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} LEENA CEYLON. {t("footer.allRights", "All rights reserved.")}</p>
           <div className="flex items-center space-x-6">
             <Link href="/privacy-policy" className="hover:text-white transition">
               Privacy Policy

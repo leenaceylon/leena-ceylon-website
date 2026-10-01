@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   ChevronRight,
 } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Navbar({
   logoUrl = "/brand/logo.png",
@@ -25,6 +27,7 @@ export default function Navbar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t, isRTL } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,11 +56,11 @@ export default function Navbar({
   };
 
   const navLinks = [
-    { name: "Home", href: "/" },
-    { name: "Products", href: "/products" },
-    { name: "About", href: "/about" },
-    { name: "Ceylon Tea", href: "/ceylon-tea" },
-    { name: "Contact", href: "/contact" },
+    { name: t("nav.home", "Home"), href: "/" },
+    { name: t("nav.products", "Products"), href: "/products" },
+    { name: t("nav.about", "About"), href: "/about" },
+    { name: t("nav.ceylonTea", "Ceylon Tea"), href: "/ceylon-tea" },
+    { name: t("nav.contact", "Contact"), href: "/contact" },
   ];
 
   return (
@@ -68,22 +71,28 @@ export default function Navbar({
           <div className="flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-light tracking-wide text-tea-pale/90">
-              100% Pure Ceylon Single-Origin Tea • Direct from Sri Lanka
+              {t("banner.pureCeylon", "100% Pure Ceylon Single-Origin Tea • Direct from Sri Lanka")}
             </span>
           </div>
-          <div className="hidden sm:flex items-center gap-4 text-tea-pale/80 text-[11px]">
-            <a
-              href={`tel:${phone.replace(/\s+/g, "")}`}
-              className="flex items-center gap-1.5 hover:text-white transition"
-            >
-              <Phone className="w-3 h-3 text-tea-gold" />
-              <span>{phone}</span>
-            </a>
-            <span className="text-white/20">|</span>
-            <span className="flex items-center gap-1 text-tea-gold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>100% Pure Ceylon Guarantee</span>
-            </span>
+
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-4 text-tea-pale/80 text-[11px]">
+              <a
+                href={`tel:${phone.replace(/\s+/g, "")}`}
+                className="flex items-center gap-1.5 hover:text-white transition"
+              >
+                <Phone className="w-3 h-3 text-tea-gold" />
+                <span>{phone}</span>
+              </a>
+              <span className="text-white/20">|</span>
+              <span className="flex items-center gap-1 text-tea-gold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>{t("banner.guarantee", "100% Pure Ceylon Guarantee")}</span>
+              </span>
+            </div>
+
+            {/* Language Switcher in Top Bar */}
+            <LanguageSelector variant="nav" />
           </div>
         </div>
       </div>
@@ -125,12 +134,12 @@ export default function Navbar({
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-8">
+            <nav className="hidden lg:flex items-center space-x-8 rtl:space-x-reverse">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
-                    key={link.name}
+                    key={link.href}
                     href={link.href}
                     className={`text-sm tracking-wider uppercase font-medium transition-colors relative py-1 ${
                       isActive
@@ -148,7 +157,7 @@ export default function Navbar({
             </nav>
 
             {/* Right Icons: Search & Direct WhatsApp Order */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse">
               {/* Search Toggle */}
               <button
                 onClick={() => setSearchOpen(!searchOpen)}
@@ -166,7 +175,7 @@ export default function Navbar({
                 className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-sm hover:shadow active:scale-[0.98]"
               >
                 <MessageSquare className="w-4 h-4 fill-current" />
-                <span className="hidden sm:inline">WhatsApp Order</span>
+                <span className="hidden sm:inline">{t("nav.whatsappOrder", "WhatsApp Order")}</span>
               </a>
             </div>
           </div>
@@ -179,19 +188,22 @@ export default function Navbar({
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Search pure Ceylon tea, tea powder, BOPF, grades (e.g. BOPF, Lemon)..."
+                  placeholder={t(
+                    "nav.searchPlaceholder",
+                    "Search pure Ceylon tea, tea powder, BOPF, grades (e.g. BOPF, Lemon)..."
+                  )}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition"
+                  className="w-full pl-10 pr-4 rtl:pl-4 rtl:pr-10 py-2.5 text-sm rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition"
                   autoFocus
                 />
-                <Search className="w-4 h-4 text-tea-muted absolute left-3.5 top-3" />
+                <Search className={`w-4 h-4 text-tea-muted absolute ${isRTL ? "right-3.5" : "left-3.5"} top-3`} />
               </div>
               <button
                 type="submit"
                 className="px-5 py-2.5 bg-tea-dark hover:bg-tea-forest text-white text-sm font-medium rounded-xl transition"
               >
-                Search
+                {t("nav.searchButton", "Search")}
               </button>
               <button
                 type="button"
@@ -216,7 +228,11 @@ export default function Navbar({
           />
 
           {/* Drawer content */}
-          <div className="fixed inset-y-0 left-0 max-w-xs w-full bg-white shadow-xl z-50 flex flex-col justify-between overflow-y-auto">
+          <div
+            className={`fixed inset-y-0 ${
+              isRTL ? "right-0" : "left-0"
+            } max-w-xs w-full bg-white shadow-xl z-50 flex flex-col justify-between overflow-y-auto`}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between pb-6 border-b border-tea-border">
                 <div className="relative h-12 w-36">
@@ -247,7 +263,7 @@ export default function Navbar({
                   const isActive = pathname === link.href;
                   return (
                     <Link
-                      key={link.name}
+                      key={link.href}
                       href={link.href}
                       onClick={() => setMobileMenuOpen(false)}
                       className={`flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition ${
@@ -257,7 +273,7 @@ export default function Navbar({
                       }`}
                     >
                       <span>{link.name}</span>
-                      <ChevronRight className="w-4 h-4 text-tea-muted" />
+                      <ChevronRight className="w-4 h-4 text-tea-muted rtl:rotate-180" />
                     </Link>
                   );
                 })}
@@ -271,28 +287,33 @@ export default function Navbar({
                   >
                     <span className="flex items-center gap-2.5">
                       <MessageSquare className="w-4 h-4 text-emerald-600 fill-current" />
-                      Direct WhatsApp Order
+                      {t("nav.whatsappOrder", "Direct WhatsApp Order")}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-emerald-700" />
+                    <ChevronRight className="w-4 h-4 text-emerald-700 rtl:rotate-180" />
                   </a>
                 </div>
               </nav>
+
+              {/* Mobile Drawer Language Selector */}
+              <div className="mt-6 pt-5 border-t border-tea-border">
+                <LanguageSelector variant="grid" />
+              </div>
             </div>
 
             {/* Bottom Actions */}
             <div className="p-6 bg-tea-bg border-t border-tea-border space-y-3">
               <a
-                href={`https://wa.me/94717774717`}
+                href={`https://wa.me/${whatsappNumber.replace(/\D/g, "") || "94717774717"}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold tracking-wide uppercase transition"
               >
                 <MessageSquare className="w-4 h-4" />
-                Order via WhatsApp
+                {t("modal.title", "Order via WhatsApp")}
               </a>
 
               <div className="text-center text-[11px] text-tea-muted">
-                Sri Lanka Headquarters: 071 777 4717
+                Sri Lanka Headquarters: {phone}
               </div>
             </div>
           </div>

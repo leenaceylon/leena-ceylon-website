@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { MessageSquare, ArrowRight, Sparkles, Clock } from "lucide-react";
 import { calculatePricing } from "@/lib/pricing";
 
@@ -32,6 +33,7 @@ export interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { openWhatsAppModal } = useCart();
+  const { t } = useLanguage();
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
   const [cardQuantity, setCardQuantity] = useState(1);
 
@@ -110,16 +112,16 @@ export default function ProductCard({ product }: ProductCardProps) {
           {isComingSoon ? (
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white flex items-center gap-1 shadow-xs">
               <Clock className="w-2.5 h-2.5" />
-              Coming Soon
+              {t("product.comingSoon", "Coming Soon")}
             </span>
           ) : isOutOfStock ? (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white">
-              Out of Stock
+              {t("product.outOfStock", "Out of Stock")}
             </span>
           ) : (
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-700 text-white flex items-center gap-1 shadow-xs">
               <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
-              In Stock
+              {t("product.inStock", "In Stock")}
             </span>
           )}
         </div>
@@ -270,12 +272,12 @@ export default function ProductCard({ product }: ProductCardProps) {
               {isComingSoon ? (
                 <>
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Pre-Order</span>
+                  <span>{t("product.preOrder", "Pre-Order")}</span>
                 </>
               ) : (
                 <>
                   <MessageSquare className="w-3.5 h-3.5 fill-current" />
-                  <span>Shop Now</span>
+                  <span>{t("nav.whatsappOrder", "Shop Now")}</span>
                 </>
               )}
             </button>

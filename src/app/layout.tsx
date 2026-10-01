@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import CustomerLayoutWrapper from "@/components/CustomerLayoutWrapper";
 import { getSiteSettings } from "@/lib/settings";
 import StructuredData from "@/components/StructuredData";
@@ -102,11 +103,13 @@ export default async function RootLayout({
         <StructuredData settings={settings} />
       </head>
       <body className="antialiased selection:bg-tea-leaf selection:text-white">
-        <CartProvider>
-          <CustomerLayoutWrapper settings={settings}>
-            {children}
-          </CustomerLayoutWrapper>
-        </CartProvider>
+        <LanguageProvider>
+          <CartProvider>
+            <CustomerLayoutWrapper settings={settings}>
+              {children}
+            </CustomerLayoutWrapper>
+          </CartProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

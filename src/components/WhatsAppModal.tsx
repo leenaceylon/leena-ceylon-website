@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { compileSingleProductWhatsAppOrder, getWhatsAppUrl } from "@/lib/whatsapp";
 import { calculatePricing } from "@/lib/pricing";
 import {
@@ -35,6 +36,7 @@ export default function WhatsAppModal({
   settings?: SiteSettingsMap;
 }) {
   const { whatsAppModal, closeWhatsAppModal } = useCart();
+  const { t, isRTL } = useLanguage();
 
   // All React state hooks declared at the top unconditionally
   const [customerName, setCustomerName] = useState("");
@@ -68,7 +70,7 @@ export default function WhatsAppModal({
     bankAccountNumber: settings?.bankAccountNumber || "1000 2489 7120",
     bankBranch: settings?.bankBranch || "Kekirawa Branch",
     bankSwiftCode: settings?.bankSwiftCode || "CCEYLKLX",
-    bankInstructions: settings?.bankInstructions || "Please transfer the total amount and share your payment receipt / bank slip screenshot in the WhatsApp chat.",
+    bankInstructions: settings?.bankInstructions || "Please transfer the total amount and share your payment receipt / bank slip screenshot on WhatsApp.",
     bank2Name: settings?.bank2Name || "",
     bank2AccountName: settings?.bank2AccountName || "",
     bank2AccountNumber: settings?.bank2AccountNumber || "",
@@ -99,18 +101,19 @@ export default function WhatsAppModal({
       fetch("/api/settings", { cache: "no-store" })
         .then((res) => res.json())
         .then((data) => {
-          if (data?.settings) {
+          const s = data?.settings || data;
+          if (s) {
             setBankInfo({
-              bankName: data.settings.bankName || "Commercial Bank of Ceylon PLC",
-              bankAccountName: data.settings.bankAccountName || "LEENA CEYLON (PVT) LTD",
-              bankAccountNumber: data.settings.bankAccountNumber || "1000 2489 7120",
-              bankBranch: data.settings.bankBranch || "Kekirawa Branch",
-              bankSwiftCode: data.settings.bankSwiftCode || "CCEYLKLX",
-              bankInstructions: data.settings.bankInstructions || "",
-              bank2Name: data.settings.bank2Name || "",
-              bank2AccountName: data.settings.bank2AccountName || "",
-              bank2AccountNumber: data.settings.bank2AccountNumber || "",
-              bank2Branch: data.settings.bank2Branch || "",
+              bankName: s.bankName || "Commercial Bank of Ceylon PLC",
+              bankAccountName: s.bankAccountName || "LEENA CEYLON (PVT) LTD",
+              bankAccountNumber: s.bankAccountNumber || "1000 2489 7120",
+              bankBranch: s.bankBranch || "Kekirawa Branch",
+              bankSwiftCode: s.bankSwiftCode || "CCEYLKLX",
+              bankInstructions: s.bankInstructions || "",
+              bank2Name: s.bank2Name || "",
+              bank2AccountName: s.bank2AccountName || "",
+              bank2AccountNumber: s.bank2AccountNumber || "",
+              bank2Branch: s.bank2Branch || "",
             });
           }
         })
@@ -297,15 +300,17 @@ export default function WhatsAppModal({
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-tea-dark via-tea-forest to-tea-dark px-5 py-4 text-white flex items-center justify-between shrink-0 shadow-md">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 rtl:space-x-reverse">
             <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 flex items-center justify-center shrink-0">
               <MessageSquare className="w-5 h-5 fill-current" />
             </div>
             <div>
               <h3 id="whatsapp-modal-title" className="font-serif font-bold text-base sm:text-lg text-white leading-tight">
-                Order via WhatsApp
+                {t("modal.title", "Order via WhatsApp")}
               </h3>
-              <p className="text-[11px] text-emerald-300 font-sans">Direct dispatch from Ceylon • Instant confirmation</p>
+              <p className="text-[11px] text-emerald-300 font-sans">
+                {t("modal.subtitle", "Direct dispatch from Ceylon • Instant confirmation")}
+              </p>
             </div>
           </div>
           <button
@@ -323,7 +328,9 @@ export default function WhatsAppModal({
           <div className="bg-tea-bg/70 rounded-xl p-3.5 border border-tea-border/80 space-y-3">
             {/* Product Name */}
             <div className="flex justify-between items-start text-sm">
-              <span className="text-tea-muted font-medium text-xs uppercase tracking-wider">Product</span>
+              <span className="text-tea-muted font-medium text-xs uppercase tracking-wider">
+                {t("modal.orderDetails", "Product")}
+              </span>
               <span className="text-tea-dark font-serif font-bold text-sm sm:text-base text-right max-w-[70%]">
                 {details.productName}
               </span>
@@ -333,7 +340,9 @@ export default function WhatsAppModal({
             {availableSizes.length > 1 ? (
               <div className="border-t border-tea-border/60 pt-2.5 space-y-1.5">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-tea-muted font-medium">Select Pack / Size:</span>
+                  <span className="text-tea-muted font-medium">
+                    {t("modal.packSize", "Select Pack / Size:")}
+                  </span>
                   <span className="font-bold text-tea-forest">{selectedSize}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -448,7 +457,7 @@ export default function WhatsAppModal({
             <div className="flex justify-between items-center text-xs">
               <span className="text-tea-forest font-bold uppercase tracking-wider flex items-center gap-1.5">
                 <Truck className="w-3.5 h-3.5 text-tea-leaf" />
-                <span>Delivery or Shop Pick-up</span>
+                <span>{t("modal.deliveryMethod", "Delivery Option")}</span>
               </span>
               <span className="text-[11px] text-tea-muted">
                 {qualifiesForFreeDelivery ? (
@@ -473,7 +482,7 @@ export default function WhatsAppModal({
                 <div className="flex items-center justify-between w-full">
                   <span className="font-bold text-xs text-tea-dark flex items-center gap-1.5">
                     <Truck className="w-4 h-4 text-emerald-600" />
-                    <span>Doorstep Courier</span>
+                    <span>{t("modal.courierDelivery", "Islandwide Courier")}</span>
                   </span>
                   <span
                     className={`text-[11px] font-bold ${
@@ -482,10 +491,10 @@ export default function WhatsAppModal({
                         : "text-tea-dark"
                     }`}
                   >
-                    {qualifiesForFreeDelivery ? "FREE" : "Rs. 350"}
+                    {qualifiesForFreeDelivery ? t("modal.freeDelivery", "FREE") : "Rs. 350"}
                   </span>
                 </div>
-                <span className="text-[10px] text-tea-muted">Islandwide delivery in 24–48h</span>
+                <span className="text-[10px] text-tea-muted">{t("modal.courierSub", "Delivery in 24–48h")}</span>
               </button>
 
               {/* Shop / Office Pick-up */}
@@ -501,13 +510,13 @@ export default function WhatsAppModal({
                 <div className="flex items-center justify-between w-full">
                   <span className="font-bold text-xs text-tea-dark flex items-center gap-1.5">
                     <Building className="w-4 h-4 text-emerald-700" />
-                    <span>Shop / Office Pick-up</span>
+                    <span>{t("modal.officePickup", "Office Pick-up")}</span>
                   </span>
                   <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                    Rs. 0 • FREE
+                    {t("modal.officePickupFree", "Rs. 0 • FREE")}
                   </span>
                 </div>
-                <span className="text-[10px] text-tea-muted">Collect at Kekirawa Head Office</span>
+                <span className="text-[10px] text-tea-muted">{t("modal.officePickupSub", "Kekirawa Head Office")}</span>
               </button>
             </div>
 
@@ -517,7 +526,7 @@ export default function WhatsAppModal({
                 <div className="flex items-center gap-2">
                   <Building className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span>
-                    <strong>Shop / Office Pick-up Selected:</strong> Delivery charge is{" "}
+                    <strong>{t("modal.officePickup", "Office Pick-up")}:</strong> Delivery charge is{" "}
                     <strong className="text-emerald-800 underline font-bold">100% REMOVED (Rs. 0)</strong>!
                   </span>
                 </div>
@@ -533,7 +542,7 @@ export default function WhatsAppModal({
             <div className="flex items-center justify-between text-xs">
               <label className="font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-tea-leaf" />
-                <span>Coupon / Promo Code</span>
+                <span>{t("modal.applyCoupon", "Have a Coupon Code?")}</span>
               </label>
               {appliedCoupon && (
                 <button
@@ -567,10 +576,10 @@ export default function WhatsAppModal({
               <div className="space-y-1.5">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Tag className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                    <Tag className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
                     <input
                       type="text"
-                      placeholder="Enter code (e.g. LEENA10)"
+                      placeholder={t("modal.couponPlaceholder", "Enter coupon (e.g. WELCOME10)")}
                       value={couponInput}
                       onChange={(e) => {
                         setCouponInput(e.target.value.toUpperCase());
@@ -582,7 +591,7 @@ export default function WhatsAppModal({
                           handleApplyCoupon();
                         }
                       }}
-                      className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs font-mono font-semibold uppercase"
+                      className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs font-mono font-semibold uppercase"
                     />
                   </div>
                   <button
@@ -594,7 +603,7 @@ export default function WhatsAppModal({
                     {couponLoading ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <span>Apply</span>
+                      <span>{t("modal.apply", "Apply")}</span>
                     )}
                   </button>
                 </div>
@@ -631,16 +640,16 @@ export default function WhatsAppModal({
           <div className="bg-white rounded-xl p-3.5 border border-tea-border/80 shadow-xs space-y-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5 pb-1 border-b border-tea-border/60">
               <Sparkles className="w-3.5 h-3.5 text-tea-leaf" />
-              <span>Order Calculation & Final Amount</span>
+              <span>{t("modal.orderDetails", "Order Calculation & Final Amount")}</span>
             </h4>
 
             <div className="space-y-1.5 text-xs text-tea-muted">
               {/* Unit Price */}
               <div className="flex justify-between items-center">
-                <span>Unit Price</span>
+                <span>{t("product.regularPrice", "Unit Price")}</span>
                 <div className="flex items-center gap-1.5">
                   <span className="font-semibold text-tea-dark">
-                    Rs. {pricing.unitPrice.toLocaleString("en-US")} each
+                    Rs. {pricing.unitPrice.toLocaleString("en-US")}
                   </span>
                   {pricing.hasDiscount && (
                     <span className="text-tea-muted line-through text-[11px]">
@@ -653,7 +662,7 @@ export default function WhatsAppModal({
               {/* Items Subtotal */}
               <div className="flex justify-between items-center">
                 <span>
-                  Items Subtotal ({quantity} {quantity === 1 ? "pack" : "packs"})
+                  {t("modal.subtotal", "Items Subtotal")} ({quantity} {quantity === 1 ? "pack" : "packs"})
                 </span>
                 <span className="font-semibold text-tea-dark">
                   Rs. {itemsSubtotal.toLocaleString("en-US")}
@@ -665,7 +674,7 @@ export default function WhatsAppModal({
                 <div className="flex justify-between items-center text-emerald-800">
                   <span className="flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-emerald-600" />
-                    <span>Special Offer Discount ({pricing.discountPercent}% OFF)</span>
+                    <span>Special Offer ({pricing.discountPercent}% OFF)</span>
                   </span>
                   <span className="font-bold">
                     - Rs. {offerSavings.toLocaleString("en-US")}
@@ -678,7 +687,7 @@ export default function WhatsAppModal({
                 <div className="flex justify-between items-center text-emerald-800">
                   <span className="flex items-center gap-1">
                     <Tag className="w-3 h-3 text-emerald-600" />
-                    <span>Coupon ({appliedCoupon.code})</span>
+                    <span>{t("modal.couponDiscount", "Coupon Discount")} ({appliedCoupon.code})</span>
                   </span>
                   <span className="font-bold">
                     - Rs. {couponDiscount.toLocaleString("en-US")}
@@ -695,7 +704,7 @@ export default function WhatsAppModal({
                     <Truck className="w-3.5 h-3.5 text-tea-forest" />
                   )}
                   <span>
-                    Delivery Charge ({deliveryMethod === "PICKUP" ? "Shop / Office Pick-up" : "Doorstep Courier"}):
+                    {t("modal.deliveryFee", "Delivery Charge")} ({deliveryMethod === "PICKUP" ? t("modal.officePickup", "Office Pick-up") : t("modal.courierDelivery", "Courier")}):
                   </span>
                 </span>
                 <div>
@@ -703,14 +712,14 @@ export default function WhatsAppModal({
                     <div className="flex items-center gap-1.5">
                       <span className="line-through text-tea-muted text-xs">Rs. 350</span>
                       <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                        Rs. 0 (REMOVED)
+                        {t("modal.freeDelivery", "FREE")} (Rs. 0)
                       </strong>
                     </div>
                   ) : qualifiesForFreeDelivery ? (
                     <div className="flex items-center gap-1.5">
                       <span className="line-through text-tea-muted text-xs">Rs. 350</span>
                       <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
-                        FREE (Rs. 0)
+                        {t("modal.freeDelivery", "FREE")} (Rs. 0)
                       </strong>
                     </div>
                   ) : (
@@ -725,12 +734,11 @@ export default function WhatsAppModal({
               <div className="flex justify-between items-center text-base font-bold border-t-2 border-tea-forest/20 pt-2.5 text-tea-dark">
                 <div>
                   <span className="block text-sm sm:text-base font-bold text-tea-dark">
-                    Final Payable Amount:
+                    {t("modal.totalPayable", "Final Payable Amount:")}
                   </span>
                   {totalSavings > 0 && (
                     <span className="text-[11px] font-bold text-emerald-700 block">
-                      🎉 Total You Save: Rs. {totalSavings.toLocaleString("en-US")}
-                      {deliveryMethod === "PICKUP" && " (Delivery Fee Removed)"}
+                      🎉 {t("modal.totalSavings", "You Save")}: Rs. {totalSavings.toLocaleString("en-US")}
                     </span>
                   )}
                 </div>
@@ -752,23 +760,23 @@ export default function WhatsAppModal({
           <div className="space-y-2.5 bg-white p-3.5 rounded-xl border border-tea-border/70 shadow-xs">
             <h4 className="text-xs font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-tea-leaf" />
-              <span>Customer & Delivery Details</span>
+              <span>{t("modal.yourDetails", "Customer Information")}</span>
             </h4>
 
             <div className="space-y-2 text-xs">
               {/* Full Name */}
               <div>
                 <label className="block text-tea-muted font-medium mb-1">
-                  Your Name (Optional)
+                  {t("modal.namePlaceholder", "Your Full Name *")}
                 </label>
                 <div className="relative">
-                  <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  <User className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
                   <input
                     type="text"
-                    placeholder="e.g. Priyantha Kumara"
+                    placeholder={t("modal.namePlaceholder", "Your Full Name *")}
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                    className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
                   />
                 </div>
               </div>
@@ -777,32 +785,32 @@ export default function WhatsAppModal({
               <div>
                 <label className="block text-tea-muted font-medium mb-1">
                   {deliveryMethod === "PICKUP"
-                    ? "Pick-up Notes / Expected Date (Optional)"
-                    : "Delivery Address / Nearest City"}
+                    ? t("modal.pickupAddressPlaceholder", "Pick-up notes or your home city (Optional)")
+                    : t("modal.addressPlaceholder", "Delivery Address, Street, Town / City *")}
                 </label>
                 <div className="relative">
                   {deliveryMethod === "PICKUP" ? (
-                    <Building className="w-3.5 h-3.5 absolute left-3 top-2.5 text-emerald-700" />
+                    <Building className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-emerald-700`} />
                   ) : (
-                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                    <MapPin className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
                   )}
                   <input
                     type="text"
                     placeholder={
                       deliveryMethod === "PICKUP"
-                        ? "e.g. Collecting from Kekirawa Office today / tomorrow"
-                        : "e.g. Kekirawa, Kandy, Colombo 03, etc."
+                        ? t("modal.pickupAddressPlaceholder", "Pick-up notes or your home city (Optional)")
+                        : t("modal.addressPlaceholder", "Delivery Address, Street, Town / City *")
                     }
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                    className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
                   />
                 </div>
                 {deliveryMethod === "PICKUP" && (
                   <p className="text-[11px] text-emerald-800 font-medium mt-1 flex items-center gap-1.5">
                     <Building className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                     <span>
-                      <strong>Pick-up Location:</strong> LEENA CEYLON Office, Kekirawa, Sri Lanka (No home address needed)
+                      <strong>{t("modal.officePickup", "Office Pick-up")}:</strong> LEENA CEYLON Office, Kekirawa, Sri Lanka
                     </span>
                   </p>
                 )}
@@ -811,16 +819,16 @@ export default function WhatsAppModal({
               {/* Contact Phone (Optional) */}
               <div>
                 <label className="block text-tea-muted font-medium mb-1">
-                  Contact Phone (Optional)
+                  {t("modal.phonePlaceholder", "WhatsApp Phone Number (e.g. 0717774717) *")}
                 </label>
                 <div className="relative">
-                  <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-tea-muted/70" />
+                  <Phone className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
                   <input
                     type="tel"
-                    placeholder="e.g. 077 123 4567"
+                    placeholder={t("modal.phonePlaceholder", "WhatsApp Phone Number (e.g. 0717774717) *")}
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
+                    className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs"
                   />
                 </div>
               </div>
@@ -830,7 +838,7 @@ export default function WhatsAppModal({
           {/* 6. Payment Method Selection */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase tracking-wider text-tea-forest">
-              Payment Method
+              {t("modal.paymentMethod", "Payment Option")}
             </label>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {/* Pay on Pick-up / Cash on Delivery */}
@@ -849,7 +857,7 @@ export default function WhatsAppModal({
                   <Truck className="w-4 h-4 text-emerald-600" />
                 )}
                 <span className="font-semibold text-xs">
-                  {deliveryMethod === "PICKUP" ? "Pay on Pick-up" : "Cash on Delivery"}
+                  {deliveryMethod === "PICKUP" ? t("modal.officePickup", "Office Pick-up") : t("modal.cod", "Cash on Delivery (COD)")}
                 </span>
                 <span className="text-[10px] text-tea-muted font-normal">
                   {deliveryMethod === "PICKUP"
@@ -869,7 +877,7 @@ export default function WhatsAppModal({
                 }`}
               >
                 <CreditCard className="w-4 h-4 text-amber-700" />
-                <span className="font-semibold text-xs">Bank Transfer</span>
+                <span className="font-semibold text-xs">{t("modal.bankTransfer", "Bank Transfer")}</span>
                 <span className="text-[10px] text-tea-muted font-normal truncate max-w-[130px]">
                   {bankInfo.bankName || "Commercial Bank of Ceylon"}
                 </span>
@@ -891,36 +899,36 @@ export default function WhatsAppModal({
                     {copiedAccount ? (
                       <>
                         <Check className="w-3 h-3 text-emerald-600" />
-                        <span className="text-emerald-700 font-bold">Copied!</span>
+                        <span className="text-emerald-700 font-bold">{t("bank.copied", "Copied!")}</span>
                       </>
                     ) : (
                       <>
                         <Copy className="w-3 h-3 text-tea-leaf" />
-                        <span>Copy Account No</span>
+                        <span>{t("bank.copyAccount", "Copy Account No")}</span>
                       </>
                     )}
                   </button>
                 </div>
                 <div className="space-y-0.5 text-[11px]">
                   <p>
-                    <span className="text-tea-muted">Account Name:</span>{" "}
+                    <span className="text-tea-muted">{t("bank.accountName", "Account Name")}:</span>{" "}
                     <strong className="text-tea-dark">{bankInfo.bankAccountName || "LEENA CEYLON (PVT) LTD"}</strong>
                   </p>
                   <p>
-                    <span className="text-tea-muted">Account Number:</span>{" "}
+                    <span className="text-tea-muted">{t("bank.accountNumber", "Account Number")}:</span>{" "}
                     <strong className="font-mono text-tea-forest font-bold text-xs select-all">
                       {bankInfo.bankAccountNumber || "1000 2489 7120"}
                     </strong>
                   </p>
                   <p>
-                    <span className="text-tea-muted">Branch:</span>{" "}
+                    <span className="text-tea-muted">{t("bank.branch", "Branch")}:</span>{" "}
                     <strong>
                       {bankInfo.bankBranch || "Kekirawa Branch"}
                       {bankInfo.bankSwiftCode ? ` (Swift: ${bankInfo.bankSwiftCode})` : ""}
                     </strong>
                   </p>
                   <p>
-                    <span className="text-tea-muted">Amount to Transfer:</span>{" "}
+                    <span className="text-tea-muted">{t("bank.amountToTransfer", "Amount to Transfer")}:</span>{" "}
                     <strong className="text-emerald-700 font-bold">Rs. {finalTotal.toLocaleString("en-US")}</strong>
                   </p>
                 </div>
@@ -928,20 +936,20 @@ export default function WhatsAppModal({
                 {bankInfo.bank2Name && bankInfo.bank2AccountNumber && (
                   <div className="pt-1.5 border-t border-amber-200/70 text-[10.5px] flex items-center justify-between gap-1 text-tea-dark">
                     <span>
-                      Alt Bank: <strong>{bankInfo.bank2Name}</strong> — <span className="font-mono font-bold">{bankInfo.bank2AccountNumber}</span> {bankInfo.bank2Branch && `(${bankInfo.bank2Branch})`}
+                      {t("bank.altAccount", "Alt Bank")}: <strong>{bankInfo.bank2Name}</strong> — <span className="font-mono font-bold">{bankInfo.bank2AccountNumber}</span> {bankInfo.bank2Branch && `(${bankInfo.bank2Branch})`}
                     </span>
                     <button
                       type="button"
                       onClick={(e) => handleCopyAccount(e, bankInfo.bank2AccountNumber)}
                       className="text-tea-leaf hover:text-tea-dark font-semibold underline text-[10px]"
                     >
-                      Copy Alt
+                      {t("bank.copyAlt", "Copy Alt")}
                     </button>
                   </div>
                 )}
 
                 <p className="text-[10px] text-amber-800 bg-amber-100/70 p-1.5 rounded-md">
-                  💡 {bankInfo.bankInstructions || `Transfer Rs. ${finalTotal.toLocaleString("en-US")} and share your payment receipt / bank slip screenshot in the WhatsApp chat.`}
+                  💡 {bankInfo.bankInstructions || t("bank.instructions", "Transfer the total amount and share your payment slip screenshot on WhatsApp.")}
                 </p>
               </div>
             )}
@@ -951,11 +959,11 @@ export default function WhatsAppModal({
           <div className="text-[11px] text-tea-muted bg-emerald-50/60 border border-emerald-200/50 p-2.5 rounded-xl flex items-center justify-between gap-2">
             <span className="flex items-center gap-1.5 text-emerald-800">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Islandwide delivery in 24–48 hours</span>
+              <span>{t("product.fastDelivery", "Islandwide delivery in 24–48 hours")}</span>
             </span>
             <span className="flex items-center gap-1.5 text-emerald-800">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>100% Pure Ceylon Tea</span>
+              <span>{t("product.pureCeylon", "100% Pure Ceylon Tea")}</span>
             </span>
           </div>
         </div>
@@ -967,7 +975,7 @@ export default function WhatsAppModal({
             className="w-full flex items-center justify-center gap-2.5 py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm uppercase tracking-wider transition shadow-md hover:shadow-lg active:scale-[0.99]"
           >
             <MessageSquare className="w-5 h-5 fill-current" />
-            <span>CONTINUE TO WHATSAPP • RS. {finalTotal.toLocaleString("en-US")}</span>
+            <span>{t("modal.sendOrderButton", "CONFIRM & SEND ORDER VIA WHATSAPP")} • RS. {finalTotal.toLocaleString("en-US")}</span>
           </button>
           <button
             onClick={closeWhatsAppModal}

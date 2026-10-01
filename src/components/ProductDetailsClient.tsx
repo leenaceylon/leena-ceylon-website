@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   MessageSquare,
   Building,
@@ -55,14 +56,30 @@ export default function ProductDetailsClient({
   bankSettings?: SiteSettingsMap;
 }) {
   const { openWhatsAppModal } = useCart();
+  const { t } = useLanguage();
 
-  const bankName = bankSettings?.bankName || "Commercial Bank of Ceylon PLC";
-  const bankAccountName = bankSettings?.bankAccountName || "LEENA CEYLON (PVT) LTD";
-  const bankAccountNumber = bankSettings?.bankAccountNumber || "1000 2489 7120";
-  const bankBranch = bankSettings?.bankBranch || "Kekirawa Branch";
-  const bankSwiftCode = bankSettings?.bankSwiftCode || "CCEYLKLX";
-  const whatsappNumber = bankSettings?.whatsappNumber || "071 777 4717";
-  const brandName = bankSettings?.brandName || "LEENA CEYLON";
+  // Dynamic live settings synchronized directly with server & admin panel
+  const [liveSettings, setLiveSettings] = useState<SiteSettingsMap | undefined>(bankSettings);
+
+  useEffect(() => {
+    fetch("/api/settings", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        const s = data?.settings || data;
+        if (s && typeof s === "object") {
+          setLiveSettings((prev) => ({ ...prev, ...s }));
+        }
+      })
+      .catch((err) => console.error("Could not refresh live bank settings:", err));
+  }, []);
+
+  const bankName = liveSettings?.bankName || "Commercial Bank of Ceylon PLC";
+  const bankAccountName = liveSettings?.bankAccountName || "LEENA CEYLON (PVT) LTD";
+  const bankAccountNumber = liveSettings?.bankAccountNumber || "1000 2489 7120";
+  const bankBranch = liveSettings?.bankBranch || "Kekirawa Branch";
+  const bankSwiftCode = liveSettings?.bankSwiftCode || "CCEYLKLX";
+  const whatsappNumber = liveSettings?.whatsappNumber || "071 777 4717";
+  const brandName = liveSettings?.brandName || "LEENA CEYLON";
 
   const fallbackImg = "/uploads/leena-tea-powder-200g.jpeg";
   const initialImg = product.images?.[0]?.url || product.mainImage || fallbackImg;
@@ -260,7 +277,7 @@ export default function ProductDetailsClient({
           <div className="space-y-2.5">
             <div className="flex justify-between items-center text-xs">
               <span className="font-bold text-tea-dark uppercase tracking-wider">
-                Select Size / Pack:
+                {t("product.selectSize", "Select Pack Size")}:
               </span>
               <span className="text-tea-forest font-semibold">
                 {activeSize?.sizeName} — Rs. {pricing.unitPrice.toLocaleString("en-US")}
@@ -310,7 +327,7 @@ export default function ProductDetailsClient({
         <div className="flex items-center gap-6 pt-2">
           <div className="space-y-1">
             <span className="block text-xs font-bold text-tea-dark uppercase tracking-wider">
-              Quantity (Packs):
+              {t("product.quantity", "Quantity")}:
             </span>
             <div className="flex items-center border border-tea-border rounded-xl overflow-hidden bg-white">
               <button
@@ -337,24 +354,24 @@ export default function ProductDetailsClient({
 
           <div className="space-y-1">
             <span className="block text-xs font-bold text-tea-dark uppercase tracking-wider">
-              Stock Status:
+              Status:
             </span>
             {isComingSoon ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-900 text-xs font-bold border border-amber-300 shadow-xs">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
-                Coming Soon (Pre-Order Available)
+                {t("product.comingSoon", "Coming Soon")}
               </span>
             ) : isOutOfStock ? (
               <span className="inline-block px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
-                Out of Stock
+                {t("product.outOfStock", "Out of Stock")}
               </span>
             ) : currentStock <= 15 ? (
               <span className="inline-block px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
-                Low Stock ({currentStock} left)
+                {t("product.inStock", "In Stock")} ({currentStock} left)
               </span>
             ) : (
               <span className="inline-block px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                Available in Stock
+                {t("product.inStock", "In Stock")}
               </span>
             )}
           </div>
@@ -431,12 +448,12 @@ export default function ProductDetailsClient({
             {isComingSoon ? (
               <>
                 <Clock className="w-5 h-5" />
-                <span>PRE-ORDER INQUIRY VIA WHATSAPP</span>
+                <span>{t("product.preOrder", "PRE-ORDER INQUIRY VIA WHATSAPP")}</span>
               </>
             ) : (
               <>
                 <MessageSquare className="w-5 h-5 fill-current" />
-                <span>ORDER VIA WHATSAPP</span>
+                <span>{t("product.orderWhatsApp", "ORDER VIA WHATSAPP")}</span>
               </>
             )}
           </button>
@@ -449,7 +466,7 @@ export default function ProductDetailsClient({
             className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl border-2 border-tea-forest text-tea-forest hover:bg-tea-forest hover:text-white text-xs font-bold uppercase tracking-wider transition active:scale-[0.99] bg-white shadow-sm"
           >
             <Building className="w-4 h-4" />
-            <span>ORDER WITH BANK TRANSFER & SEND SLIP</span>
+            <span>{t("product.orderBankTransfer", "ORDER WITH BANK TRANSFER & SEND SLIP")}</span>
           </button>
 
           {/* Quick Bank Account Card */}
@@ -457,7 +474,7 @@ export default function ProductDetailsClient({
             <div className="flex items-center justify-between pb-1.5 border-b border-tea-border/60">
               <span className="font-bold text-tea-forest flex items-center gap-1.5 text-[11px]">
                 <Building className="w-3.5 h-3.5 text-tea-leaf" />
-                {bankName} Details
+                {bankName} {t("bank.title", "Details")}
               </span>
               <button
                 type="button"
@@ -467,33 +484,33 @@ export default function ProductDetailsClient({
                 {copiedAccount ? (
                   <>
                     <Check className="w-3 h-3 text-emerald-600" />
-                    <span className="text-emerald-700">Copied!</span>
+                    <span className="text-emerald-700">{t("bank.copied", "Copied!")}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="w-3 h-3" />
-                    <span>Copy No</span>
+                    <span>{t("bank.copyAccount", "Copy No")}</span>
                   </>
                 )}
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2 text-[11px] text-tea-dark">
               <div>
-                <span className="text-tea-muted block">Account Name:</span>
+                <span className="text-tea-muted block">{t("bank.accountName", "Account Name")}:</span>
                 <span className="font-semibold">{bankAccountName}</span>
               </div>
               <div>
-                <span className="text-tea-muted block">Account Number:</span>
+                <span className="text-tea-muted block">{t("bank.accountNumber", "Account Number")}:</span>
                 <span className="font-mono font-bold text-tea-forest select-all">{bankAccountNumber}</span>
               </div>
               <div>
-                <span className="text-tea-muted block">Branch:</span>
+                <span className="text-tea-muted block">{t("bank.branch", "Branch")}:</span>
                 <span className="font-semibold">{bankBranch}{bankSwiftCode ? ` (${bankSwiftCode})` : ""}</span>
               </div>
-              {bankSettings?.bank2Name && bankSettings?.bank2AccountNumber ? (
+              {liveSettings?.bank2Name && liveSettings?.bank2AccountNumber ? (
                 <div>
-                  <span className="text-tea-muted block">Alt Account:</span>
-                  <span className="font-semibold">{bankSettings.bank2Name} ({bankSettings.bank2AccountNumber})</span>
+                  <span className="text-tea-muted block">{t("bank.altAccount", "Alt Account")}:</span>
+                  <span className="font-semibold">{liveSettings.bank2Name} ({liveSettings.bank2AccountNumber})</span>
                 </div>
               ) : (
                 <div>
@@ -503,7 +520,7 @@ export default function ProductDetailsClient({
               )}
             </div>
             <p className="text-[10px] text-tea-muted italic pt-1">
-              Select your pack size and quantity above, then click either button to connect directly with our dispatch team on WhatsApp.
+              {t("bank.instructions", "Transfer the total amount and share your payment slip screenshot on WhatsApp.")}
             </p>
           </div>
         </div>
