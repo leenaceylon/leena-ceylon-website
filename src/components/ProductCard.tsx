@@ -82,10 +82,10 @@ export default function ProductCard({ product }: ProductCardProps) {
     <div className="group bg-white rounded-2xl border border-tea-border shadow-subtle hover:shadow-card transition-all duration-300 flex flex-col justify-between overflow-hidden">
       {/* Product Image & Badges */}
       <div className="relative aspect-square w-full bg-gradient-to-b from-tea-surface/40 via-white to-tea-bg/30 p-3 sm:p-4 overflow-hidden flex items-center justify-center border-b border-tea-border/40">
-        <Link href={`/products/${product.slug}`} className="relative w-full h-full block">
+        <Link href={`/products/${product.slug || ""}`} className="relative w-full h-full block">
           <Image
             src={product.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
-            alt={product.name}
+            alt={product.name || "Ceylon Tea"}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-contain object-center group-hover:scale-105 transition-transform duration-500 drop-shadow-sm"
@@ -115,11 +115,11 @@ export default function ProductCard({ product }: ProductCardProps) {
               {t("product.comingSoon", "Coming Soon")}
             </span>
           ) : isOutOfStock ? (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white">
               {t("product.outOfStock", "Out of Stock")}
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-700 text-white flex items-center gap-1 shadow-xs">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-700 text-white flex items-center gap-1 shadow-xs">
               <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
               {t("product.inStock", "In Stock")}
             </span>
@@ -138,7 +138,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Product Name */}
-          <Link href={`/products/${product.slug}`}>
+          <Link href={`/products/${product.slug || ""}`}>
             <h3 className="font-serif font-bold text-tea-dark text-sm sm:text-base group-hover:text-tea-forest transition-colors line-clamp-1">
               {product.name}
             </h3>
@@ -150,15 +150,15 @@ export default function ProductCard({ product }: ProductCardProps) {
           </p>
 
           {/* Size / Weight Selector Pills */}
-          {product.sizes && product.sizes.length > 0 && (
+          {sizes.length > 0 && (
             <div className="pt-1">
               <div className="flex flex-wrap gap-1">
-                {product.sizes.map((sz, idx) => {
+                {sizes.map((sz, idx) => {
                   const szP = calculatePricing(sz.regularPrice, sz.salePrice, 1);
                   const isSelected = selectedSizeIndex === idx;
                   return (
                     <button
-                      key={sz.id}
+                      key={sz.id || `sz-${idx}`}
                       type="button"
                       onClick={() => setSelectedSizeIndex(idx)}
                       className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium transition flex items-center gap-1 ${

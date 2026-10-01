@@ -55,12 +55,14 @@ export default function ProductSlider({ products }: ProductSliderProps) {
 
   // Extract unique categories from products
   const categoryFilters = useMemo(() => {
+    const list = Array.isArray(products) ? products : [];
     const cats: { key: string; label: string; count: number }[] = [
-      { key: "all", label: "All Teas", count: products.length },
+      { key: "all", label: "All Teas", count: list.length },
     ];
     const catMap = new Map<string, { label: string; count: number }>();
 
-    products.forEach((p) => {
+    list.forEach((p) => {
+      if (!p) return;
       const name = p.category?.name || p.teaType || "Black Tea";
       const key = (p.category?.slug || name).toLowerCase().replace(/\s+/g, "-");
       const existing = catMap.get(key);
@@ -80,8 +82,10 @@ export default function ProductSlider({ products }: ProductSliderProps) {
 
   // Filtered products list
   const filteredProducts = useMemo(() => {
-    if (activeCategory === "all") return products;
-    return products.filter((p) => {
+    const list = Array.isArray(products) ? products : [];
+    if (activeCategory === "all") return list;
+    return list.filter((p) => {
+      if (!p) return false;
       const name = p.category?.name || p.teaType || "Black Tea";
       const key = (p.category?.slug || name).toLowerCase().replace(/\s+/g, "-");
       return key === activeCategory;
@@ -312,12 +316,12 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                   {/* Top Image Showcase with floating badges */}
                   <div className="relative aspect-square w-full bg-gradient-to-b from-tea-surface/60 via-white to-tea-bg/30 p-3 sm:p-4 flex items-center justify-center overflow-hidden border-b border-tea-border/40">
                     <Link
-                      href={`/products/${product.slug}`}
+                      href={`/products/${product.slug || ""}`}
                       className="relative w-full h-full block"
                     >
                       <Image
                         src={product.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
-                        alt={product.name}
+                        alt={product.name || "Ceylon Tea"}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-contain object-center group-hover:scale-105 transition-transform duration-500 drop-shadow-md"
@@ -372,14 +376,14 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[10px] text-tea-leaf font-semibold uppercase tracking-wider">
                         <span>{product.teaType || "Pure Ceylon Tea"}</span>
-                        {product.origin && (
+                        {product.origin && typeof product.origin === "string" && (
                           <span className="text-tea-muted font-normal normal-case">
                             {product.origin.split(",")[0]}
                           </span>
                         )}
                       </div>
 
-                      <Link href={`/products/${product.slug}`}>
+                      <Link href={`/products/${product.slug || ""}`}>
                         <h3 className="font-serif font-bold text-tea-dark text-sm sm:text-base group-hover:text-tea-forest transition-colors line-clamp-1">
                           {product.name}
                         </h3>
@@ -390,7 +394,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                       </p>
 
                       {/* Interactive Size Selector Directly on Slider */}
-                      {product.sizes && product.sizes.length > 0 && (
+                      {sizes.length > 0 && (
                         <div className="pt-1.5">
                           <div className="flex items-center justify-between text-[10px] text-tea-muted mb-1 font-medium">
                             <span>Select Pack Size:</span>
@@ -401,12 +405,12 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                             )}
                           </div>
                           <div className="flex flex-wrap gap-1">
-                            {product.sizes.map((sz, idx) => {
+                            {sizes.map((sz, idx) => {
                               const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
                               const isSelected = selectedSizeIndex === idx;
                               return (
                                 <button
-                                  key={sz.id}
+                                  key={sz.id || `sz-${idx}`}
                                   type="button"
                                   onClick={() =>
                                     setSelectedSizes((prev) => ({

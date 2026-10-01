@@ -29,6 +29,17 @@ export default function GlobalError({
         <p className="text-xs sm:text-sm text-tea-muted leading-relaxed">
           We experienced an unexpected issue loading this page. Our technical team has been notified. Please try refreshing.
         </p>
+        {error?.message && (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-left text-xs font-mono text-rose-800 break-words mt-3">
+            <span className="font-bold block mb-1">Details:</span>
+            {error.message}
+            {error.digest && (
+              <span className="block text-[10px] text-rose-500 mt-1">
+                Ref ID: {error.digest}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 justify-center pt-2">

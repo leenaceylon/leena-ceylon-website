@@ -177,13 +177,13 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
         {/* Large Product Image with Authentic Aspect Ratio */}
         <div className="relative w-full h-56 sm:h-72 md:h-80 flex items-center justify-center my-2 group">
           <Link
-            href={`/products/${currentProduct.slug}`}
+            href={`/products/${currentProduct.slug || ""}`}
             className="relative w-full h-full block cursor-pointer"
           >
             <Image
               key={currentProduct.id}
               src={currentProduct.mainImage || "/uploads/leena-bopf-tin-250g.jpeg"}
-              alt={currentProduct.name}
+              alt={currentProduct.name || "Ceylon Tea"}
               fill
               priority
               sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 450px"
@@ -195,7 +195,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
         {/* Product Information */}
         <div className="space-y-3 z-10 pt-2 border-t border-tea-border/60">
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
-            <Link href={`/products/${currentProduct.slug}`}>
+            <Link href={`/products/${currentProduct.slug || ""}`}>
               <h3 className="font-serif font-bold text-tea-dark text-lg sm:text-xl hover:text-tea-forest transition-colors line-clamp-1">
                 {currentProduct.name}
               </h3>
@@ -215,14 +215,14 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
           </div>
 
           {/* Size / Weight Selector Pills */}
-          {currentProduct.sizes && currentProduct.sizes.length > 0 && (
+          {sizes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] font-medium text-tea-muted mr-1">Weight:</span>
-              {currentProduct.sizes.map((sz, idx) => {
+              {sizes.map((sz, idx) => {
                 const szPricing = calculatePricing(sz.regularPrice, sz.salePrice, 1);
                 return (
                   <button
-                    key={sz.id}
+                    key={sz.id || `sz-${idx}`}
                     type="button"
                     onClick={() => setSelectedSizeIndex(idx)}
                     className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold transition flex items-center gap-1 ${
