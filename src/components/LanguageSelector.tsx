@@ -6,7 +6,7 @@ import { LanguageCode, LanguageInfo } from "@/lib/translations";
 import { Globe, ChevronDown, Check } from "lucide-react";
 
 interface LanguageSelectorProps {
-  variant?: "nav" | "grid" | "footer" | "pill";
+  variant?: "nav" | "header" | "grid" | "footer" | "pill";
   className?: string;
 }
 
@@ -103,21 +103,28 @@ export default function LanguageSelector({
   }
 
   // Default Nav Dropdown (Compact, perfect for Header/Top Bar)
+  const isHeader = variant === "header";
   return (
     <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition border border-white/10"
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition border ${
+          isHeader
+            ? "bg-tea-surface/80 hover:bg-tea-surface text-tea-dark border-tea-border shadow-xs hover:border-tea-leaf/40"
+            : "bg-white/10 hover:bg-white/20 text-white border-white/10"
+        }`}
         aria-expanded={isOpen}
         aria-label="Select Language"
       >
         <span className="text-sm leading-none">{currentLangInfo.flag}</span>
-        <span className="font-medium text-tea-pale">{currentLangInfo.nativeName}</span>
+        <span className={`font-semibold ${isHeader ? "text-tea-dark" : "text-tea-pale"}`}>
+          {currentLangInfo.nativeName}
+        </span>
         <ChevronDown
-          className={`w-3 h-3 text-tea-pale transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-3 h-3 transition-transform duration-200 ${
+            isHeader ? "text-tea-muted" : "text-tea-pale"
+          } ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 

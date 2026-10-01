@@ -156,8 +156,11 @@ export default function Navbar({
               })}
             </nav>
 
-            {/* Right Icons: Search & Direct WhatsApp Order */}
+            {/* Right Icons: Language Switcher, Search & Direct WhatsApp Order */}
             <div className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse">
+              {/* Language Switcher in Sticky Header */}
+              <LanguageSelector variant="header" />
+
               {/* Search Toggle */}
               <button
                 onClick={() => setSearchOpen(!searchOpen)}

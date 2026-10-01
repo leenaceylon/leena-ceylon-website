@@ -2,14 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Compass,
   Mountain,
   Sparkles,
   ArrowRight,
   MessageSquare,
-  Coffee,
-  CheckCircle2,
   MapPin,
   Layers,
 } from "lucide-react";
@@ -17,6 +16,7 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export interface TeaRegionData {
   id: string;
+  keyPrefix: string;
   nameKey: string;
   defaultName: string;
   nativeSinhala: string;
@@ -32,14 +32,15 @@ export interface TeaRegionData {
   liquorColorHex: string;
   liquorColorKey: string;
   defaultLiquorColor: string;
-  mapCoords: { x: number; y: number }; // Percentage on SVG map (0-100)
-  tastingNotes: string[];
+  mapCoords: { x: number; y: number }; // Percentage on map (0-100)
+  defaultNotes: string[];
   productSearchTerm: string;
 }
 
 export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
   {
     id: "nuwara-eliya",
+    keyPrefix: "nuwaraEliya",
     nameKey: "region.nuwaraEliya.name",
     defaultName: "NUWARA ELIYA",
     nativeSinhala: "නුවරඑළිය",
@@ -56,12 +57,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#D4AF37",
     liquorColorKey: "region.nuwaraEliya.liquor",
     defaultLiquorColor: "Sunstone Gold",
-    mapCoords: { x: 52, y: 64 },
-    tastingNotes: ["Floral & Crisp", "Golden Liquor", "Spring Meadow Aroma", "Zero Bitterness"],
+    mapCoords: { x: 50, y: 66 },
+    defaultNotes: ["Floral & Crisp", "Golden Liquor", "Spring Meadow Aroma", "Zero Bitterness"],
     productSearchTerm: "Nuwara Eliya",
   },
   {
     id: "dimbula",
+    keyPrefix: "dimbula",
     nameKey: "region.dimbula.name",
     defaultName: "DIMBULA",
     nativeSinhala: "දිඹුල",
@@ -78,12 +80,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#E67E22",
     liquorColorKey: "region.dimbula.liquor",
     defaultLiquorColor: "Golden Orange",
-    mapCoords: { x: 44, y: 67 },
-    tastingNotes: ["Golden-Orange", "Crisp & Clean", "Refreshing Finish", "Misty Highlands"],
+    mapCoords: { x: 42, y: 68 },
+    defaultNotes: ["Golden-Orange", "Crisp & Clean", "Refreshing Finish", "Misty Highlands"],
     productSearchTerm: "Dimbula",
   },
   {
     id: "uva",
+    keyPrefix: "uva",
     nameKey: "region.uva.name",
     defaultName: "UVA",
     nativeSinhala: "ඌව",
@@ -100,12 +103,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#C0392B",
     liquorColorKey: "region.uva.liquor",
     defaultLiquorColor: "Deep Amber",
-    mapCoords: { x: 62, y: 63 },
-    tastingNotes: ["Menthol Aroma", "Sweet Pungency", "Distinctive Exotic Taste", "Brisk Amber"],
+    mapCoords: { x: 62, y: 65 },
+    defaultNotes: ["Menthol Aroma", "Sweet Pungency", "Distinctive Exotic Taste", "Brisk Amber"],
     productSearchTerm: "Uva",
   },
   {
     id: "kandy",
+    keyPrefix: "kandy",
     nameKey: "region.kandy.name",
     defaultName: "KANDY",
     nativeSinhala: "මහනුවර",
@@ -122,12 +126,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#962D24",
     liquorColorKey: "region.kandy.liquor",
     defaultLiquorColor: "Deep Coppery Red",
-    mapCoords: { x: 50, y: 55 },
-    tastingNotes: ["Rich Copper Tone", "Perfect with Milk", "Strong & Brisk", "Historic Origin"],
+    mapCoords: { x: 51, y: 57 },
+    defaultNotes: ["Rich Copper Tone", "Perfect with Milk", "Strong & Brisk", "Historic Origin"],
     productSearchTerm: "Kandy",
   },
   {
     id: "uda-pussellawa",
+    keyPrefix: "udaPussellawa",
     nameKey: "region.udaPussellawa.name",
     defaultName: "UDA PUSSELLAWA",
     nativeSinhala: "උඩපුස්සැල්ලාව",
@@ -144,12 +149,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#C25975",
     liquorColorKey: "region.udaPussellawa.liquor",
     defaultLiquorColor: "Rosy Pink Amber",
-    mapCoords: { x: 58, y: 58 },
-    tastingNotes: ["Rosy Liquor", "Tangy Citrus", "Subtle Briskness", "Mountain Ridge"],
+    mapCoords: { x: 57, y: 61 },
+    defaultNotes: ["Rosy Liquor", "Tangy Citrus", "Subtle Briskness", "Mountain Ridge"],
     productSearchTerm: "Uda Pussellawa",
   },
   {
     id: "ruhuna",
+    keyPrefix: "ruhuna",
     nameKey: "region.ruhuna.name",
     defaultName: "RUHUNA",
     nativeSinhala: "රුහුණ",
@@ -166,12 +172,13 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#5C2C16",
     liquorColorKey: "region.ruhuna.liquor",
     defaultLiquorColor: "Dark Mahogany",
-    mapCoords: { x: 50, y: 82 },
-    tastingNotes: ["Deep Black Leaf", "Thick & Malty", "Sweet Caramel Note", "Rich Golden Tip"],
+    mapCoords: { x: 52, y: 83 },
+    defaultNotes: ["Deep Black Leaf", "Thick & Malty", "Sweet Caramel Note", "Rich Golden Tip"],
     productSearchTerm: "Ruhuna",
   },
   {
     id: "sabaragamuwa",
+    keyPrefix: "sabaragamuwa",
     nameKey: "region.sabaragamuwa.name",
     defaultName: "SABARAGAMUWA",
     nativeSinhala: "සබරගමුව",
@@ -188,8 +195,8 @@ export const CEYLON_TEA_REGIONS: TeaRegionData[] = [
     liquorColorHex: "#8B4513",
     liquorColorKey: "region.sabaragamuwa.liquor",
     defaultLiquorColor: "Yellow-Brown Liquor",
-    mapCoords: { x: 42, y: 74 },
-    tastingNotes: ["Rainforest Fed", "Sweet Malt Nuances", "Smooth Mouthfeel", "Fast-Steeping"],
+    mapCoords: { x: 40, y: 75 },
+    defaultNotes: ["Rainforest Fed", "Sweet Malt Nuances", "Smooth Mouthfeel", "Fast-Steeping"],
     productSearchTerm: "Sabaragamuwa",
   },
 ];
@@ -224,12 +231,20 @@ export default function CeylonRegionsMap({
     return t("regions.lowGrownBadge", "Low Grown (0–2,000 ft)");
   };
 
+  // Localized tasting notes for selected region
+  const activeTastingNotes = [
+    t(`region.${selectedRegion.keyPrefix}.note1`, selectedRegion.defaultNotes[0]),
+    t(`region.${selectedRegion.keyPrefix}.note2`, selectedRegion.defaultNotes[1]),
+    t(`region.${selectedRegion.keyPrefix}.note3`, selectedRegion.defaultNotes[2]),
+    t(`region.${selectedRegion.keyPrefix}.note4`, selectedRegion.defaultNotes[3]),
+  ];
+
   const whatsappInquiryLink = `https://wa.me/${whatsappNumber.replace(/\D/g, "").replace(/^0/, "94")}?text=${encodeURIComponent(
     `Hello LEENA CEYLON,\n\nI am visiting your website and would like to inquire about authentic Ceylon tea from the ${selectedRegion.defaultName} region.`
   )}`;
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className={`space-y-6 sm:space-y-8 ${isRTL ? "rtl" : "ltr"}`}>
       {/* Elevation Filter Buttons */}
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button
@@ -287,19 +302,16 @@ export default function CeylonRegionsMap({
 
       {/* Main Interactive Map & Destination Spotlight Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center bg-white rounded-3xl border border-tea-border shadow-card p-4 sm:p-7 overflow-hidden">
-        {/* Left Column: Authentic Interactive Map of Sri Lanka */}
-        <div className="lg:col-span-6 relative flex flex-col items-center justify-center p-2 sm:p-4 bg-gradient-to-b from-[#F2F7F4] via-[#EBF3EE] to-[#F2F7F4] rounded-2xl border border-emerald-900/10 overflow-hidden min-h-[460px] sm:min-h-[520px]">
-          {/* Subtle Atmospheric Watermark & Latitude Lines */}
-          <div className="absolute inset-0 bg-[radial-gradient(#143424_0.75px,transparent_0.75px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
-
-          {/* Cartographic Compass Rose */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-xs border border-tea-border shadow-xs text-[11px] font-bold text-tea-forest">
+        {/* Left Column: Authentic Interactive Vintage Map Artwork of Sri Lanka */}
+        <div className="lg:col-span-6 relative flex flex-col items-center justify-center p-3 sm:p-5 bg-gradient-to-b from-[#F2F7F4] via-[#EAF2ED] to-[#F2F7F4] rounded-2xl border border-emerald-900/15 overflow-hidden">
+          {/* Cartographic Compass Badge */}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-xs border border-tea-border shadow-xs text-[11px] font-bold text-tea-forest">
             <Compass className="w-4 h-4 text-tea-leaf" />
             <span>SRI LANKA (CEYLON)</span>
           </div>
 
           {/* Elevation Color Legend */}
-          <div className="absolute top-4 right-4 z-20 hidden sm:flex flex-col gap-1 p-2 rounded-xl bg-white/90 backdrop-blur-xs border border-tea-border shadow-xs text-[10px]">
+          <div className="absolute top-4 right-4 z-20 hidden sm:flex flex-col gap-1 p-2.5 rounded-xl bg-white/95 backdrop-blur-xs border border-tea-border shadow-xs text-[10px]">
             <span className="font-bold text-tea-dark uppercase tracking-wider mb-0.5">Terroirs</span>
             <div className="flex items-center gap-1.5 text-emerald-800">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
@@ -315,111 +327,33 @@ export default function CeylonRegionsMap({
             </div>
           </div>
 
-          {/* SVG Map Container */}
-          <div className="relative w-full max-w-[360px] sm:max-w-[420px] aspect-[3/4] flex items-center justify-center">
-            {/* SVG Base Outline of Sri Lanka with Mountain Contour */}
-            <svg
-              viewBox="0 0 400 520"
-              className="w-full h-full drop-shadow-md select-none"
-              style={{ overflow: "visible" }}
-            >
-              <defs>
-                {/* Coastal gradient */}
-                <linearGradient id="slIslandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#FFFFFF" />
-                  <stop offset="50%" stopColor="#F5FAF6" />
-                  <stop offset="100%" stopColor="#E2EFE6" />
-                </linearGradient>
+          {/* Guaranteed Non-Collapsing Luxury Map Frame */}
+          <div className="relative w-full max-w-[420px] h-[520px] sm:h-[580px] rounded-2xl overflow-hidden border border-emerald-900/20 shadow-inner my-2">
+            {/* High-Resolution Luxury Cartographic Artwork */}
+            <Image
+              src="/images/sri-lanka-tea-regions-map.jpg"
+              alt="Authentic Cartographic Map of Ceylon Tea Regions Sri Lanka"
+              fill
+              priority
+              sizes="(max-width: 640px) 380px, 420px"
+              className="object-cover object-center select-none"
+            />
 
-                {/* Central Highland Massif gradient */}
-                <radialGradient id="highlandContour" cx="50%" cy="65%" r="35%">
-                  <stop offset="0%" stopColor="#C8E6C9" stopOpacity="0.9" />
-                  <stop offset="45%" stopColor="#DCEFE0" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#E8F5E9" stopOpacity="0" />
-                </radialGradient>
+            {/* Subtle Vignette Overlay for Pin Contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/15 pointer-events-none" />
 
-                {/* Peak Nuwara Eliya gradient */}
-                <radialGradient id="peakGradient" cx="50%" cy="64%" r="18%">
-                  <stop offset="0%" stopColor="#81C784" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#A5D6A7" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-
-              {/* Sri Lanka Geographic Coastline Path (High Fidelity) */}
-              <path
-                d="M 195 25
-                   C 210 35, 230 65, 235 90
-                   C 240 120, 260 145, 275 180
-                   C 290 220, 305 270, 290 320
-                   C 275 370, 260 410, 230 450
-                   C 200 485, 175 495, 155 480
-                   C 130 465, 110 425, 115 370
-                   C 120 320, 110 270, 125 220
-                   C 135 180, 140 130, 155 90
-                   C 165 60, 180 30, 195 25 Z"
-                fill="url(#slIslandGradient)"
-                stroke="#2D6A4F"
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-                className="transition-all duration-300"
-              />
-
-              {/* Jaffna Peninsula in the Far North */}
-              <path
-                d="M 185 28
-                   C 175 20, 160 12, 170 8
-                   C 185 5, 205 10, 200 22 Z"
-                fill="#EAF3EC"
-                stroke="#2D6A4F"
-                strokeWidth="1.5"
-              />
-
-              {/* Central Highland Elevation Contour (Where Ceylon Tea Thrives) */}
-              <path
-                d="M 160 250
-                   C 200 240, 255 255, 260 295
-                   C 265 340, 245 390, 210 405
-                   C 170 415, 140 375, 145 320
-                   C 148 285, 152 260, 160 250 Z"
-                fill="url(#highlandContour)"
-                stroke="#81C784"
-                strokeWidth="1"
-                strokeDasharray="4 3"
-              />
-
-              {/* Highest Peak Nuwara Eliya Central Elevation Zone */}
-              <circle cx="208" cy="333" r="32" fill="url(#peakGradient)" />
-
-              {/* Oceanic Directional Labels */}
-              <text x="32" y="240" fill="#2D6A4F" opacity="0.35" fontSize="10" fontWeight="bold">
-                INDIAN OCEAN
-              </text>
-              <text x="270" y="130" fill="#2D6A4F" opacity="0.35" fontSize="9" fontWeight="bold">
-                BAY OF BENGAL
-              </text>
-              <text x="145" y="32" fill="#143424" opacity="0.5" fontSize="8" fontWeight="bold">
-                Jaffna
-              </text>
-              <text x="95" y="340" fill="#143424" opacity="0.5" fontSize="8" fontWeight="bold">
-                Colombo
-              </text>
-              <text x="135" y="475" fill="#143424" opacity="0.5" fontSize="8" fontWeight="bold">
-                Galle
-              </text>
-            </svg>
-
-            {/* Interactive Pins for the 7 Ceylon Tea Regions */}
+            {/* Interactive Glowing Pins for the 7 Ceylon Tea Regions */}
             {CEYLON_TEA_REGIONS.map((region) => {
               const isSelected = selectedRegionId === region.id;
               const isFilteredOut =
                 filterElevation !== "all" && region.elevationCategory !== filterElevation;
 
-              const pinColor =
+              const pinBgColor =
                 region.elevationCategory === "high"
-                  ? "bg-emerald-600 border-emerald-200 text-white"
+                  ? "bg-emerald-700 text-white border-white"
                   : region.elevationCategory === "mid"
-                  ? "bg-amber-600 border-amber-200 text-white"
-                  : "bg-amber-800 border-amber-300 text-white";
+                  ? "bg-amber-600 text-white border-white"
+                  : "bg-amber-900 text-white border-white";
 
               return (
                 <div
@@ -430,7 +364,7 @@ export default function CeylonRegionsMap({
                     transform: "translate(-50%, -50%)",
                   }}
                   className={`absolute z-30 transition-all duration-300 ${
-                    isFilteredOut ? "opacity-25 pointer-events-none scale-75" : "opacity-100"
+                    isFilteredOut ? "opacity-20 pointer-events-none scale-75" : "opacity-100"
                   }`}
                 >
                   <button
@@ -441,28 +375,38 @@ export default function CeylonRegionsMap({
                       isSelected ? "scale-125 z-40" : "hover:scale-115"
                     }`}
                   >
-                    {/* Animated Pulsing Ring */}
+                    {/* Animated Pulsing Gold Halo Ring */}
                     {isSelected && (
-                      <span className="absolute -inset-2 rounded-full bg-emerald-500 opacity-60 animate-ping pointer-events-none" />
+                      <span className="absolute -inset-3 rounded-full bg-amber-400 opacity-75 animate-ping pointer-events-none" />
+                    )}
+
+                    {/* Glowing Outer Aura on Active */}
+                    {isSelected && (
+                      <span className="absolute -inset-1.5 rounded-full bg-white/60 animate-pulse pointer-events-none" />
                     )}
 
                     {/* Pin Head */}
                     <div
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 shadow-lg flex items-center justify-center transition-all ${pinColor} ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 shadow-lg flex items-center justify-center transition-all ${pinBgColor} ${
                         isSelected
-                          ? "ring-4 ring-tea-gold ring-offset-2 scale-110 shadow-hover"
-                          : "hover:ring-2 hover:ring-white"
+                          ? "ring-4 ring-tea-gold ring-offset-2 scale-110 shadow-2xl"
+                          : "hover:ring-2 hover:ring-white shadow-md"
                       }`}
+                      style={{
+                        boxShadow: isSelected
+                          ? `0 0 16px ${region.liquorColorHex}`
+                          : undefined,
+                      }}
                     >
                       <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current drop-shadow-xs" />
                     </div>
 
-                    {/* Floating Label */}
+                    {/* Floating Region Label Tag */}
                     <div
                       className={`absolute top-full mt-1.5 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold whitespace-nowrap transition-all shadow-md pointer-events-none ${
                         isSelected
-                          ? "bg-tea-dark text-white opacity-100 scale-100 border border-tea-gold/60"
-                          : "bg-white/90 text-tea-dark opacity-85 group-hover:opacity-100 border border-tea-border"
+                          ? "bg-tea-dark text-white opacity-100 scale-100 border border-tea-gold/80 shadow-lg"
+                          : "bg-white/95 text-tea-dark opacity-90 group-hover:opacity-100 border border-tea-border"
                       }`}
                     >
                       <span>{getRegionName(region)}</span>
@@ -474,13 +418,13 @@ export default function CeylonRegionsMap({
           </div>
 
           {/* Micro Helper Note */}
-          <div className="mt-3 text-center text-[11px] text-tea-muted font-medium z-10">
-            <span>{t("regions.mapHelper", "👆 Tap any region marker on the map to explore its unique character")}</span>
+          <div className="mt-2 text-center text-[11px] text-tea-muted font-medium z-10">
+            <span>{t("regions.mapHelper", "👆 Tap any region pin on the map to explore its unique elevation & tasting notes")}</span>
           </div>
         </div>
 
         {/* Right Column: Active Destination Profile Showcase */}
-        <div className="lg:col-span-6 space-y-4 text-left">
+        <div className={`lg:col-span-6 space-y-4 ${isRTL ? "text-right" : "text-left"}`}>
           {/* Header Badges */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tea-leaf/10 border border-tea-leaf/25 text-tea-forest text-xs font-bold uppercase tracking-wider">
@@ -538,13 +482,13 @@ export default function CeylonRegionsMap({
             {t(selectedRegion.profileKey, selectedRegion.defaultProfile)}
           </p>
 
-          {/* Tasting Notes Pills */}
+          {/* Tasting Notes Pills (Fully Localized!) */}
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-tea-dark block mb-2">
               {t("regions.tastingNotes", "Aroma & Flavor Characteristics:")}
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {selectedRegion.tastingNotes.map((note, idx) => (
+              {activeTastingNotes.map((note, idx) => (
                 <span
                   key={idx}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-tea-border shadow-xs text-xs font-semibold text-tea-forest"
@@ -573,7 +517,7 @@ export default function CeylonRegionsMap({
               className="inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl border border-tea-border bg-tea-surface hover:bg-white text-tea-dark hover:text-tea-forest font-semibold text-xs uppercase tracking-wider transition"
             >
               <span>{t("regions.viewProducts", "View Region Teas")}</span>
-              <ArrowRight className="w-3.5 h-3.5 text-tea-leaf rtl:rotate-180" />
+              <ArrowRight className={`w-3.5 h-3.5 text-tea-leaf ${isRTL ? "rotate-180" : ""}`} />
             </Link>
           </div>
         </div>
@@ -609,10 +553,10 @@ export default function CeylonRegionsMap({
                 }`}
               >
                 {region.elevationCategory === "high"
-                  ? "High Grown"
+                  ? t("regions.filterHighShort", "High Grown")
                   : region.elevationCategory === "mid"
-                  ? "Mid Grown"
-                  : "Low Grown"}
+                  ? t("regions.filterMidShort", "Mid Grown")
+                  : t("regions.filterLowShort", "Low Grown")}
               </span>
             </button>
           );

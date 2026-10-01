@@ -140,14 +140,14 @@ export default function TestimonialsSlider() {
 
           {/* Testimonial Quote */}
           <p className="font-serif text-base sm:text-xl text-tea-dark leading-relaxed italic">
-            &ldquo;{current.comment}&rdquo;
+            &ldquo;{t(`testimonial.${current.id}.comment`, current.comment)}&rdquo;
           </p>
 
           {/* Author Details & Ordered Product */}
           <div className="pt-4 border-t border-tea-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="font-bold text-sm sm:text-base text-tea-dark">{current.name}</h4>
-              <p className="text-xs text-tea-muted">{current.city}</p>
+              <p className="text-xs text-tea-muted">{t(`testimonial.${current.id}.city`, current.city)}</p>
             </div>
             <div className="self-start sm:self-auto text-left sm:text-right">
               <span className="text-[11px] text-tea-muted block">{t("testimonials.purchased", "Purchased:")}</span>

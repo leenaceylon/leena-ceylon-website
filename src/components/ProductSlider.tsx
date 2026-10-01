@@ -55,6 +55,30 @@ export default function ProductSlider({ products }: ProductSliderProps) {
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
+  const getProductTitle = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.title", p.name);
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.title", p.name);
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.title", p.name);
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.title", p.name);
+    return p.name;
+  };
+
+  const getProductDesc = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.desc", p.shortDescription);
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.desc", p.shortDescription);
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.desc", p.shortDescription);
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.desc", p.shortDescription);
+    return p.shortDescription;
+  };
+
+  const getProductType = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.type", p.teaType || "Pure Ceylon Tea");
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.type", p.teaType || "High Grown BOPF");
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.type", p.teaType || "Citrus Infused Tea");
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.type", p.teaType || "Pure Ceylon Spices");
+    return p.teaType;
+  };
+
   // Extract unique categories from products
   const categoryFilters = useMemo(() => {
     const list = Array.isArray(products) ? products : [];
@@ -285,7 +309,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
             const handleOrder = (e: React.MouseEvent) => {
               e.preventDefault();
               openWhatsAppModal({
-                productName: product.name || "Ceylon Tea",
+                productName: getProductTitle(product) || product.name || "Ceylon Tea",
                 size: activeSize?.sizeName || "Standard",
                 quantity: 1,
                 price: pricing.unitPrice,
@@ -377,7 +401,7 @@ export default function ProductSlider({ products }: ProductSliderProps) {
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[10px] text-tea-leaf font-semibold uppercase tracking-wider">
-                        <span>{product.teaType || "Pure Ceylon Tea"}</span>
+                        <span>{getProductType(product)}</span>
                         {product.origin && typeof product.origin === "string" && (
                           <span className="text-tea-muted font-normal normal-case">
                             {product.origin.split(",")[0]}
@@ -387,12 +411,12 @@ export default function ProductSlider({ products }: ProductSliderProps) {
 
                       <Link href={`/products/${product.slug || ""}`}>
                         <h3 className="font-serif font-bold text-tea-dark text-sm sm:text-base group-hover:text-tea-forest transition-colors line-clamp-1">
-                          {product.name}
+                          {getProductTitle(product)}
                         </h3>
                       </Link>
 
                       <p className="text-[11px] text-tea-muted line-clamp-2 leading-relaxed">
-                        {product.shortDescription}
+                        {getProductDesc(product)}
                       </p>
 
                       {/* Interactive Size Selector Directly on Slider */}

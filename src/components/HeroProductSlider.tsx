@@ -109,10 +109,18 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
 
   const isComingSoon = Boolean(currentProduct.isComingSoon);
 
+  const getProductTitle = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.title", p.name);
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.title", p.name);
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.title", p.name);
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.title", p.name);
+    return p.name;
+  };
+
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
-      productName: currentProduct.name || "Ceylon Tea",
+      productName: getProductTitle(currentProduct) || currentProduct.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: 1,
       price: pricing.unitPrice,
@@ -199,7 +207,7 @@ export default function HeroProductSlider({ products }: HeroProductSliderProps) 
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
             <Link href={`/products/${currentProduct.slug || ""}`}>
               <h3 className="font-serif font-bold text-tea-dark text-lg sm:text-xl hover:text-tea-forest transition-colors line-clamp-1">
-                {currentProduct.name}
+                {getProductTitle(currentProduct)}
               </h3>
             </Link>
 

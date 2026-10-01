@@ -39,6 +39,30 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   if (!product) return null;
 
+  const getProductTitle = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.title", p.name);
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.title", p.name);
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.title", p.name);
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.title", p.name);
+    return p.name;
+  };
+
+  const getProductDesc = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.desc", p.shortDescription);
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.desc", p.shortDescription);
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.desc", p.shortDescription);
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.desc", p.shortDescription);
+    return p.shortDescription;
+  };
+
+  const getProductType = (p: any) => {
+    if (p.slug === "leena-ceylon-tea-powder") return t("prod.teaPowder.type", p.teaType || "Pure Ceylon Tea");
+    if (p.slug === "leena-ceylon-bopf-tin-250g" || p.slug === "leena-ceylon-bopf-premium-tin") return t("prod.bopfTin.type", p.teaType || "High Grown BOPF");
+    if (p.slug === "leena-ceylon-lemon-tea-500g") return t("prod.lemonTea.type", p.teaType || "Citrus Infused Tea");
+    if (p.slug === "pure-ceylon-organic-cinnamon") return t("prod.cinnamonTea.type", p.teaType || "Pure Ceylon Spices");
+    return p.teaType;
+  };
+
   const isComingSoon = Boolean(product.isComingSoon);
   const sizes = Array.isArray(product.sizes) ? product.sizes : [];
   const activeSize = sizes.length > 0 ? sizes[selectedSizeIndex] || sizes[0] : null;
@@ -55,7 +79,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleOrderWhatsApp = (e: React.MouseEvent) => {
     e.preventDefault();
     openWhatsAppModal({
-      productName: product.name || "Ceylon Tea",
+      productName: getProductTitle(product) || product.name || "Ceylon Tea",
       size: activeSize?.sizeName || "Standard",
       quantity: cardQuantity,
       price: pricing.unitPrice,
@@ -133,20 +157,20 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Category / Type */}
           {product.teaType && (
             <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-tea-leaf uppercase block truncate">
-              {product.teaType}
+              {getProductType(product)}
             </span>
           )}
 
           {/* Product Name */}
           <Link href={`/products/${product.slug || ""}`}>
             <h3 className="font-serif font-bold text-tea-dark text-sm sm:text-base group-hover:text-tea-forest transition-colors line-clamp-1">
-              {product.name}
+              {getProductTitle(product)}
             </h3>
           </Link>
 
           {/* Short Description */}
           <p className="text-[11px] sm:text-xs text-tea-muted line-clamp-2 leading-relaxed">
-            {product.shortDescription}
+            {getProductDesc(product)}
           </p>
 
           {/* Size / Weight Selector Pills */}
@@ -197,7 +221,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
               {pricing.hasDiscount ? (
                 <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Save Rs. {pricing.savingsPerUnit.toLocaleString("en-US")}
+                  {t("slider.save", "Save Rs.")} {pricing.savingsPerUnit.toLocaleString("en-US")}
                 </span>
               ) : activeSize ? (
                 <span className="text-[10px] font-medium text-tea-muted">
@@ -210,14 +234,13 @@ export default function ProductCard({ product }: ProductCardProps) {
             {cardQuantity > 1 && (
               <div className="flex items-center justify-between text-[11px] text-tea-muted pt-1 border-t border-dashed border-tea-border/60 mt-1">
                 <span>
-                  Total ({cardQuantity} packs):{" "}
-                  <strong className="text-tea-forest font-bold">
+                  {t("modal.qty", "Qty")}: {cardQuantity} • <strong className="text-tea-forest font-bold">
                     Rs. {pricing.totalPrice.toLocaleString("en-US")}
                   </strong>
                 </span>
                 {pricing.hasDiscount && (
                   <span className="text-emerald-700 font-bold text-[10px]">
-                    (Saved Rs. {pricing.totalSavings.toLocaleString("en-US")}!)
+                    ({t("slider.save", "Save Rs.")} {pricing.totalSavings.toLocaleString("en-US")})
                   </span>
                 )}
               </div>

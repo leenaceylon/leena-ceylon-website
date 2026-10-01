@@ -44,6 +44,24 @@ export default function HomePageContent({
   const whatsappNumber = settings.whatsappNumber || "071 777 4717";
   const cleanWhatsappNumber = whatsappNumber.replace(/\D/g, "").replace(/^0/, "94");
 
+  const getCategoryTitle = (cat: any) => {
+    if (cat.slug === "tea-powder") return t("cat.teaPowder.title", cat.name);
+    if (cat.slug === "ceylon-black-tea") return t("cat.blackTea.title", cat.name);
+    if (cat.slug === "premium-tin-collection") return t("cat.tinCollection.title", cat.name);
+    if (cat.slug === "flavored-ceylon-tea") return t("cat.flavoredTea.title", cat.name);
+    if (cat.slug === "ceylon-spices") return t("cat.spices.title", cat.name);
+    return cat.name;
+  };
+
+  const getCategoryDesc = (cat: any) => {
+    if (cat.slug === "tea-powder") return t("cat.teaPowder.desc", cat.description);
+    if (cat.slug === "ceylon-black-tea") return t("cat.blackTea.desc", cat.description);
+    if (cat.slug === "premium-tin-collection") return t("cat.tinCollection.desc", cat.description);
+    if (cat.slug === "flavored-ceylon-tea") return t("cat.flavoredTea.desc", cat.description);
+    if (cat.slug === "ceylon-spices") return t("cat.spices.desc", cat.description);
+    return cat.description;
+  };
+
   return (
     <div className={`pb-10 overflow-x-hidden space-y-6 sm:space-y-10 ${isRTL ? "rtl" : "ltr"}`}>
       {/* ================================================== */}
@@ -358,11 +376,11 @@ export default function HomePageContent({
                     />
                   </div>
                   <h3 className="font-serif font-bold text-xs sm:text-sm text-tea-dark uppercase group-hover:text-tea-forest transition">
-                    {cat.name}
+                    {getCategoryTitle(cat)}
                   </h3>
                   {cat.description && (
                     <p className="text-[11px] text-tea-muted line-clamp-2 mt-1 leading-snug">
-                      {cat.description}
+                      {getCategoryDesc(cat)}
                     </p>
                   )}
                 </div>

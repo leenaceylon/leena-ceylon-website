@@ -129,27 +129,27 @@ export default function Footer({
               </li>
               <li>
                 <Link href="/products?category=tea-powder" className="hover:text-white transition">
-                  Ceylon Tea Powder
+                  {t("cat.teaPowder.title", "Ceylon Tea Powder")}
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=ceylon-black-tea" className="hover:text-white transition">
-                  Ceylon Black Tea (BOPF)
+                  {t("cat.blackTea.title", "Ceylon Black Tea (BOPF)")}
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=premium-tin-collection" className="hover:text-white transition">
-                  Premium Tin Collection
+                  {t("cat.tinCollection.title", "Premium Tin Collection")}
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=flavored-ceylon-tea" className="hover:text-white transition">
-                  Flavored Lemon Tea
+                  {t("cat.flavoredTea.title", "Flavored Lemon Tea")}
                 </Link>
               </li>
               <li>
                 <Link href="/products?category=ceylon-spices" className="hover:text-white transition">
-                  Ceylon Organic Cinnamon
+                  {t("cat.spices.title", "Ceylon Organic Cinnamon")}
                 </Link>
               </li>
             </ul>

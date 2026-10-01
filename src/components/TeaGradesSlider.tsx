@@ -248,119 +248,139 @@ export default function TeaGradesSlider() {
             transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)`,
           }}
         >
-          {TEA_GRADES.map((item) => (
-            <div
-              key={item.id}
-              style={{ width: `${100 / itemsPerPage}%` }}
-              className="shrink-0 px-2 sm:px-3"
-            >
-              <div className="group h-full bg-white rounded-3xl border border-tea-border shadow-card hover:shadow-hover transition-all duration-300 flex flex-col justify-between overflow-hidden">
-                {/* Header Strip with Liquor Swatch & Grade Acronym */}
-                <div className="p-5 sm:p-6 bg-gradient-to-br from-tea-surface/80 via-white to-tea-surface/40 border-b border-tea-border/60">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-tea-forest">
-                        {item.category}
-                      </span>
-                      <h4 className="font-serif text-2xl sm:text-3xl font-extrabold text-tea-dark mt-0.5">
-                        {item.grade}
-                      </h4>
-                      <p className="text-xs font-semibold text-tea-dark/80 line-clamp-1">
-                        {item.fullName}
-                      </p>
+          {TEA_GRADES.map((item) => {
+            const gradePrefix =
+              item.id === "lemon-tea"
+                ? "lemon"
+                : item.id === "cinnamon-tea"
+                ? "cinnamon"
+                : item.id;
+
+            const localizedTagline = t(`grade.${gradePrefix}.tagline`, item.tagline);
+            const localizedElevation = t(`grade.${gradePrefix}.elevation`, item.elevation);
+            const localizedDesc = t(`grade.${gradePrefix}.desc`, item.description);
+            const localizedBestServed = t(`grade.${gradePrefix}.bestServed`, item.bestServed);
+            const localizedLiquor = t(`grade.${gradePrefix}.liquor`, item.liquorColorName);
+            const localizedNotes = [
+              t(`grade.${gradePrefix}.note1`, item.flavorNotes[0]),
+              t(`grade.${gradePrefix}.note2`, item.flavorNotes[1]),
+              t(`grade.${gradePrefix}.note3`, item.flavorNotes[2]),
+              t(`grade.${gradePrefix}.note4`, item.flavorNotes[3]),
+            ];
+
+            return (
+              <div
+                key={item.id}
+                style={{ width: `${100 / itemsPerPage}%` }}
+                className="shrink-0 px-2 sm:px-3"
+              >
+                <div className="group h-full bg-white rounded-3xl border border-tea-border shadow-card hover:shadow-hover transition-all duration-300 flex flex-col justify-between overflow-hidden">
+                  {/* Header Strip with Liquor Swatch & Grade Acronym */}
+                  <div className="p-5 sm:p-6 bg-gradient-to-br from-tea-surface/80 via-white to-tea-surface/40 border-b border-tea-border/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-tea-forest">
+                          {item.category}
+                        </span>
+                        <h4 className="font-serif text-2xl sm:text-3xl font-extrabold text-tea-dark mt-0.5">
+                          {item.grade}
+                        </h4>
+                        <p className="text-xs font-semibold text-tea-dark/80 line-clamp-1">
+                          {item.fullName}
+                        </p>
+                      </div>
+
+                      {/* Liquor Color Visual Indicator */}
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <div
+                          className="w-8 h-8 rounded-full border-2 border-white shadow-sm ring-2 ring-tea-border flex items-center justify-center"
+                          style={{ backgroundColor: item.liquorColorHex }}
+                          title={`Liquor: ${localizedLiquor}`}
+                        >
+                          <Coffee className="w-4 h-4 text-white/90 drop-shadow-xs" />
+                        </div>
+                        <span className="text-[9px] font-bold text-tea-dark uppercase tracking-tight text-center max-w-[64px] leading-tight">
+                          {localizedLiquor}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Liquor Color Visual Indicator */}
-                    <div className="flex flex-col items-center gap-1 shrink-0">
-                      <div
-                        className="w-8 h-8 rounded-full border-2 border-white shadow-sm ring-2 ring-tea-border flex items-center justify-center"
-                        style={{ backgroundColor: item.liquorColorHex }}
-                        title={`Liquor: ${item.liquorColorName}`}
-                      >
-                        <Coffee className="w-4 h-4 text-white/90 drop-shadow-xs" />
-                      </div>
-                      <span className="text-[9px] font-bold text-tea-dark uppercase tracking-tight text-center max-w-[64px] leading-tight">
-                        {item.liquorColorName}
-                      </span>
-                    </div>
+                    {/* Tagline */}
+                    <p className="text-xs font-serif italic text-tea-gold mt-2 line-clamp-1">
+                      &ldquo;{localizedTagline}&rdquo;
+                    </p>
                   </div>
 
-                  {/* Tagline */}
-                  <p className="text-xs font-serif italic text-tea-gold mt-2 line-clamp-1">
-                    &ldquo;{item.tagline}&rdquo;
-                  </p>
-                </div>
-
-                {/* Body Content */}
-                <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-5">
-                  <div className="space-y-4">
-                    {/* Elevation & Strength Meter */}
-                    <div className="grid grid-cols-2 gap-3 p-3 bg-tea-surface/50 rounded-2xl border border-tea-border/50 text-xs">
-                      <div>
-                        <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
-                          {t("grades.elevation", "Elevation")}
-                        </span>
-                        <span className="font-semibold text-tea-dark line-clamp-1">
-                          {item.elevation}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
-                          {t("grades.strength", "Briskness / Strength")}
-                        </span>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Flame
-                              key={i}
-                              className={`w-3.5 h-3.5 ${
-                                i < item.strength
-                                  ? "text-amber-500 fill-amber-500"
-                                  : "text-tea-border"
-                              }`}
-                            />
-                          ))}
-                          <span className="text-[11px] font-bold text-tea-dark ml-1">
-                            {item.strength}/5
+                  {/* Body Content */}
+                  <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-5">
+                    <div className="space-y-4">
+                      {/* Elevation & Strength Meter */}
+                      <div className="grid grid-cols-2 gap-3 p-3 bg-tea-surface/50 rounded-2xl border border-tea-border/50 text-xs">
+                        <div>
+                          <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
+                            {t("grades.elevation", "Elevation")}
                           </span>
+                          <span className="font-semibold text-tea-dark line-clamp-1">
+                            {localizedElevation}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-tea-muted block uppercase font-bold tracking-wider">
+                            {t("grades.strength", "Briskness / Strength")}
+                          </span>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Flame
+                                key={i}
+                                className={`w-3.5 h-3.5 ${
+                                  i < item.strength
+                                    ? "text-amber-500 fill-amber-500"
+                                    : "text-tea-border"
+                                }`}
+                              />
+                            ))}
+                            <span className="text-[11px] font-bold text-tea-dark ml-1">
+                              {item.strength}/5
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-xs sm:text-sm text-tea-muted leading-relaxed line-clamp-3">
+                        {localizedDesc}
+                      </p>
+
+                      {/* Flavor & Aroma Profile Pills */}
+                      <div>
+                        <div className="text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1.5">
+                          {t("grades.aroma", "Aroma & Character:")}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {localizedNotes.map((note, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-tea-border/80 text-[11px] font-medium text-tea-forest shadow-xs"
+                            >
+                              <Sparkles className="w-2.5 h-2.5 text-tea-gold" />
+                              <span>{note}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Brewing Recommendation */}
+                      <div className="pt-2 border-t border-tea-border/50 flex items-center justify-between text-xs text-tea-dark">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-tea-leaf" />
+                          <span>{t("grades.steep", "Steep:")} <strong>{item.steepTime}</strong></span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="line-clamp-1">{localizedBestServed}</span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Description */}
-                    <p className="text-xs sm:text-sm text-tea-muted leading-relaxed line-clamp-3">
-                      {item.description}
-                    </p>
-
-                    {/* Flavor & Aroma Profile Pills */}
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1.5">
-                        {t("grades.aroma", "Aroma & Character:")}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {item.flavorNotes.map((note, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-tea-border/80 text-[11px] font-medium text-tea-forest shadow-xs"
-                          >
-                            <Sparkles className="w-2.5 h-2.5 text-tea-gold" />
-                            <span>{note}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Brewing Recommendation */}
-                    <div className="pt-2 border-t border-tea-border/50 flex items-center justify-between text-xs text-tea-dark">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-tea-leaf" />
-                        <span>{t("grades.steep", "Steep:")} <strong>{item.steepTime}</strong></span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="line-clamp-1">{item.bestServed}</span>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* Actions: Order via WhatsApp or Shop Grade */}
                   <div className="pt-3 border-t border-tea-border/60 grid grid-cols-2 gap-2">
@@ -384,7 +404,8 @@ export default function TeaGradesSlider() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
