@@ -329,13 +329,13 @@ export default function AdminCustomersPage() {
 
       {/* Channel Tabs & Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-tea-border shadow-subtle space-y-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-tea-border/60 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-tea-border/60 pb-3">
           {/* Channel Filters */}
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => setChannelFilter("ALL")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "ALL"
                   ? "bg-tea-dark text-white shadow-sm"
                   : "bg-tea-surface text-tea-dark hover:bg-tea-border/40"
@@ -347,7 +347,7 @@ export default function AdminCustomersPage() {
             <button
               type="button"
               onClick={() => setChannelFilter("SHOP")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "SHOP"
                   ? "bg-amber-600 text-white shadow-sm"
                   : "bg-amber-50 text-amber-800 hover:bg-amber-100"
@@ -360,7 +360,7 @@ export default function AdminCustomersPage() {
             <button
               type="button"
               onClick={() => setChannelFilter("ONLINE")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "ONLINE"
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
@@ -373,7 +373,7 @@ export default function AdminCustomersPage() {
             <button
               type="button"
               onClick={() => setChannelFilter("REGISTERED")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "REGISTERED"
                   ? "bg-purple-600 text-white shadow-sm"
                   : "bg-purple-50 text-purple-800 hover:bg-purple-100"
@@ -423,199 +423,351 @@ export default function AdminCustomersPage() {
             No customer records found matching your filters.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
-                <tr>
-                  <th className="py-3.5 px-4">Customer / Shop Name</th>
-                  <th className="py-3.5 px-4">Contact / WhatsApp</th>
-                  <th className="py-3.5 px-4">Location / Route</th>
-                  <th className="py-3.5 px-4">Total Orders & Value</th>
-                  <th className="py-3.5 px-4">Last Activity</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-tea-border/60">
-                {filtered.map((c) => (
-                  <tr key={c.id} className="hover:bg-tea-surface/40 transition">
-                    {/* Name & Channel Badge */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-tea-dark text-[13px]">{c.name}</span>
-                        {c.channel === "SHOP" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                            🏬 Retail Shop
-                          </span>
-                        )}
-                        {c.channel === "ONLINE" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                            📱 Online / WhatsApp
-                          </span>
-                        )}
-                        {c.channel === "REGISTERED" && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300">
-                            👤 Registered
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Sales Rep Attribution */}
+          <>
+            {/* Mobile Customer Cards View (Optimized for field phones) */}
+            <div className="block md:hidden divide-y divide-tea-border/60">
+              {filtered.map((c) => (
+                <div key={c.id} className="p-4 space-y-3 bg-white hover:bg-tea-surface/30 transition">
+                  {/* Top Line: Name & Channel */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-tea-dark text-sm leading-snug">
+                        {c.name}
+                      </h4>
                       {c.salesRepName && (
                         <div className="mt-1">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 inline-flex items-center gap-1">
-                            <span>Sales Rep:</span>
-                            <span className="font-extrabold">{c.salesRepName}</span>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-950 border border-amber-200 inline-flex items-center gap-1">
+                            <UserCheck className="w-3 h-3 text-emerald-700" />
+                            <span>Sales Rep: <strong>{c.salesRepName}</strong></span>
                           </span>
                         </div>
                       )}
+                    </div>
 
-                      {c.email && (
-                        <div className="text-[11px] text-tea-muted flex items-center gap-1 mt-0.5">
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span>{c.email}</span>
-                        </div>
-                      )}
-                      {c.notes && (
-                        <div className="text-[10px] text-tea-muted italic mt-0.5 max-w-xs truncate" title={c.notes}>
-                          "{c.notes}"
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Phone & WhatsApp Quick Connect */}
-                    <td className="py-3.5 px-4">
-                      {c.phone ? (
-                        <div className="space-y-1">
-                          <div className="font-mono text-[11px] text-tea-dark font-semibold">
-                            {c.phone}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <a
-                              href={getWhatsAppUrl(c.phone, `Hello ${c.name}, greetings from Leena Ceylon!`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-semibold border border-emerald-200 transition"
-                              title="Chat on WhatsApp"
-                            >
-                              <MessageSquare className="w-2.5 h-2.5 fill-current" />
-                              WhatsApp
-                            </a>
-                            <a
-                              href={`tel:${c.phone}`}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tea-surface hover:bg-tea-border/40 text-tea-dark text-[10px] font-semibold border border-tea-border transition"
-                              title="Call Phone"
-                            >
-                              <Phone className="w-2.5 h-2.5" />
-                              Call
-                            </a>
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-tea-muted italic text-[11px]">No telephone</span>
-                      )}
-                    </td>
-
-                    {/* Location */}
-                    <td className="py-3.5 px-4">
-                      {c.city || c.district || c.address ? (
-                        <div className="text-[11px] space-y-0.5">
-                          {(c.city || c.district) && (
-                            <div className="font-semibold text-tea-dark flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-tea-leaf shrink-0" />
-                              <span>
-                                {c.city}
-                                {c.city && c.district ? `, ${c.district}` : c.district}
-                              </span>
-                            </div>
-                          )}
-                          {c.address && (
-                            <div className="text-tea-muted truncate max-w-[220px]" title={c.address}>
-                              {c.address}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-tea-muted text-[11px]">—</span>
-                      )}
-                    </td>
-
-                    {/* Orders & Lifetime Value */}
-                    <td className="py-3.5 px-4">
-                      <div className="font-serif font-bold text-sm text-tea-forest">
-                        Rs. {c.totalSpent.toLocaleString()}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] font-bold text-tea-dark">
-                          {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                    <div className="shrink-0">
+                      {c.channel === "SHOP" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          🏬 Retail Shop
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setViewingCustomer(c)}
-                          className="inline-flex items-center gap-0.5 text-[10px] text-tea-leaf hover:text-tea-dark font-bold underline"
-                          title="View complete order history for this customer"
-                        >
-                          <Eye className="w-3 h-3" />
-                          View History
-                        </button>
+                      )}
+                      {c.channel === "ONLINE" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          📱 Online / WhatsApp
+                        </span>
+                      )}
+                      {c.channel === "REGISTERED" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300">
+                          👤 Registered
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Phone & Instant WhatsApp / Call Bar */}
+                  {c.phone && (
+                    <div className="bg-tea-surface/50 rounded-xl p-2.5 border border-tea-border/50 flex items-center justify-between gap-2">
+                      <div className="font-mono text-xs font-bold text-tea-dark">
+                        {c.phone}
                       </div>
-                    </td>
 
-                    {/* Date */}
-                    <td className="py-3.5 px-4 text-tea-muted text-[11px]">
-                      <div>{new Date(c.lastOrderDate).toLocaleDateString()}</div>
-                      <div className="text-[10px]">First: {new Date(c.firstOrderDate).toLocaleDateString()}</div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setViewingCustomer(c)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-tea-surface text-tea-dark border border-tea-border transition shadow-xs"
-                          title="View Full Profile and Order History"
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <a
+                          href={getWhatsAppUrl(c.phone, `Hello ${c.name}, greetings from Leena Ceylon!`)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold shadow-xs active:bg-emerald-700 transition"
+                          title="Chat on WhatsApp"
                         >
-                          <Eye className="w-3.5 h-3.5 text-tea-leaf" />
-                          <span>View Profile</span>
-                        </button>
+                          <MessageSquare className="w-3 h-3 fill-current" />
+                          <span>WhatsApp</span>
+                        </a>
 
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(c)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border transition shadow-xs"
-                          title="Edit Customer Details and Sync Orders"
+                        <a
+                          href={`tel:${c.phone}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-tea-border text-tea-dark text-[11px] font-bold shadow-xs active:bg-tea-bg transition"
+                          title="Call Phone"
                         >
-                          <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
-                          <span>Edit Details</span>
-                        </button>
+                          <Phone className="w-3 h-3 text-tea-muted" />
+                          <span>Call</span>
+                        </a>
+                      </div>
+                    </div>
+                  )}
 
-                        {c.channel === "REGISTERED" && (
+                  {/* Location & Address */}
+                  {(c.city || c.district || c.address) && (
+                    <div className="text-xs space-y-0.5">
+                      {(c.city || c.district) && (
+                        <div className="font-semibold text-tea-dark flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-tea-leaf shrink-0" />
+                          <span>
+                            {c.city}
+                            {c.city && c.district ? `, ${c.district}` : c.district}
+                          </span>
+                        </div>
+                      )}
+                      {c.address && (
+                        <div className="text-[11px] text-tea-muted pl-4">
+                          {c.address}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Value & Orders Count */}
+                  <div className="flex items-baseline justify-between pt-1 border-t border-tea-border/40 text-xs">
+                    <div>
+                      <span className="text-[11px] text-tea-muted font-medium block">
+                        Lifetime Purchases:
+                      </span>
+                      <span className="font-bold text-tea-dark text-xs">
+                        {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="font-serif font-bold text-base text-tea-forest block">
+                        Rs. {c.totalSpent.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] text-tea-muted">
+                        Last: {new Date(c.lastOrderDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons Row */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-tea-border/60">
+                    <button
+                      type="button"
+                      onClick={() => setViewingCustomer(c)}
+                      className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-white hover:bg-tea-surface text-tea-dark border border-tea-border font-bold text-xs shadow-xs transition"
+                    >
+                      <Eye className="w-4 h-4 text-tea-leaf" />
+                      <span>View Profile</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(c)}
+                      className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border font-bold text-xs shadow-xs transition"
+                    >
+                      <Edit3 className="w-4 h-4 text-tea-leaf" />
+                      <span>Edit Details</span>
+                    </button>
+
+                    {c.channel === "REGISTERED" && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(c)}
+                        className={`h-11 px-3 rounded-xl text-xs font-bold border transition shrink-0 ${
+                          c.isActive
+                            ? "border-rose-200 text-rose-700 bg-rose-50"
+                            : "border-emerald-200 text-emerald-700 bg-emerald-50"
+                        }`}
+                      >
+                        {c.isActive ? "Suspend" : "Activate"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (Hidden on mobile) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
+                  <tr>
+                    <th className="py-3.5 px-4">Customer / Shop Name</th>
+                    <th className="py-3.5 px-4">Contact / WhatsApp</th>
+                    <th className="py-3.5 px-4">Location / Route</th>
+                    <th className="py-3.5 px-4">Total Orders & Value</th>
+                    <th className="py-3.5 px-4">Last Activity</th>
+                    <th className="py-3.5 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-tea-border/60">
+                  {filtered.map((c) => (
+                    <tr key={c.id} className="hover:bg-tea-surface/40 transition">
+                      {/* Name & Channel Badge */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-tea-dark text-[13px]">{c.name}</span>
+                          {c.channel === "SHOP" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              🏬 Retail Shop
+                            </span>
+                          )}
+                          {c.channel === "ONLINE" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                              📱 Online / WhatsApp
+                            </span>
+                          )}
+                          {c.channel === "REGISTERED" && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-300">
+                              👤 Registered
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Sales Rep Attribution */}
+                        {c.salesRepName && (
+                          <div className="mt-1">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 inline-flex items-center gap-1">
+                              <span>Sales Rep:</span>
+                              <span className="font-extrabold">{c.salesRepName}</span>
+                            </span>
+                          </div>
+                        )}
+
+                        {c.email && (
+                          <div className="text-[11px] text-tea-muted flex items-center gap-1 mt-0.5">
+                            <Mail className="w-3 h-3 shrink-0" />
+                            <span>{c.email}</span>
+                          </div>
+                        )}
+                        {c.notes && (
+                          <div className="text-[10px] text-tea-muted italic mt-0.5 max-w-xs truncate" title={c.notes}>
+                            "{c.notes}"
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Phone & WhatsApp Quick Connect */}
+                      <td className="py-3.5 px-4">
+                        {c.phone ? (
+                          <div className="space-y-1">
+                            <div className="font-mono text-[11px] text-tea-dark font-semibold">
+                              {c.phone}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={getWhatsAppUrl(c.phone, `Hello ${c.name}, greetings from Leena Ceylon!`)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-semibold border border-emerald-200 transition"
+                                title="Chat on WhatsApp"
+                              >
+                                <MessageSquare className="w-2.5 h-2.5 fill-current" />
+                                WhatsApp
+                              </a>
+                              <a
+                                href={`tel:${c.phone}`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tea-surface hover:bg-tea-border/40 text-tea-dark text-[10px] font-semibold border border-tea-border transition"
+                                title="Call Phone"
+                              >
+                                <Phone className="w-2.5 h-2.5" />
+                                Call
+                              </a>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-tea-muted italic text-[11px]">No telephone</span>
+                        )}
+                      </td>
+
+                      {/* Location */}
+                      <td className="py-3.5 px-4">
+                        {c.city || c.district || c.address ? (
+                          <div className="text-[11px] space-y-0.5">
+                            {(c.city || c.district) && (
+                              <div className="font-semibold text-tea-dark flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-tea-leaf shrink-0" />
+                                <span>
+                                  {c.city}
+                                  {c.city && c.district ? `, ${c.district}` : c.district}
+                                </span>
+                              </div>
+                            )}
+                            {c.address && (
+                              <div className="text-tea-muted truncate max-w-[220px]" title={c.address}>
+                                {c.address}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-tea-muted text-[11px]">—</span>
+                        )}
+                      </td>
+
+                      {/* Orders & Lifetime Value */}
+                      <td className="py-3.5 px-4">
+                        <div className="font-serif font-bold text-sm text-tea-forest">
+                          Rs. {c.totalSpent.toLocaleString()}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[11px] font-bold text-tea-dark">
+                            {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => handleToggleStatus(c)}
-                            className={`px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition shadow-xs ${
-                              c.isActive
-                                ? "border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100"
-                                : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                            }`}
+                            onClick={() => setViewingCustomer(c)}
+                            className="inline-flex items-center gap-0.5 text-[10px] text-tea-leaf hover:text-tea-dark font-bold underline"
+                            title="View complete order history for this customer"
                           >
-                            {c.isActive ? "Suspend" : "Activate"}
+                            <Eye className="w-3 h-3" />
+                            View History
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                      </td>
+
+                      {/* Date */}
+                      <td className="py-3.5 px-4 text-tea-muted text-[11px]">
+                        <div>{new Date(c.lastOrderDate).toLocaleDateString()}</div>
+                        <div className="text-[10px]">First: {new Date(c.firstOrderDate).toLocaleDateString()}</div>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setViewingCustomer(c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-tea-surface text-tea-dark border border-tea-border transition shadow-xs"
+                            title="View Full Profile and Order History"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-tea-leaf" />
+                            <span>View Profile</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(c)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border transition shadow-xs"
+                            title="Edit Customer Details and Sync Orders"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
+                            <span>Edit Details</span>
+                          </button>
+
+                          {c.channel === "REGISTERED" && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(c)}
+                              className={`px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition shadow-xs ${
+                                c.isActive
+                                  ? "border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100"
+                                  : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {c.isActive ? "Suspend" : "Activate"}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
       {/* 1. VIEW CUSTOMER PROFILE & ORDER HISTORY MODAL */}
       {viewingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 border border-tea-border shadow-2xl space-y-6 animate-scale-up my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-auto max-h-[92vh] overflow-y-auto animate-scale-up">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-tea-border/60 pb-4">
               <div>
@@ -841,7 +993,7 @@ export default function AdminCustomersPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-tea-border/60">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-3 border-t border-tea-border/60">
               <button
                 type="button"
                 onClick={() => {
@@ -849,16 +1001,16 @@ export default function AdminCustomersPage() {
                   setViewingCustomer(null);
                   openEditModal(target);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border font-semibold text-xs transition"
+                className="h-11 inline-flex items-center justify-center gap-1.5 px-4 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border font-bold text-xs transition"
               >
-                <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
+                <Edit3 className="w-4 h-4 text-tea-leaf" />
                 <span>Edit Details & Sync Orders</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setViewingCustomer(null)}
-                className="px-5 py-2 rounded-xl bg-tea-dark hover:bg-tea-dark/90 text-white font-semibold text-xs transition"
+                className="h-11 px-6 rounded-xl bg-tea-dark hover:bg-tea-dark/90 text-white font-bold text-xs transition flex items-center justify-center"
               >
                 Close Profile
               </button>
@@ -869,8 +1021,8 @@ export default function AdminCustomersPage() {
 
       {/* 2. EDIT CUSTOMER DETAILS & SYNCHRONIZE PAST ORDERS MODAL */}
       {editingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 border border-tea-border shadow-2xl space-y-5 animate-scale-up my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-4 sm:p-7 border border-tea-border shadow-2xl space-y-5 animate-scale-up my-auto max-h-[92vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-tea-border/60 pb-3">
               <div>

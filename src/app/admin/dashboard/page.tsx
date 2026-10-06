@@ -666,85 +666,155 @@ export default async function AdminDashboardPage() {
               No shop orders recorded yet. Tap "Open Billing Counter" to take your first shop order.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-tea-border/60 text-tea-muted font-semibold">
-                    <th className="pb-3">Bill #</th>
-                    <th className="pb-3">Retail Shop</th>
-                    <th className="pb-3">Town / Route</th>
-                    <th className="pb-3">Net Total</th>
-                    <th className="pb-3">Payment</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-tea-border/40">
-                  {recentRepOrders.map((o) => {
-                    const isCancelled = o.orderStatus === "CANCELLED";
-                    const isPaid = o.paymentStatus === "PAID";
+            <>
+              {/* Mobile Card View (Optimized for field reps on phones) */}
+              <div className="block sm:hidden divide-y divide-tea-border/60">
+                {recentRepOrders.map((o) => {
+                  const isCancelled = o.orderStatus === "CANCELLED";
+                  const isPaid = o.paymentStatus === "PAID";
 
-                    return (
-                      <tr key={o.id} className={`transition ${isCancelled ? "bg-rose-50/30 opacity-75" : "hover:bg-tea-surface/60"}`}>
-                        <td className="py-3 font-mono font-bold text-tea-dark whitespace-nowrap">
+                  return (
+                    <div
+                      key={o.id}
+                      className={`p-3.5 space-y-2.5 transition ${
+                        isCancelled ? "bg-rose-50/20 text-tea-muted opacity-80" : "bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono font-bold text-sm text-tea-dark">
                           #{o.orderNumber}
-                        </td>
-                        <td className="py-3">
-                          <div className="font-medium text-tea-dark">{o.customerName}</div>
-                          <div className="text-[10px] text-tea-muted">{o.customerPhone}</div>
-                        </td>
-                        <td className="py-3 text-tea-dark">{o.city || "Direct Route"}</td>
-                        <td className="py-3 font-bold text-tea-forest whitespace-nowrap">
-                          <span className={isCancelled ? "line-through text-tea-muted" : ""}>
-                            Rs. {o.grandTotal.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="py-3 whitespace-nowrap">
+                        </span>
+                        <div className="flex items-center gap-1.5">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              isPaid
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-amber-100 text-amber-800"
+                              isPaid ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
                             }`}
                           >
                             {o.paymentStatus}
                           </span>
-                        </td>
-                        <td className="py-3 whitespace-nowrap">
-                          {isCancelled ? (
+                          {isCancelled && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
                               Cancelled
                             </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Active
-                            </span>
                           )}
-                        </td>
-                        <td className="py-3 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Link
-                              href={`/admin/shop-billing?tab=history&search=${o.orderNumber}`}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[11px] font-bold text-emerald-800 transition"
-                              title="Update Payment or Cancel in Ledger"
+                        </div>
+                      </div>
+
+                      <div className="bg-tea-surface/40 rounded-xl p-2.5 border border-tea-border/50 text-xs">
+                        <div className="font-bold text-tea-dark">{o.customerName}</div>
+                        <div className="flex items-center justify-between text-[11px] text-tea-muted mt-0.5">
+                          <span>{o.city || "Direct Route"}</span>
+                          {o.customerPhone && <span className="font-mono">{o.customerPhone}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-baseline justify-between text-xs pt-0.5">
+                        <span className="text-tea-muted font-medium">Net Amount:</span>
+                        <span className={`font-mono font-extrabold text-sm text-tea-forest ${isCancelled ? "line-through text-tea-muted" : ""}`}>
+                          Rs. {o.grandTotal.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2 border-t border-tea-border/60">
+                        <Link
+                          href={`/admin/shop-billing?tab=history&search=${o.orderNumber}`}
+                          className="flex-1 h-10 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-bold text-emerald-900 flex items-center justify-center transition shadow-xs"
+                        >
+                          Manage Bill
+                        </Link>
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="flex-1 h-10 rounded-xl border border-tea-border hover:bg-tea-surface text-tea-forest text-xs font-bold flex items-center justify-center transition"
+                        >
+                          Details
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-tea-border/60 text-tea-muted font-semibold">
+                      <th className="pb-3">Bill #</th>
+                      <th className="pb-3">Retail Shop</th>
+                      <th className="pb-3">Town / Route</th>
+                      <th className="pb-3">Net Total</th>
+                      <th className="pb-3">Payment</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-tea-border/40">
+                    {recentRepOrders.map((o) => {
+                      const isCancelled = o.orderStatus === "CANCELLED";
+                      const isPaid = o.paymentStatus === "PAID";
+
+                      return (
+                        <tr key={o.id} className={`transition ${isCancelled ? "bg-rose-50/30 opacity-75" : "hover:bg-tea-surface/60"}`}>
+                          <td className="py-3 font-mono font-bold text-tea-dark whitespace-nowrap">
+                            #{o.orderNumber}
+                          </td>
+                          <td className="py-3">
+                            <div className="font-medium text-tea-dark">{o.customerName}</div>
+                            <div className="text-[10px] text-tea-muted">{o.customerPhone}</div>
+                          </td>
+                          <td className="py-3 text-tea-dark">{o.city || "Direct Route"}</td>
+                          <td className="py-3 font-bold text-tea-forest whitespace-nowrap">
+                            <span className={isCancelled ? "line-through text-tea-muted" : ""}>
+                              Rs. {o.grandTotal.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="py-3 whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isPaid
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
                             >
-                              Manage Bill
-                            </Link>
-                            <Link
-                              href={`/admin/orders/${o.id}`}
-                              className="px-2 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-[11px] font-semibold text-tea-forest"
-                              title="Full Order Details"
-                            >
-                              Details
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              {o.paymentStatus}
+                            </span>
+                          </td>
+                          <td className="py-3 whitespace-nowrap">
+                            {isCancelled ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                Cancelled
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Link
+                                href={`/admin/shop-billing?tab=history&search=${o.orderNumber}`}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[11px] font-bold text-emerald-800 transition"
+                                title="Update Payment or Cancel in Ledger"
+                              >
+                                Manage Bill
+                              </Link>
+                              <Link
+                                href={`/admin/orders/${o.id}`}
+                                className="px-2 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-[11px] font-semibold text-tea-forest"
+                                title="Full Order Details"
+                              >
+                                Details
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

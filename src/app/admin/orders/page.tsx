@@ -20,6 +20,7 @@ import {
   Smartphone,
   Printer,
   UserCheck,
+  Phone,
 } from "lucide-react";
 import {
   getWhatsAppUrl,
@@ -200,14 +201,14 @@ function AdminOrdersView() {
       )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-tea-border shadow-subtle space-y-3.5">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-tea-border shadow-subtle space-y-3.5">
         {/* Channel Selection Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-tea-border/60 pb-3">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-tea-border/60 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setChannelFilter("ALL")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "ALL"
                   ? "bg-tea-dark text-white shadow-sm"
                   : "bg-tea-surface text-tea-dark hover:bg-tea-border/40"
@@ -219,7 +220,7 @@ function AdminOrdersView() {
             <button
               type="button"
               onClick={() => setChannelFilter("ONLINE")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "ONLINE"
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
@@ -232,7 +233,7 @@ function AdminOrdersView() {
             <button
               type="button"
               onClick={() => setChannelFilter("SHOP")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-xl text-xs font-semibold transition ${
                 channelFilter === "SHOP"
                   ? "bg-amber-600 text-white shadow-sm"
                   : "bg-amber-50 text-amber-800 hover:bg-amber-100"
@@ -249,16 +250,16 @@ function AdminOrdersView() {
         </div>
 
         {/* Search & Status Filter */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1 w-full">
             <input
               type="text"
               placeholder="Search by Order #, Customer / Shop Name, Phone, or Sales Rep..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              className="w-full pl-9 pr-4 py-2.5 sm:py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
             />
-            <Search className="w-4 h-4 text-tea-muted absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-tea-muted absolute left-3 top-3 sm:top-2.5" />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -266,7 +267,7 @@ function AdminOrdersView() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              className="w-full sm:w-auto px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
             >
               <option value="ALL">All Statuses</option>
               {STATUS_OPTIONS.map((st) => (
@@ -290,75 +291,75 @@ function AdminOrdersView() {
             No orders match your filter criteria.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
-                <tr>
-                  <th className="py-3.5 px-4">Order ID</th>
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Customer / Channel</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">Sales Rep (Shop Only)</th>
-                  <th className="py-3.5 px-4">Phone</th>
-                  <th className="py-3.5 px-4">Items</th>
-                  <th className="py-3.5 px-4">Total</th>
-                  <th className="py-3.5 px-4">Payment</th>
-                  <th className="py-3.5 px-4">Order Status</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-tea-border/60">
-                {filteredOrders.map((o) => {
-                  const isShop = Boolean(
-                    o.isShopOrder ||
-                    o.orderNumber.startsWith("SHOP-") ||
-                    o.paymentMethod === "CREDIT_SHOP" ||
-                    (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
-                  );
+          <>
+            {/* Mobile Order Cards View (Optimized for field phones) */}
+            <div className="block md:hidden divide-y divide-tea-border/60">
+              {filteredOrders.map((o) => {
+                const isShop = Boolean(
+                  o.isShopOrder ||
+                  o.orderNumber.startsWith("SHOP-") ||
+                  o.paymentMethod === "CREDIT_SHOP" ||
+                  (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
+                );
 
-                  return (
-                    <tr key={o.id} className="hover:bg-tea-surface/40 transition">
-                      <td className="py-3 px-4 font-bold text-tea-dark whitespace-nowrap">
-                        #{o.orderNumber}
-                      </td>
-                      <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
-                        {new Date(o.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-tea-dark">{o.customerName}</div>
-                        {isShop ? (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-block mt-0.5">
-                            🏬 Ground Shop Bill
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 inline-block mt-0.5">
-                            📱 Online / WhatsApp
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 whitespace-nowrap">
-                        {isShop ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
-                            <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                            <span>{o.salesRepName || "Sales Rep"}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-tea-muted font-normal italic">
-                            — (Online / WhatsApp)
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-tea-dark font-mono text-[11px]">
-                        {o.customerPhone}
-                      </td>
-                      <td className="py-3 px-4 text-tea-muted">
-                        {o.items?.length || 0} {o.items?.length === 1 ? "item" : "items"}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-tea-forest whitespace-nowrap">
-                        Rs. {o.grandTotal.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
+                return (
+                  <div key={o.id} className="p-4 space-y-3 bg-white hover:bg-tea-surface/30 transition">
+                    {/* Header: Order # + Date + Channel */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-mono font-bold text-sm text-tea-dark block">
+                          #{o.orderNumber}
+                        </span>
+                        <span className="text-[10px] text-tea-muted">
+                          {new Date(o.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      {isShop ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                          🏬 Ground Shop Bill
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          📱 Online / WhatsApp
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Sales Rep Attribution (if shop order) */}
+                    {isShop && (
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <span>Rep: {o.salesRepName || "Sales Rep"}</span>
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Customer Info Card */}
+                    <div className="bg-tea-surface/50 rounded-xl p-3 border border-tea-border/50 space-y-1 text-xs">
+                      <div className="font-bold text-tea-dark text-sm">{o.customerName}</div>
+                      {o.customerPhone && (
+                        <div>
+                          <a
+                            href={`tel:${o.customerPhone}`}
+                            className="inline-flex items-center gap-1.5 font-mono text-tea-forest font-semibold text-[11px] hover:underline"
+                          >
+                            <Phone className="w-3 h-3 text-tea-muted" />
+                            <span>{o.customerPhone}</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Financials & Status */}
+                    <div className="flex items-baseline justify-between pt-1">
+                      <div>
+                        <span className="text-[11px] text-tea-muted font-medium block">
+                          {o.items?.length || 0} {o.items?.length === 1 ? "item" : "items"}
+                        </span>
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold ${
                             o.paymentStatus === "PAID"
                               ? "bg-emerald-100 text-emerald-800"
                               : o.paymentStatus === "PARTIAL"
@@ -367,27 +368,38 @@ function AdminOrdersView() {
                           }`}
                         >
                           {o.paymentStatus} (
-                            {o.paymentMethod === "PAY_ON_PICKUP"
-                              ? "Pick-up"
-                              : o.paymentMethod === "CASH_ON_DELIVERY"
-                              ? "COD"
-                              : o.paymentMethod === "CREDIT_SHOP"
-                              ? "Credit"
-                              : "Bank"}
+                          {o.paymentMethod === "PAY_ON_PICKUP"
+                            ? "Pick-up"
+                            : o.paymentMethod === "CASH_ON_DELIVERY"
+                            ? "COD"
+                            : o.paymentMethod === "CREDIT_SHOP"
+                            ? "Credit"
+                            : "Bank"}
                           )
                         </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        {isShop ? (
-                          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            DELIVERED (Store)
-                          </span>
-                        ) : (
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-base font-extrabold font-mono text-tea-forest block">
+                          Rs. {o.grandTotal.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order Fulfillment Status */}
+                    <div className="pt-1">
+                      {isShop ? (
+                        <div className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span>DELIVERED (Direct Store Delivery)</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-tea-muted font-bold whitespace-nowrap">Status:</span>
                           <select
                             value={o.orderStatus}
                             onChange={(e) => handleStatusChange(o.id, e.target.value)}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                            className={`flex-1 h-10 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
                               o.orderStatus === "DELIVERED"
                                 ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                                 : o.orderStatus === "CANCELLED"
@@ -401,54 +413,216 @@ function AdminOrdersView() {
                               </option>
                             ))}
                           </select>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {!isShop ? (
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons Bar */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-tea-border/60">
+                      {!isShop ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmationModalOrder(o)}
+                          className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition shadow-xs"
+                          title="Send WhatsApp Confirmation / Updates to Customer"
+                        >
+                          <MessageSquare className="w-4 h-4 fill-current text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </button>
+                      ) : (
+                        <Link
+                          href="/admin/shop-billing"
+                          className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs transition shadow-xs"
+                          title="Open in Sales Rep Shop Billing & Print POS Receipt"
+                        >
+                          <Store className="w-4 h-4 text-amber-700" />
+                          <span>Shop POS</span>
+                        </Link>
+                      )}
+
+                      <Link
+                        href={`/admin/orders/${o.id}`}
+                        className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 px-3 rounded-xl border border-tea-border hover:bg-tea-bg text-tea-forest font-bold text-xs transition"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>Details</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalOrder(o)}
+                        className="w-11 h-11 rounded-xl border border-rose-200 hover:border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold flex items-center justify-center shrink-0 transition"
+                        title="Delete this order"
+                      >
+                        <Trash2 className="w-4 h-4 text-rose-600" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View (Hidden on mobile) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
+                  <tr>
+                    <th className="py-3.5 px-4">Order ID</th>
+                    <th className="py-3.5 px-4">Date</th>
+                    <th className="py-3.5 px-4">Customer / Channel</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Sales Rep (Shop Only)</th>
+                    <th className="py-3.5 px-4">Phone</th>
+                    <th className="py-3.5 px-4">Items</th>
+                    <th className="py-3.5 px-4">Total</th>
+                    <th className="py-3.5 px-4">Payment</th>
+                    <th className="py-3.5 px-4">Order Status</th>
+                    <th className="py-3.5 px-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-tea-border/60">
+                  {filteredOrders.map((o) => {
+                    const isShop = Boolean(
+                      o.isShopOrder ||
+                      o.orderNumber.startsWith("SHOP-") ||
+                      o.paymentMethod === "CREDIT_SHOP" ||
+                      (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
+                    );
+
+                    return (
+                      <tr key={o.id} className="hover:bg-tea-surface/40 transition">
+                        <td className="py-3 px-4 font-bold text-tea-dark whitespace-nowrap">
+                          #{o.orderNumber}
+                        </td>
+                        <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
+                          {new Date(o.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-semibold text-tea-dark">{o.customerName}</div>
+                          {isShop ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-block mt-0.5">
+                              🏬 Ground Shop Bill
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 inline-block mt-0.5">
+                              📱 Online / WhatsApp
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          {isShop ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                              <span>{o.salesRepName || "Sales Rep"}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-tea-muted font-normal italic">
+                              — (Online / WhatsApp)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-tea-dark font-mono text-[11px]">
+                          {o.customerPhone}
+                        </td>
+                        <td className="py-3 px-4 text-tea-muted">
+                          {o.items?.length || 0} {o.items?.length === 1 ? "item" : "items"}
+                        </td>
+                        <td className="py-3 px-4 font-bold text-tea-forest whitespace-nowrap">
+                          Rs. {o.grandTotal.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              o.paymentStatus === "PAID"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : o.paymentStatus === "PARTIAL"
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-rose-100 text-rose-800"
+                            }`}
+                          >
+                            {o.paymentStatus} (
+                              {o.paymentMethod === "PAY_ON_PICKUP"
+                                ? "Pick-up"
+                                : o.paymentMethod === "CASH_ON_DELIVERY"
+                                ? "COD"
+                                : o.paymentMethod === "CREDIT_SHOP"
+                                ? "Credit"
+                                : "Bank"}
+                            )
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {isShop ? (
+                            <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              DELIVERED (Store)
+                            </span>
+                          ) : (
+                            <select
+                              value={o.orderStatus}
+                              onChange={(e) => handleStatusChange(o.id, e.target.value)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                                o.orderStatus === "DELIVERED"
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                  : o.orderStatus === "CANCELLED"
+                                  ? "bg-rose-50 text-rose-800 border-rose-300"
+                                  : "bg-amber-50 text-amber-800 border-amber-300"
+                              }`}
+                            >
+                              {STATUS_OPTIONS.map((st) => (
+                                <option key={st} value={st}>
+                                  {st}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {!isShop ? (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmationModalOrder(o)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] transition shadow-xs"
+                                title="Send WhatsApp Confirmation / Updates to Customer"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
+                                <span>WhatsApp</span>
+                              </button>
+                            ) : (
+                              <Link
+                                href="/admin/shop-billing"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] transition shadow-xs"
+                                title="Open in Sales Rep Shop Billing & Print POS Receipt"
+                              >
+                                <Store className="w-3.5 h-3.5 text-amber-700" />
+                                <span>Shop POS</span>
+                              </Link>
+                            )}
+                            <Link
+                              href={`/admin/orders/${o.id}`}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-tea-forest font-semibold text-[11px] transition"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Details</span>
+                            </Link>
                             <button
                               type="button"
-                              onClick={() => setConfirmationModalOrder(o)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] transition shadow-xs"
-                              title="Send WhatsApp Confirmation / Updates to Customer"
+                              onClick={() => setDeleteModalOrder(o)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-rose-200 hover:border-rose-300 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-[11px] transition"
+                              title="Delete this order"
                             >
-                              <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
-                              <span>WhatsApp</span>
+                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                              <span className="hidden sm:inline">Delete</span>
                             </button>
-                          ) : (
-                            <Link
-                              href="/admin/shop-billing"
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] transition shadow-xs"
-                              title="Open in Sales Rep Shop Billing & Print POS Receipt"
-                            >
-                              <Store className="w-3.5 h-3.5 text-amber-700" />
-                              <span>Shop POS</span>
-                            </Link>
-                          )}
-                          <Link
-                            href={`/admin/orders/${o.id}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-tea-forest font-semibold text-[11px] transition"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Details</span>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteModalOrder(o)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-rose-200 hover:border-rose-300 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-[11px] transition"
-                            title="Delete this order"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                            <span className="hidden sm:inline">Delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

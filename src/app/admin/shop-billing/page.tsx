@@ -885,11 +885,11 @@ export default function ShopBillingPage() {
         </div>
 
         {/* Tab Toggle */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab("billing")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "billing"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
@@ -902,7 +902,7 @@ export default function ShopBillingPage() {
           <button
             type="button"
             onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "products"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
@@ -915,7 +915,7 @@ export default function ShopBillingPage() {
           <button
             type="button"
             onClick={() => setActiveTab("history")}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "history"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
@@ -1424,11 +1424,11 @@ export default function ShopBillingPage() {
                       <label className="block text-[11px] font-bold text-tea-dark mb-1">
                         Qty (Packs)
                       </label>
-                      <div className="flex items-center">
+                      <div className="flex items-center h-11">
                         <button
                           type="button"
                           onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                          className="px-2.5 py-2 rounded-l-xl border border-r-0 border-tea-border bg-tea-surface hover:bg-tea-bg text-tea-dark font-bold text-xs"
+                          className="w-10 h-11 rounded-l-xl border border-r-0 border-tea-border bg-tea-surface hover:bg-tea-bg active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
                         >
                           -
                         </button>
@@ -1441,12 +1441,12 @@ export default function ShopBillingPage() {
                               e.target.value === "" ? 1 : Math.max(1, Number(e.target.value))
                             )
                           }
-                          className="w-full py-2 text-center text-xs font-bold text-tea-dark border-y border-tea-border bg-white focus:outline-none font-mono"
+                          className="w-full h-11 py-2 text-center text-sm font-bold text-tea-dark border-y border-tea-border bg-white focus:outline-none font-mono"
                         />
                         <button
                           type="button"
                           onClick={() => setItemQuantity(itemQuantity + 1)}
-                          className="px-2.5 py-2 rounded-r-xl border border-l-0 border-tea-border bg-tea-surface hover:bg-tea-bg text-tea-dark font-bold text-xs"
+                          className="w-10 h-11 rounded-r-xl border border-l-0 border-tea-border bg-tea-surface hover:bg-tea-bg active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
                         >
                           +
                         </button>
@@ -1457,7 +1457,7 @@ export default function ShopBillingPage() {
                     <div>
                       <button
                         type="submit"
-                        className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5"
+                        className="w-full h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Add Item</span>
@@ -1534,7 +1534,7 @@ export default function ShopBillingPage() {
                         <button
                           type="button"
                           onClick={() => handleUpdateItemQty(it.id, -1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-tea-border flex items-center justify-center font-bold text-tea-dark hover:bg-tea-surface"
+                          className="w-7 h-7 sm:w-6 sm:h-6 rounded-lg bg-white border border-tea-border flex items-center justify-center font-bold text-sm text-tea-dark hover:bg-tea-surface active:bg-tea-bg"
                         >
                           -
                         </button>
@@ -1544,7 +1544,7 @@ export default function ShopBillingPage() {
                         <button
                           type="button"
                           onClick={() => handleUpdateItemQty(it.id, 1)}
-                          className="w-6 h-6 rounded-lg bg-white border border-tea-border flex items-center justify-center font-bold text-tea-dark hover:bg-tea-surface"
+                          className="w-7 h-7 sm:w-6 sm:h-6 rounded-lg bg-white border border-tea-border flex items-center justify-center font-bold text-sm text-tea-dark hover:bg-tea-surface active:bg-tea-bg"
                         >
                           +
                         </button>
@@ -2336,247 +2336,471 @@ export default function ShopBillingPage() {
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
-                    <tr>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Invoice # & Date</th>
-                      <th className="py-3.5 px-4">Sales Rep</th>
-                      <th className="py-3.5 px-4">Shop / Store Name</th>
-                      <th className="py-3.5 px-4">Route / Town</th>
-                      <th className="py-3.5 px-4">Phone / WhatsApp</th>
-                      <th className="py-3.5 px-4">Items</th>
-                      <th className="py-3.5 px-4">Net Total</th>
-                      <th className="py-3.5 px-4">Payment</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-tea-border/60">
-                    {filteredLedgerOrders.map((o) => {
-                      const isCancelled = o.orderStatus === "CANCELLED";
-                      const isPaid = o.paymentStatus === "PAID";
-                      const isPartial = o.paymentStatus === "PARTIAL";
-                      const paid = o.paidAmount !== undefined ? o.paidAmount : isPaid ? o.grandTotal : 0;
-                      const due = o.dueAmount !== undefined ? o.dueAmount : isPaid ? 0 : o.grandTotal;
+              <>
+                {/* Mobile Card View (Optimized for field phones) */}
+                <div className="block sm:hidden divide-y divide-tea-border/60">
+                  {filteredLedgerOrders.map((o) => {
+                    const isCancelled = o.orderStatus === "CANCELLED";
+                    const isPaid = o.paymentStatus === "PAID";
+                    const isPartial = o.paymentStatus === "PARTIAL";
+                    const paid = o.paidAmount !== undefined ? o.paidAmount : isPaid ? o.grandTotal : 0;
+                    const due = o.dueAmount !== undefined ? o.dueAmount : isPaid ? 0 : o.grandTotal;
 
-                      return (
-                        <tr
-                          key={o.id}
-                          className={`transition ${
-                            isCancelled
-                              ? "bg-rose-50/20 hover:bg-rose-50/40 text-tea-muted opacity-80"
-                              : "hover:bg-tea-surface/40"
-                          }`}
-                        >
-                          {/* Invoice # & Date */}
-                          <td className="py-3 px-4 font-mono font-bold text-tea-dark whitespace-nowrap">
-                            <span className="block text-tea-dark">#{o.orderNumber}</span>
-                            <span className="text-[10px] text-tea-muted font-sans font-normal block">
+                    return (
+                      <div
+                        key={o.id}
+                        className={`p-4 space-y-3 transition ${
+                          isCancelled ? "bg-rose-50/20 text-tea-muted opacity-85" : "bg-white hover:bg-tea-surface/30"
+                        }`}
+                      >
+                        {/* Top Line: Invoice # + Date + Status */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <span className="font-mono font-bold text-sm text-tea-dark block">
+                              #{o.orderNumber}
+                            </span>
+                            <span className="text-[10px] text-tea-muted">
                               {new Date(o.createdAt).toLocaleDateString("en-GB")} •{" "}
                               {new Date(o.createdAt).toLocaleTimeString([], {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
                             </span>
-                          </td>
+                          </div>
 
-                          {/* Sales Rep */}
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
-                              <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                              <span>{o.salesRepName || extractSalesRepName(o.deliveryNotes) || "Direct Sales Rep"}</span>
+                          {isCancelled ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                              <Ban className="w-3 h-3" />
+                              <span>Cancelled</span>
                             </span>
-                          </td>
-
-                          {/* Shop Name */}
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-tea-dark">{o.customerName}</div>
-                            {o.shippingAddress && (
-                              <div className="text-[10px] text-tea-muted truncate max-w-[180px]">
-                                {o.shippingAddress}
-                              </div>
-                            )}
-                          </td>
-
-                          {/* Route / Town */}
-                          <td className="py-3 px-4 text-tea-dark font-medium">
-                            <span className="inline-flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-tea-muted shrink-0" />
-                              <span>{o.city || "Direct Route"}</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span>Active Bill</span>
                             </span>
-                          </td>
+                          )}
+                        </div>
 
-                          {/* Phone */}
-                          <td className="py-3 px-4 font-mono text-[11px] text-tea-dark whitespace-nowrap">
-                            {o.customerPhone}
-                          </td>
+                        {/* Sales Rep Attribution & Payment Badge */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <span>Rep: {o.salesRepName || extractSalesRepName(o.deliveryNotes) || "Direct Sales Rep"}</span>
+                          </span>
 
-                          {/* Items */}
-                          <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
-                            <span className="font-semibold text-tea-dark">
-                              {o.items?.length || 0} line(s)
-                            </span>
-                          </td>
-
-                          {/* Net Total */}
-                          <td className="py-3 px-4 font-mono font-bold text-tea-forest whitespace-nowrap">
-                            <span className={isCancelled ? "line-through text-tea-muted" : ""}>
-                              Rs. {o.grandTotal.toLocaleString()}
-                            </span>
-                            {isCancelled && (
-                              <span className="text-[10px] text-rose-600 block font-sans">
-                                Restocked
+                          <div>
+                            {isPaid ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                                <span>PAID IN FULL</span>
                               </span>
-                            )}
-                          </td>
-
-                          {/* Payment Status & Method */}
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <div className="space-y-1">
-                              {isPaid ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                                  <span>PAID IN FULL</span>
-                                </span>
-                              ) : isPartial ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
-                                  <DollarSign className="w-3 h-3 text-amber-700" />
-                                  <span>PARTIAL (Paid: Rs. {paid.toLocaleString()} | Due: Rs. {due.toLocaleString()})</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
-                                  <Clock className="w-3 h-3 text-rose-700" />
-                                  <span>DUE / CREDIT</span>
-                                </span>
-                              )}
-                              {o.combinedDetails && (
-                                <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-amber-100/90 text-amber-950 font-mono text-[9px] font-bold border border-amber-300">
-                                  2-Bill: Paid Rs. {o.combinedDetails.totalReceived.toLocaleString()} • Bal Rs. {o.combinedDetails.afterBalance.toLocaleString()}
-                                </span>
-                              )}
-                              <div className="text-[10px] text-tea-muted capitalize">
-                                {o.paymentMethod === "CREDIT_SHOP"
-                                  ? "Credit"
-                                  : o.paymentMethod === "BANK_TRANSFER"
-                                  ? "Bank Transfer"
-                                  : o.paymentMethod === "CHEQUE"
-                                  ? "Cheque"
-                                  : "Cash"}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Order Status */}
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            {isCancelled ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                                <Ban className="w-3 h-3" />
-                                <span>Cancelled</span>
+                            ) : isPartial ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
+                                <DollarSign className="w-3 h-3 text-amber-700" />
+                                <span>PARTIAL</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <span>Active</span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                                <Clock className="w-3 h-3 text-rose-700" />
+                                <span>DUE / CREDIT</span>
                               </span>
                             )}
-                          </td>
+                          </div>
+                        </div>
 
-                          {/* Action Buttons */}
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* 1. Update Payment Button */}
+                        {/* Shop Name & Details */}
+                        <div className="bg-tea-surface/50 rounded-xl p-3 border border-tea-border/50 space-y-1 text-xs">
+                          <div className="font-bold text-tea-dark text-sm">{o.customerName}</div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-tea-muted">
+                            {o.city && (
+                              <span className="inline-flex items-center gap-1 text-tea-dark font-medium">
+                                <MapPin className="w-3 h-3 text-tea-muted shrink-0" />
+                                <span>{o.city}</span>
+                              </span>
+                            )}
+                            {o.customerPhone && (
+                              <a
+                                href={`tel:${o.customerPhone}`}
+                                className="inline-flex items-center gap-1 font-mono text-tea-forest font-semibold hover:underline"
+                              >
+                                <Phone className="w-3 h-3 text-tea-muted" />
+                                <span>{o.customerPhone}</span>
+                              </a>
+                            )}
+                          </div>
+                          {o.shippingAddress && (
+                            <div className="text-[10px] text-tea-muted truncate pt-0.5">
+                              {o.shippingAddress}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Financial Summary Line */}
+                        <div className="flex items-baseline justify-between pt-1">
+                          <div>
+                            <span className="text-[11px] text-tea-muted font-medium block">
+                              Net Total ({o.items?.length || 0} line{o.items?.length === 1 ? "" : "s"}):
+                            </span>
+                            {isPartial && (
+                              <span className="text-[10px] text-amber-900 font-mono block">
+                                Paid: Rs. {paid.toLocaleString()} • Due: Rs. {due.toLocaleString()}
+                              </span>
+                            )}
+                            {o.combinedDetails && (
+                              <span className="text-[10px] text-amber-900 font-mono block">
+                                2-Bill: Paid Rs. {o.combinedDetails.totalReceived.toLocaleString()} • Bal Rs. {o.combinedDetails.afterBalance.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span
+                              className={`text-base font-extrabold font-mono text-tea-forest ${
+                                isCancelled ? "line-through text-tea-muted" : ""
+                              }`}
+                            >
+                              Rs. {o.grandTotal.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-tea-muted block capitalize">
+                              {o.paymentMethod === "CREDIT_SHOP"
+                                ? "Credit"
+                                : o.paymentMethod === "BANK_TRANSFER"
+                                ? "Bank Transfer"
+                                : o.paymentMethod === "CHEQUE"
+                                ? "Cheque"
+                                : "Cash"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Mobile Action Buttons Bar */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-tea-border/60">
+                          {/* Update Pay */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPaymentModal(o)}
+                            disabled={isCancelled}
+                            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                              isCancelled
+                                ? "opacity-30 cursor-not-allowed bg-tea-surface text-tea-muted"
+                                : isPaid
+                                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-xs"
+                            }`}
+                          >
+                            <CreditCard className="w-4 h-4" />
+                            <span>{isPaid ? "Payment" : "Update Pay"}</span>
+                          </button>
+
+                          {/* Print Bill */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCompletedOrder(o);
+                              setPrintModalOpen(true);
+                            }}
+                            className="h-11 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition"
+                          >
+                            <Printer className="w-4 h-4 text-tea-gold" />
+                            <span>Print Bill</span>
+                          </button>
+
+                          {/* WhatsApp */}
+                          <a
+                            href={getWhatsAppUrl(
+                              o.customerPhone,
+                              compileShopInvoiceWhatsAppMessage({
+                                orderNumber: o.orderNumber,
+                                shopName: o.customerName,
+                                shopPhone: o.customerPhone,
+                                routeTown: o.city,
+                                address: o.shippingAddress,
+                                items: o.items || [],
+                                subtotal: o.subtotal,
+                                discount: o.discount,
+                                deliveryCharge: o.deliveryCharge,
+                                grandTotal: o.grandTotal,
+                                paymentMethod: o.paymentMethod,
+                                paymentStatus: o.paymentStatus,
+                                salesRepName: o.salesRepName || extractSalesRepName(o.deliveryNotes),
+                              })
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                          >
+                            <MessageSquare className="w-4 h-4 fill-current" />
+                            <span>WhatsApp</span>
+                          </a>
+
+                          {/* Details & Cancel */}
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/admin/orders/${o.id}`}
+                              className="flex-1 h-11 rounded-xl border border-tea-border hover:bg-tea-surface text-tea-forest text-xs font-bold flex items-center justify-center gap-1 transition"
+                            >
+                              <FileText className="w-4 h-4" />
+                              <span>Details</span>
+                            </Link>
+
+                            {!isCancelled ? (
                               <button
                                 type="button"
-                                onClick={() => handleOpenPaymentModal(o)}
-                                disabled={isCancelled}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
-                                  isCancelled
-                                    ? "opacity-30 cursor-not-allowed bg-tea-surface text-tea-muted"
-                                    : isPaid
-                                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
-                                    : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-xs"
-                                }`}
-                                title="Update Payment Status / Mode"
+                                onClick={() => handleOpenCancelModal(o)}
+                                className="w-11 h-11 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 flex items-center justify-center shrink-0 transition"
+                                title="Cancel / Void Bill"
                               >
-                                <CreditCard className="w-3.5 h-3.5" />
-                                <span>{isPaid ? "Payment" : "Update Pay"}</span>
+                                <Ban className="w-4 h-4" />
                               </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                              {/* 2. Cancel Bill Button */}
-                              {!isCancelled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenCancelModal(o)}
-                                  className="p-1.5 rounded-lg border border-tea-border hover:bg-rose-50 hover:text-rose-700 text-tea-muted transition"
-                                  title="Cancel Bill & Restock Inventory"
-                                >
-                                  <Ban className="w-3.5 h-3.5" />
-                                </button>
-                              ) : (
-                                <span
-                                  className="p-1.5 text-tea-muted opacity-40 cursor-not-allowed"
-                                  title="Bill is already cancelled"
-                                >
-                                  <Ban className="w-3.5 h-3.5" />
+                {/* Desktop Table View (Hidden on mobile) */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
+                      <tr>
+                        <th className="py-3.5 px-4 whitespace-nowrap">Invoice # & Date</th>
+                        <th className="py-3.5 px-4">Sales Rep</th>
+                        <th className="py-3.5 px-4">Shop / Store Name</th>
+                        <th className="py-3.5 px-4">Route / Town</th>
+                        <th className="py-3.5 px-4">Phone / WhatsApp</th>
+                        <th className="py-3.5 px-4">Items</th>
+                        <th className="py-3.5 px-4">Net Total</th>
+                        <th className="py-3.5 px-4">Payment</th>
+                        <th className="py-3.5 px-4">Status</th>
+                        <th className="py-3.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-tea-border/60">
+                      {filteredLedgerOrders.map((o) => {
+                        const isCancelled = o.orderStatus === "CANCELLED";
+                        const isPaid = o.paymentStatus === "PAID";
+                        const isPartial = o.paymentStatus === "PARTIAL";
+                        const paid = o.paidAmount !== undefined ? o.paidAmount : isPaid ? o.grandTotal : 0;
+                        const due = o.dueAmount !== undefined ? o.dueAmount : isPaid ? 0 : o.grandTotal;
+
+                        return (
+                          <tr
+                            key={o.id}
+                            className={`transition ${
+                              isCancelled
+                                ? "bg-rose-50/20 hover:bg-rose-50/40 text-tea-muted opacity-80"
+                                : "hover:bg-tea-surface/40"
+                            }`}
+                          >
+                            {/* Invoice # & Date */}
+                            <td className="py-3 px-4 font-mono font-bold text-tea-dark whitespace-nowrap">
+                              <span className="block text-tea-dark">#{o.orderNumber}</span>
+                              <span className="text-[10px] text-tea-muted font-sans font-normal block">
+                                {new Date(o.createdAt).toLocaleDateString("en-GB")} •{" "}
+                                {new Date(o.createdAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </td>
+
+                            {/* Sales Rep */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                                <span>{o.salesRepName || extractSalesRepName(o.deliveryNotes) || "Direct Sales Rep"}</span>
+                              </span>
+                            </td>
+
+                            {/* Shop Name */}
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-tea-dark">{o.customerName}</div>
+                              {o.shippingAddress && (
+                                <div className="text-[10px] text-tea-muted truncate max-w-[180px]">
+                                  {o.shippingAddress}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Route / Town */}
+                            <td className="py-3 px-4 text-tea-dark font-medium">
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-tea-muted shrink-0" />
+                                <span>{o.city || "Direct Route"}</span>
+                              </span>
+                            </td>
+
+                            {/* Phone */}
+                            <td className="py-3 px-4 font-mono text-[11px] text-tea-dark whitespace-nowrap">
+                              {o.customerPhone}
+                            </td>
+
+                            {/* Items */}
+                            <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
+                              <span className="font-semibold text-tea-dark">
+                                {o.items?.length || 0} line(s)
+                              </span>
+                            </td>
+
+                            {/* Net Total */}
+                            <td className="py-3 px-4 font-mono font-bold text-tea-forest whitespace-nowrap">
+                              <span className={isCancelled ? "line-through text-tea-muted" : ""}>
+                                Rs. {o.grandTotal.toLocaleString()}
+                              </span>
+                              {isCancelled && (
+                                <span className="text-[10px] text-rose-600 block font-sans">
+                                  Restocked
                                 </span>
                               )}
+                            </td>
 
-                              {/* 3. WhatsApp Invoice */}
-                              <a
-                                href={getWhatsAppUrl(
-                                  o.customerPhone,
-                                  compileShopInvoiceWhatsAppMessage({
-                                    orderNumber: o.orderNumber,
-                                    shopName: o.customerName,
-                                    shopPhone: o.customerPhone,
-                                    routeTown: o.city,
-                                    address: o.shippingAddress,
-                                    items: o.items || [],
-                                    subtotal: o.subtotal,
-                                    discount: o.discount,
-                                    deliveryCharge: o.deliveryCharge,
-                                    grandTotal: o.grandTotal,
-                                    paymentMethod: o.paymentMethod,
-                                    paymentStatus: o.paymentStatus,
-                                  })
+                            {/* Payment Status & Method */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <div className="space-y-1">
+                                {isPaid ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                                    <span>PAID IN FULL</span>
+                                  </span>
+                                ) : isPartial ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
+                                    <DollarSign className="w-3 h-3 text-amber-700" />
+                                    <span>PARTIAL (Paid: Rs. {paid.toLocaleString()} | Due: Rs. {due.toLocaleString()})</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                                    <Clock className="w-3 h-3 text-rose-700" />
+                                    <span>DUE / CREDIT</span>
+                                  </span>
                                 )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
-                                title="Send WhatsApp Bill"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
-                              </a>
+                                {o.combinedDetails && (
+                                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded bg-amber-100/90 text-amber-950 font-mono text-[9px] font-bold border border-amber-300">
+                                    2-Bill: Paid Rs. {o.combinedDetails.totalReceived.toLocaleString()} • Bal Rs. {o.combinedDetails.afterBalance.toLocaleString()}
+                                  </span>
+                                )}
+                                <div className="text-[10px] text-tea-muted capitalize">
+                                  {o.paymentMethod === "CREDIT_SHOP"
+                                    ? "Credit"
+                                    : o.paymentMethod === "BANK_TRANSFER"
+                                    ? "Bank Transfer"
+                                    : o.paymentMethod === "CHEQUE"
+                                    ? "Cheque"
+                                    : "Cash"}
+                                </div>
+                              </div>
+                            </td>
 
-                              {/* 4. Print Invoice */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCompletedOrder(o);
-                                  setPrintModalOpen(true);
-                                }}
-                                className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark"
-                                title="Print Invoice"
-                              >
-                                <Printer className="w-3.5 h-3.5" />
-                              </button>
+                            {/* Order Status */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {isCancelled ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                  <Ban className="w-3 h-3" />
+                                  <span>Cancelled</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <span>Active</span>
+                                </span>
+                              )}
+                            </td>
 
-                              {/* 5. View Details */}
-                              <Link
-                                href={`/admin/orders/${o.id}`}
-                                className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-forest"
-                                title="Order Details"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            {/* Action Buttons */}
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* 1. Update Payment Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPaymentModal(o)}
+                                  disabled={isCancelled}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
+                                    isCancelled
+                                      ? "opacity-30 cursor-not-allowed bg-tea-surface text-tea-muted"
+                                      : isPaid
+                                      ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                      : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-xs"
+                                  }`}
+                                  title="Update Payment Status / Mode"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  <span>{isPaid ? "Payment" : "Update Pay"}</span>
+                                </button>
+
+                                {/* 2. Cancel Bill Button */}
+                                {!isCancelled ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenCancelModal(o)}
+                                    className="p-1.5 rounded-lg border border-tea-border hover:bg-rose-50 hover:text-rose-700 text-tea-muted transition"
+                                    title="Cancel Bill & Restock Inventory"
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <span
+                                    className="p-1.5 text-tea-muted opacity-40 cursor-not-allowed"
+                                    title="Bill is already cancelled"
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                  </span>
+                                )}
+
+                                {/* 3. WhatsApp Invoice */}
+                                <a
+                                  href={getWhatsAppUrl(
+                                    o.customerPhone,
+                                    compileShopInvoiceWhatsAppMessage({
+                                      orderNumber: o.orderNumber,
+                                      shopName: o.customerName,
+                                      shopPhone: o.customerPhone,
+                                      routeTown: o.city,
+                                      address: o.shippingAddress,
+                                      items: o.items || [],
+                                      subtotal: o.subtotal,
+                                      discount: o.discount,
+                                      deliveryCharge: o.deliveryCharge,
+                                      grandTotal: o.grandTotal,
+                                      paymentMethod: o.paymentMethod,
+                                      paymentStatus: o.paymentStatus,
+                                    })
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                  title="Send WhatsApp Bill"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
+                                </a>
+
+                                {/* 4. Print Invoice */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCompletedOrder(o);
+                                    setPrintModalOpen(true);
+                                  }}
+                                  className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark"
+                                  title="Print Invoice"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* 5. View Details */}
+                                <Link
+                                  href={`/admin/orders/${o.id}`}
+                                  className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-forest"
+                                  title="Order Details"
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                </Link>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -2650,9 +2874,9 @@ export default function ShopBillingPage() {
             : null);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-tea-dark/75 backdrop-blur-xs overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-tea-dark/75 backdrop-blur-xs overflow-y-auto">
             <div
-              className={`bg-white rounded-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-6 animate-scale-up ${
+              className={`bg-white rounded-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-auto max-h-[94vh] overflow-y-auto animate-scale-up ${
                 printFormat === "terminal" ? "max-w-md" : "max-w-3xl"
               }`}
             >
