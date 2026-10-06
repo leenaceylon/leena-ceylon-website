@@ -34,6 +34,26 @@ function extractSalesRepName(notes?: string | null): string | null {
   return null;
 }
 
+function parsePaymentDetails(o: any) {
+  const grandTotal = Number(o.grandTotal) || 0;
+  if (o.paymentStatus === "PAID") {
+    return { paidAmount: grandTotal, dueAmount: 0, isPartial: false };
+  }
+  if (o.paymentStatus === "PARTIAL") {
+    let paid = 0;
+    let due = grandTotal;
+    if (o.deliveryNotes) {
+      const paidMatch = o.deliveryNotes.match(/paid=([0-9.]+)/i);
+      const dueMatch = o.deliveryNotes.match(/due=([0-9.]+)/i);
+      if (paidMatch) paid = parseFloat(paidMatch[1]) || 0;
+      if (dueMatch) due = parseFloat(dueMatch[1]) || Math.max(0, grandTotal - paid);
+      else due = Math.max(0, grandTotal - paid);
+    }
+    return { paidAmount: Math.min(grandTotal, paid), dueAmount: Math.max(0, due), isPartial: true };
+  }
+  return { paidAmount: 0, dueAmount: grandTotal, isPartial: false };
+}
+
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
@@ -43,7 +63,8 @@ export async function GET() {
 
     // 1. Fetch registered users with role CUSTOMER
     // 2. Fetch all orders (both shop orders SHOP-... and online/WhatsApp orders LC-...)
-    const [users, allOrders] = await Promise.all([
+    // 3. Fetch registered retail shops from SiteSetting
+    const [users, allOrders, registeredShopsSetting] = await Promise.all([
       prisma.user.findMany({
         where: { role: "CUSTOMER" },
         include: {
@@ -59,6 +80,7 @@ export async function GET() {
               district: true,
               deliveryNotes: true,
               paymentMethod: true,
+              paymentStatus: true,
               orderStatus: true,
             },
           },
@@ -80,9 +102,21 @@ export async function GET() {
           },
         },
       }),
+      prisma.siteSetting.findUnique({
+        where: { key: "leena_registered_shops" },
+      }),
     ]);
 
-    // Map to hold unique aggregated customer profiles
+    let registeredShopsList: any[] = [];
+    if (registeredShopsSetting?.value) {
+      try {
+        registeredShopsList = JSON.parse(registeredShopsSetting.value);
+      } catch (e) {
+        registeredShopsList = [];
+      }
+    }
+
+    // Map to hold unique aggregated customer & shop profiles
     const customerMap = new Map<string, any>();
     const phoneToKey = new Map<string, string>();
     const nameToKey = new Map<string, string>();
@@ -100,7 +134,9 @@ export async function GET() {
       customerMap.set(userKey, {
         id: userKey,
         userId: u.id,
+        shopCode: null,
         name: u.name,
+        ownerName: "",
         email: u.email,
         phone: u.phone || (defaultAddr ? defaultAddr.phone : ""),
         address: defaultAddr ? defaultAddr.addressLine : "",
@@ -110,6 +146,7 @@ export async function GET() {
         channel: "REGISTERED",
         orderCount: u.orders.length,
         totalSpent: u.orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0),
+        pendingBalance: 0,
         firstOrderDate: u.createdAt.toISOString(),
         lastOrderDate:
           u.orders.length > 0
@@ -118,6 +155,7 @@ export async function GET() {
         isActive: u.isActive,
         notes: "",
         salesRepName: null,
+        hasQr: false,
         allOrderIds: u.orders.map((o) => o.id),
         allOrderNumbers: u.orders.map((o) => o.orderNumber),
         ordersList: u.orders.map((o) => ({
@@ -126,7 +164,7 @@ export async function GET() {
           createdAt: o.createdAt.toISOString(),
           grandTotal: o.grandTotal,
           paymentMethod: o.paymentMethod,
-          paymentStatus: "PAID",
+          paymentStatus: o.paymentStatus || "PAID",
           orderStatus: o.orderStatus,
           salesRepName: extractSalesRepName(o.deliveryNotes),
           itemsCount: 1,
@@ -140,7 +178,45 @@ export async function GET() {
       if (cleanEmail) emailToKey.set(cleanEmail, userKey);
     }
 
-    // Step B: Process all orders to aggregate Shop Orders (SHOP-...) and Online/WhatsApp Orders (LC-...)
+    // Step B: Seed customer directory with registered retail stores (Show in panel even if 0 orders yet)
+    for (const reg of registeredShopsList) {
+      const cleanPhone = normalizePhone(reg.phone || "");
+      const cleanName = normalizeName(reg.shopName || "");
+      const shopCode = reg.shopCode || `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+      const shopKey = `shop_${cleanName || cleanPhone || shopCode}`;
+
+      customerMap.set(shopKey, {
+        id: shopKey,
+        userId: null,
+        shopCode,
+        name: reg.shopName.trim(),
+        ownerName: reg.ownerName?.trim() || "",
+        email: "",
+        phone: reg.phone?.trim() || "",
+        address: reg.address?.trim() || "",
+        city: reg.routeTown?.trim() || "",
+        district: reg.district?.trim() || "Anuradhapura",
+        postalCode: "",
+        channel: "SHOP",
+        orderCount: 0,
+        totalSpent: 0,
+        pendingBalance: Number(reg.openingBalance || 0),
+        firstOrderDate: reg.createdAt || new Date().toISOString(),
+        lastOrderDate: reg.createdAt || new Date().toISOString(),
+        isActive: true,
+        notes: reg.notes?.trim() || "",
+        salesRepName: reg.assignedRep?.trim() || null,
+        allOrderIds: [],
+        allOrderNumbers: [],
+        ordersList: [],
+        hasQr: true,
+      });
+
+      if (cleanPhone) phoneToKey.set(cleanPhone, shopKey);
+      if (cleanName && cleanName.length >= 3) nameToKey.set(cleanName, shopKey);
+    }
+
+    // Step C: Process all orders to aggregate Shop Orders (SHOP-...) and Online/WhatsApp Orders (LC-...)
     // Group repeat orders by Customer Name, Phone, Email, or User ID into ONE single customer row
     for (const o of allOrders) {
       const isShopOrder =
@@ -152,6 +228,7 @@ export async function GET() {
       const cleanName = normalizeName(o.customerName || "");
       const cleanEmail = normalizeEmail(o.customerEmail || "");
       const repName = extractSalesRepName(o.deliveryNotes);
+      const { paidAmount, dueAmount } = parsePaymentDetails(o);
 
       let targetKey: string | null = null;
 
@@ -187,6 +264,9 @@ export async function GET() {
           entry.allOrderNumbers.push(o.orderNumber);
           entry.orderCount += 1;
           entry.totalSpent += o.grandTotal || 0;
+          if (o.orderStatus !== "CANCELLED" && dueAmount > 0) {
+            entry.pendingBalance = (entry.pendingBalance || 0) + dueAmount;
+          }
           if (!entry.ordersList) entry.ordersList = [];
           entry.ordersList.push(orderItemSummary);
 
@@ -212,6 +292,15 @@ export async function GET() {
         // Upgrade channel tag if shop order
         if (isShopOrder && entry.channel !== "REGISTERED") {
           entry.channel = "SHOP";
+          entry.hasQr = true;
+          if (!entry.shopCode) {
+            let hash = 0;
+            for (let i = 0; i < cleanName.length; i++) {
+              hash = (hash << 5) - hash + cleanName.charCodeAt(i);
+              hash |= 0;
+            }
+            entry.shopCode = `LC-SH-${Math.abs(hash % 9000) + 1000}`;
+          }
         }
 
         // Register any newly discovered identifiers for this customer
@@ -226,10 +315,22 @@ export async function GET() {
           ? `name_${cleanName}`
           : `order_${o.id}`;
 
+        let computedShopCode: string | null = null;
+        if (isShopOrder) {
+          let hash = 0;
+          for (let i = 0; i < (cleanName || o.id).length; i++) {
+            hash = (hash << 5) - hash + (cleanName || o.id).charCodeAt(i);
+            hash |= 0;
+          }
+          computedShopCode = `LC-SH-${Math.abs(hash % 9000) + 1000}`;
+        }
+
         const newProfile = {
           id: newKey,
           userId: o.customerId || null,
+          shopCode: computedShopCode,
           name: o.customerName || "Customer",
+          ownerName: "",
           email: cleanEmail,
           phone: o.customerPhone || "",
           address: o.shippingAddress || "",
@@ -239,11 +340,13 @@ export async function GET() {
           channel: isShopOrder ? "SHOP" : "ONLINE",
           orderCount: 1,
           totalSpent: o.grandTotal || 0,
+          pendingBalance: o.orderStatus !== "CANCELLED" && dueAmount > 0 ? dueAmount : 0,
           firstOrderDate: o.createdAt.toISOString(),
           lastOrderDate: o.createdAt.toISOString(),
           isActive: true,
           notes: o.deliveryNotes || "",
           salesRepName: repName,
+          hasQr: isShopOrder,
           allOrderIds: [o.id],
           allOrderNumbers: [o.orderNumber],
           ordersList: [orderItemSummary],
@@ -329,6 +432,11 @@ export async function PUT(req: NextRequest) {
       notes,
       updateOldOrders = true,
       allOrderIds = [],
+      ownerName,
+      shopCode,
+      regenerateQr,
+      channel,
+      assignedRep,
     } = body;
 
     if (!name || !name.trim()) {
@@ -431,13 +539,90 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    // C. Activity Log
+    // C. Update Registered Shop list if this is a Retail Shop
+    let finalShopCode = shopCode || null;
+    const isShopRecord =
+      channel === "SHOP" ||
+      Boolean(shopCode) ||
+      (typeof customerId === "string" && customerId.startsWith("shop_")) ||
+      Boolean(regenerateQr);
+
+    if (isShopRecord) {
+      try {
+        const shopsSetting = await prisma.siteSetting.findUnique({
+          where: { key: "leena_registered_shops" },
+        });
+        let registeredShops: any[] = [];
+        if (shopsSetting?.value) {
+          try {
+            registeredShops = JSON.parse(shopsSetting.value);
+          } catch (e) {
+            registeredShops = [];
+          }
+        }
+
+        const cleanOldName = (oldName || "").trim().toLowerCase();
+        const cleanOldPhone = (oldPhone || "").replace(/\D/g, "");
+        const cleanName = (name || "").trim().toLowerCase();
+        const cleanPhone = (phone || "").replace(/\D/g, "");
+
+        const existingIdx = registeredShops.findIndex(
+          (s) =>
+            (shopCode && s.shopCode === shopCode) ||
+            (cleanOldName && s.shopName && s.shopName.trim().toLowerCase() === cleanOldName) ||
+            (cleanName && s.shopName && s.shopName.trim().toLowerCase() === cleanName) ||
+            (cleanOldPhone && s.phone && s.phone.replace(/\D/g, "") === cleanOldPhone) ||
+            (cleanPhone && s.phone && s.phone.replace(/\D/g, "") === cleanPhone)
+        );
+
+        if (regenerateQr || (!finalShopCode && existingIdx === -1)) {
+          finalShopCode = `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+        } else if (existingIdx > -1 && !finalShopCode) {
+          finalShopCode = registeredShops[existingIdx].shopCode;
+        }
+
+        const updatedShopEntry = {
+          shopCode: finalShopCode,
+          shopName: name.trim(),
+          ownerName: ownerName?.trim() || (existingIdx > -1 ? registeredShops[existingIdx].ownerName : ""),
+          phone: (phone || "").trim(),
+          routeTown: (city || "").trim(),
+          address: (shippingAddress || "").trim(),
+          district: (district || "Anuradhapura").trim(),
+          assignedRep: assignedRep?.trim() || (existingIdx > -1 ? registeredShops[existingIdx].assignedRep : admin.name || "Sales Rep"),
+          openingBalance: existingIdx > -1 ? registeredShops[existingIdx].openingBalance : 0,
+          notes: notes?.trim() || (existingIdx > -1 ? registeredShops[existingIdx].notes : ""),
+          createdAt: existingIdx > -1 ? registeredShops[existingIdx].createdAt : new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        if (existingIdx > -1) {
+          registeredShops[existingIdx] = updatedShopEntry;
+        } else {
+          registeredShops.unshift(updatedShopEntry);
+        }
+
+        await prisma.siteSetting.upsert({
+          where: { key: "leena_registered_shops" },
+          update: { value: JSON.stringify(registeredShops), updatedAt: new Date() },
+          create: {
+            key: "leena_registered_shops",
+            value: JSON.stringify(registeredShops),
+            group: "SYSTEM",
+          },
+        });
+      } catch (shopSyncErr) {
+        console.warn("Could not sync shop record to leena_registered_shops:", shopSyncErr);
+      }
+    }
+
+    // D. Activity Log
     await prisma.adminActivityLog.create({
       data: {
         adminId: admin.id,
         adminName: admin.name,
         action: "UPDATE_CUSTOMER_DETAILS",
-        details: `Updated customer "${oldName || name}" -> "${name}" (Phone: ${phone}). Synchronized ${updatedOrdersCount} past order(s) (Shop & Online/WhatsApp).`,
+        details: `Updated customer "${oldName || name}" -> "${name}" (Phone: ${phone}${finalShopCode ? `, Shop Code: ${finalShopCode}` : ""}). Synchronized ${updatedOrdersCount} past order(s) (Shop & Online/WhatsApp).`,
         entityType: "Customer",
         entityId: resolvedUserId || customerId || name,
       },
@@ -446,10 +631,13 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Customer "${name}" details updated successfully! ${
+        finalShopCode ? `Shop Code: ${finalShopCode}. ` : ""
+      }${
         updatedOrdersCount > 0
           ? `Synchronized ${updatedOrdersCount} past order(s) across shop billing and online records.`
           : ""
       }`,
+      shopCode: finalShopCode,
       updatedOrdersCount,
     });
   } catch (err: any) {

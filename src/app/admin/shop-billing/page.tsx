@@ -43,11 +43,13 @@ import {
   PlusCircle,
   ScanLine,
   UserPlus,
+  Edit3,
 } from "lucide-react";
 import { getWhatsAppUrl, compileShopInvoiceWhatsAppMessage, ShopInvoiceData } from "@/lib/whatsapp";
 import ShopQrScannerModal from "@/components/admin/ShopQrScannerModal";
 import ShopQrStickerModal from "@/components/admin/ShopQrStickerModal";
 import RegisterShopModal from "@/components/admin/RegisterShopModal";
+import EditShopModal from "@/components/admin/EditShopModal";
 
 interface ProductVariant {
   id: string;
@@ -148,6 +150,8 @@ export default function ShopBillingPage() {
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [qrStickerModalOpen, setQrStickerModalOpen] = useState(false);
   const [registerShopModalOpen, setRegisterShopModalOpen] = useState(false);
+  const [editShopModalOpen, setEditShopModalOpen] = useState(false);
+  const [editingShop, setEditingShop] = useState<any>(null);
   const [stickerShop, setStickerShop] = useState<KnownShop | null>(null);
   const [shopFilterTown, setShopFilterTown] = useState("ALL");
   const [shopSearchQuery, setShopSearchQuery] = useState("");
@@ -323,6 +327,36 @@ export default function ShopBillingPage() {
     setQrStickerModalOpen(true);
 
     setNotice(`🎉 Shop "${newShop.shopName}" registered successfully! QR Sticker generated.`);
+    setTimeout(() => setNotice(null), 5000);
+  };
+
+  const handleShopUpdated = (updatedShop: any) => {
+    setKnownShops((prev) => {
+      const existingIdx = prev.findIndex(
+        (s) =>
+          (updatedShop.shopCode && s.shopCode === updatedShop.shopCode) ||
+          s.shopName.toLowerCase().trim() === updatedShop.shopName.toLowerCase().trim()
+      );
+      if (existingIdx > -1) {
+        const copy = [...prev];
+        copy[existingIdx] = { ...copy[existingIdx], ...updatedShop };
+        return copy;
+      }
+      return [updatedShop, ...prev];
+    });
+
+    if (
+      shopName.toLowerCase().trim() === (editingShop?.shopName || "").toLowerCase().trim() ||
+      shopName.toLowerCase().trim() === updatedShop.shopName.toLowerCase().trim()
+    ) {
+      setShopName(updatedShop.shopName || "");
+      setShopPhone(updatedShop.phone || "");
+      setRouteTown(updatedShop.routeTown || "");
+      setAddress(updatedShop.address || "");
+      setOwnerName(updatedShop.ownerName || "");
+    }
+
+    setNotice(`Shop "${updatedShop.shopName}" details updated successfully!`);
     setTimeout(() => setNotice(null), 5000);
   };
 
@@ -1628,6 +1662,29 @@ export default function ShopBillingPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingShop(
+                        selectedKnownShop || {
+                          shopCode: undefined,
+                          shopName,
+                          ownerName,
+                          phone: shopPhone,
+                          routeTown,
+                          address,
+                          district: "Anuradhapura",
+                        }
+                      );
+                      setEditShopModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    title="Edit Shop Details & Make New QR"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
+                    <span>Edit Shop</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setCustomerConfirmed(false)}
@@ -3403,17 +3460,31 @@ export default function ShopBillingPage() {
                     </div>
 
                     {/* Card Actions */}
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-tea-border/60 text-xs">
+                    <div className="grid grid-cols-3 gap-1.5 pt-3 border-t border-tea-border/60 text-xs">
                       <button
                         type="button"
                         onClick={() => {
                           handleSelectKnownShop(sh);
                           setActiveTab("billing");
                         }}
-                        className="py-2 px-3 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold flex items-center justify-center gap-1 shadow-xs transition"
+                        className="py-2 px-1.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold flex items-center justify-center gap-1 shadow-xs transition"
+                        title="Create Bill for this store"
                       >
                         <Plus className="w-3.5 h-3.5 text-tea-gold" />
-                        <span>Create Bill</span>
+                        <span>Bill</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingShop(sh);
+                          setEditShopModalOpen(true);
+                        }}
+                        className="py-2 px-1.5 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest font-bold border border-tea-border flex items-center justify-center gap-1 shadow-xs transition"
+                        title="Edit Shop Details & Make New QR"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
+                        <span>Edit</span>
                       </button>
 
                       <button
@@ -3422,10 +3493,11 @@ export default function ShopBillingPage() {
                           setStickerShop(sh);
                           setQrStickerModalOpen(true);
                         }}
-                        className="py-2 px-3 rounded-xl bg-white hover:bg-tea-surface text-tea-dark font-bold border border-tea-border flex items-center justify-center gap-1 shadow-xs transition"
+                        className="py-2 px-1.5 rounded-xl bg-white hover:bg-tea-surface text-tea-dark font-bold border border-tea-border flex items-center justify-center gap-1 shadow-xs transition"
+                        title="Print Counter QR Sticker"
                       >
                         <Printer className="w-3.5 h-3.5 text-tea-forest" />
-                        <span>QR Sticker</span>
+                        <span>Sticker</span>
                       </button>
                     </div>
                   </div>
@@ -4405,6 +4477,23 @@ export default function ShopBillingPage() {
         defaultSalesRepName={salesRepName}
         onShopRegistered={handleShopRegistered}
       />
+
+      {/* 6. Edit Shop Details & Make New QR Modal */}
+      {editShopModalOpen && (
+        <EditShopModal
+          isOpen={editShopModalOpen}
+          onClose={() => {
+            setEditShopModalOpen(false);
+            setEditingShop(null);
+          }}
+          shop={editingShop}
+          onShopUpdated={handleShopUpdated}
+          onOpenQrSticker={(sh) => {
+            setStickerShop(sh);
+            setQrStickerModalOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 }

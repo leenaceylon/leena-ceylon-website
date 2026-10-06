@@ -361,6 +361,141 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 0B. SHOP UPDATE & NEW QR MODIFICATION HANDLER
+    if (body.action === "update_shop" || body.action === "edit_shop") {
+      const {
+        oldShopName,
+        shopCode: inputShopCode,
+        shopName,
+        ownerName = "",
+        phone,
+        routeTown = "",
+        address = "",
+        district = "Anuradhapura",
+        assignedRep = "",
+        notes = "",
+        regenerateQr = false,
+        updateOldOrders = true,
+      } = body;
+
+      if (!shopName || !shopName.trim()) {
+        return NextResponse.json(
+          { error: "Shop / Store Name is required." },
+          { status: 400 }
+        );
+      }
+
+      if (!phone || !phone.trim()) {
+        return NextResponse.json(
+          { error: "Shop Phone / WhatsApp number is required." },
+          { status: 400 }
+        );
+      }
+
+      // Load existing registered shops from SiteSetting
+      const existingSetting = await prisma.siteSetting.findUnique({
+        where: { key: "leena_registered_shops" },
+      });
+
+      let registeredShops: any[] = [];
+      if (existingSetting?.value) {
+        try {
+          registeredShops = JSON.parse(existingSetting.value);
+        } catch (e) {
+          registeredShops = [];
+        }
+      }
+
+      const lookupName = (oldShopName || shopName).toLowerCase().trim();
+      const existingIdx = registeredShops.findIndex(
+        (s) =>
+          s.shopName.toLowerCase().trim() === lookupName ||
+          (inputShopCode && s.shopCode === inputShopCode)
+      );
+
+      let finalShopCode = inputShopCode;
+      if (regenerateQr) {
+        finalShopCode = `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+      } else if (!finalShopCode) {
+        finalShopCode =
+          existingIdx > -1 && registeredShops[existingIdx].shopCode
+            ? registeredShops[existingIdx].shopCode
+            : `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+
+      const updatedShopEntry = {
+        id: existingIdx > -1 ? registeredShops[existingIdx].id : `shop-${Date.now()}`,
+        shopCode: finalShopCode,
+        shopName: shopName.trim(),
+        ownerName: ownerName?.trim() || "",
+        phone: phone.trim(),
+        routeTown: routeTown?.trim() || "",
+        address: address?.trim() || "",
+        district: district?.trim() || "Anuradhapura",
+        assignedRep: assignedRep?.trim() || admin.name || "Sales Rep",
+        openingBalance: existingIdx > -1 ? registeredShops[existingIdx].openingBalance : 0,
+        notes: notes?.trim() || "",
+        createdAt: existingIdx > -1 ? registeredShops[existingIdx].createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (existingIdx > -1) {
+        registeredShops[existingIdx] = updatedShopEntry;
+      } else {
+        registeredShops.unshift(updatedShopEntry);
+      }
+
+      await prisma.siteSetting.upsert({
+        where: { key: "leena_registered_shops" },
+        update: { value: JSON.stringify(registeredShops), updatedAt: new Date() },
+        create: {
+          key: "leena_registered_shops",
+          value: JSON.stringify(registeredShops),
+          group: "SYSTEM",
+        },
+      });
+
+      // Synchronize matching past orders if requested
+      let syncedOrders = 0;
+      if (updateOldOrders && oldShopName) {
+        const orderUpdateRes = await prisma.order.updateMany({
+          where: {
+            OR: [
+              { customerName: oldShopName.trim() },
+              { customerName: shopName.trim() },
+            ],
+          },
+          data: {
+            customerName: shopName.trim(),
+            customerPhone: phone.trim(),
+            shippingAddress: address.trim(),
+            city: routeTown.trim(),
+            district: district.trim(),
+          },
+        });
+        syncedOrders = orderUpdateRes.count;
+      }
+
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPDATE_SHOP_DETAILS",
+          details: `Modified shop "${oldShopName || shopName}" -> "${shopName}" (Code: ${finalShopCode}${regenerateQr ? " - NEW QR Generated" : ""}). Synced ${syncedOrders} past orders.`,
+          entityType: "Shop",
+          entityId: finalShopCode,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        shop: updatedShopEntry,
+        message: `Shop "${shopName}" details updated successfully! ${
+          regenerateQr ? `New QR code (${finalShopCode}) issued.` : ""
+        } ${syncedOrders > 0 ? `Synced ${syncedOrders} past order(s).` : ""}`,
+      });
+    }
+
     const {
       shopName,
       ownerName,

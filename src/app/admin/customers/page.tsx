@@ -28,8 +28,11 @@ import {
   User,
   Clock,
   CreditCard,
+  QrCode,
+  Printer,
 } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
+import ShopQrStickerModal from "@/components/admin/ShopQrStickerModal";
 
 interface CustomerOrderSummary {
   id: string;
@@ -47,7 +50,9 @@ interface CustomerOrderSummary {
 interface CustomerRecord {
   id: string;
   userId: string | null;
+  shopCode?: string | null;
   name: string;
+  ownerName?: string;
   email: string;
   phone: string;
   address: string;
@@ -57,11 +62,13 @@ interface CustomerRecord {
   channel: "SHOP" | "ONLINE" | "REGISTERED";
   orderCount: number;
   totalSpent: number;
+  pendingBalance?: number;
   firstOrderDate: string;
   lastOrderDate: string;
   isActive: boolean;
   notes: string;
   salesRepName?: string | null;
+  hasQr?: boolean;
   allOrderIds: string[];
   allOrderNumbers: string[];
   ordersList?: CustomerOrderSummary[];
@@ -86,10 +93,28 @@ export default function AdminCustomersPage() {
   // View Customer Profile Modal
   const [viewingCustomer, setViewingCustomer] = useState<CustomerRecord | null>(null);
 
+  // QR Sticker Modal State
+  const [stickerModalOpen, setStickerModalOpen] = useState(false);
+  const [stickerShop, setStickerShop] = useState<any>(null);
+
+  const handleOpenSticker = (c: CustomerRecord) => {
+    setStickerShop({
+      shopCode: c.shopCode || `LC-SH-${c.id.replace(/\D/g, "").slice(0, 4) || "1042"}`,
+      shopName: c.name,
+      ownerName: c.ownerName || "",
+      phone: c.phone,
+      routeTown: c.city || "Direct Route",
+      address: c.address || "",
+      district: c.district || "Anuradhapura",
+    });
+    setStickerModalOpen(true);
+  };
+
   // Edit Modal State
   const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
   const [editForm, setEditForm] = useState({
     name: "",
+    ownerName: "",
     phone: "",
     email: "",
     shippingAddress: "",
@@ -97,6 +122,7 @@ export default function AdminCustomersPage() {
     district: "",
     postalCode: "",
     notes: "",
+    regenerateQr: false,
     updateOldOrders: true,
   });
   const [saving, setSaving] = useState(false);
@@ -144,6 +170,7 @@ export default function AdminCustomersPage() {
     setEditingCustomer(c);
     setEditForm({
       name: c.name || "",
+      ownerName: c.ownerName || "",
       phone: c.phone || "",
       email: c.email || "",
       shippingAddress: c.address || "",
@@ -151,6 +178,7 @@ export default function AdminCustomersPage() {
       district: c.district || "",
       postalCode: c.postalCode || "",
       notes: c.notes || "",
+      regenerateQr: false,
       updateOldOrders: true,
     });
   };
@@ -172,9 +200,12 @@ export default function AdminCustomersPage() {
           action: "UPDATE_CUSTOMER_DETAILS",
           customerId: editingCustomer.id,
           userId: editingCustomer.userId,
+          channel: editingCustomer.channel,
+          shopCode: editingCustomer.shopCode,
           oldName: editingCustomer.name,
           oldPhone: editingCustomer.phone,
           name: editForm.name.trim(),
+          ownerName: editForm.ownerName.trim(),
           phone: editForm.phone.trim(),
           email: editForm.email.trim(),
           shippingAddress: editForm.shippingAddress.trim(),
@@ -182,6 +213,7 @@ export default function AdminCustomersPage() {
           district: editForm.district.trim(),
           postalCode: editForm.postalCode.trim(),
           notes: editForm.notes.trim(),
+          regenerateQr: editForm.regenerateQr,
           updateOldOrders: editForm.updateOldOrders,
           allOrderIds: editingCustomer.allOrderIds,
         }),
@@ -196,6 +228,8 @@ export default function AdminCustomersPage() {
           setViewingCustomer({
             ...viewingCustomer,
             name: editForm.name.trim(),
+            ownerName: editForm.ownerName.trim(),
+            shopCode: data.shopCode || viewingCustomer.shopCode,
             phone: editForm.phone.trim(),
             email: editForm.email.trim(),
             address: editForm.shippingAddress.trim(),
@@ -431,9 +465,21 @@ export default function AdminCustomersPage() {
                   {/* Top Line: Name & Channel */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="font-bold text-tea-dark text-sm leading-snug">
-                        {c.name}
-                      </h4>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-tea-dark text-sm leading-snug">
+                          {c.name}
+                        </h4>
+                        {c.shopCode && (
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                            #{c.shopCode}
+                          </span>
+                        )}
+                      </div>
+                      {c.ownerName && (
+                        <div className="text-[11px] text-tea-muted font-medium mt-0.5">
+                          Owner: <strong className="text-tea-dark">{c.ownerName}</strong>
+                        </div>
+                      )}
                       {c.salesRepName && (
                         <div className="mt-1">
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-950 border border-amber-200 inline-flex items-center gap-1">
@@ -444,7 +490,7 @@ export default function AdminCustomersPage() {
                       )}
                     </div>
 
-                    <div className="shrink-0">
+                    <div className="shrink-0 flex flex-col items-end gap-1">
                       {c.channel === "SHOP" && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                           🏬 Retail Shop
@@ -460,8 +506,37 @@ export default function AdminCustomersPage() {
                           👤 Registered
                         </span>
                       )}
+
+                      {(c.channel === "SHOP" || c.hasQr || c.shopCode) && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSticker(c)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[10px] transition shadow-xs"
+                          title="View and Print 80mm Counter QR Sticker"
+                        >
+                          <QrCode className="w-3 h-3 text-amber-800" />
+                          <span>QR Sticker</span>
+                        </button>
+                      )}
                     </div>
                   </div>
+
+                  {/* Order IDs summary */}
+                  {c.allOrderNumbers && c.allOrderNumbers.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap text-[10px]">
+                      <span className="text-tea-muted font-semibold">Orders:</span>
+                      {c.allOrderNumbers.slice(0, 3).map((num) => (
+                        <span key={num} className="font-mono px-1.5 py-0.5 rounded bg-tea-surface text-tea-dark border border-tea-border font-medium">
+                          #{num}
+                        </span>
+                      ))}
+                      {c.allOrderNumbers.length > 3 && (
+                        <span className="text-tea-muted font-bold">
+                          +{c.allOrderNumbers.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Phone & Instant WhatsApp / Call Bar */}
                   {c.phone && (
@@ -523,6 +598,11 @@ export default function AdminCustomersPage() {
                       <span className="font-bold text-tea-dark text-xs">
                         {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
                       </span>
+                      {c.pendingBalance !== undefined && c.pendingBalance > 0 && (
+                        <span className="text-[10px] font-bold text-rose-700 block">
+                          Credit Due: Rs. {c.pendingBalance.toLocaleString()}
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-right">
@@ -591,8 +671,13 @@ export default function AdminCustomersPage() {
                     <tr key={c.id} className="hover:bg-tea-surface/40 transition">
                       {/* Name & Channel Badge */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-tea-dark text-[13px]">{c.name}</span>
+                          {c.shopCode && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-mono text-[10px] font-bold border border-amber-300">
+                              #{c.shopCode}
+                            </span>
+                          )}
                           {c.channel === "SHOP" && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                               🏬 Retail Shop
@@ -609,6 +694,28 @@ export default function AdminCustomersPage() {
                             </span>
                           )}
                         </div>
+
+                        {c.ownerName && (
+                          <div className="text-[11px] text-tea-muted mt-0.5">
+                            Store Owner: <strong className="text-tea-dark">{c.ownerName}</strong>
+                          </div>
+                        )}
+
+                        {/* Order IDs Chip list */}
+                        {c.allOrderNumbers && c.allOrderNumbers.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap mt-1">
+                            {c.allOrderNumbers.slice(0, 3).map((num) => (
+                              <span key={num} className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-tea-surface text-tea-dark border border-tea-border font-medium">
+                                #{num}
+                              </span>
+                            ))}
+                            {c.allOrderNumbers.length > 3 && (
+                              <span className="text-[10px] text-tea-muted font-bold">
+                                +{c.allOrderNumbers.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Sales Rep Attribution */}
                         {c.salesRepName && (
@@ -695,6 +802,11 @@ export default function AdminCustomersPage() {
                         <div className="font-serif font-bold text-sm text-tea-forest">
                           Rs. {c.totalSpent.toLocaleString()}
                         </div>
+                        {c.pendingBalance !== undefined && c.pendingBalance > 0 && (
+                          <div className="text-[10px] font-bold text-rose-700">
+                            Due: Rs. {c.pendingBalance.toLocaleString()}
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[11px] font-bold text-tea-dark">
                             {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
@@ -719,7 +831,19 @@ export default function AdminCustomersPage() {
 
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {(c.channel === "SHOP" || c.hasQr || c.shopCode) && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenSticker(c)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition shadow-xs"
+                              title="Print 80mm Counter QR Sticker"
+                            >
+                              <QrCode className="w-3.5 h-3.5 text-amber-800" />
+                              <span>QR Sticker</span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setViewingCustomer(c)}
@@ -771,10 +895,15 @@ export default function AdminCustomersPage() {
             {/* Header */}
             <div className="flex items-start justify-between border-b border-tea-border/60 pb-4">
               <div>
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 flex-wrap">
                   <h3 className="font-serif text-xl font-bold text-tea-dark">
                     {viewingCustomer.name}
                   </h3>
+                  {viewingCustomer.shopCode && (
+                    <span className="px-2 py-0.5 rounded-md font-mono text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      #{viewingCustomer.shopCode}
+                    </span>
+                  )}
                   {viewingCustomer.channel === "SHOP" && (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
                       🏬 Retail Shop
@@ -796,13 +925,28 @@ export default function AdminCustomersPage() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setViewingCustomer(null)}
-                className="p-1.5 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {(viewingCustomer.channel === "SHOP" || viewingCustomer.hasQr || viewingCustomer.shopCode) && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenSticker(viewingCustomer)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs border border-amber-300 transition shadow-xs"
+                    title="View & Print 80mm Counter QR Sticker"
+                  >
+                    <QrCode className="w-4 h-4 text-amber-800" />
+                    <span className="hidden sm:inline">Print QR Sticker</span>
+                    <span className="sm:hidden">QR</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setViewingCustomer(null)}
+                  className="p-1.5 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Profile Information Grid */}
@@ -813,6 +957,12 @@ export default function AdminCustomersPage() {
                   Contact Information
                 </span>
                 <div className="space-y-1 text-tea-dark">
+                  {viewingCustomer.ownerName && (
+                    <div className="text-[11px] text-tea-dark font-medium pb-1 border-b border-tea-border/40">
+                      <span className="text-tea-muted">Store Owner:</span>{" "}
+                      <strong>{viewingCustomer.ownerName}</strong>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-tea-leaf" />
                     <span className="font-mono font-bold">{viewingCustomer.phone || "No phone"}</span>
@@ -869,6 +1019,11 @@ export default function AdminCustomersPage() {
                   <div className="text-xl font-serif font-bold text-tea-forest">
                     Rs. {viewingCustomer.totalSpent.toLocaleString()}
                   </div>
+                  {viewingCustomer.pendingBalance !== undefined && viewingCustomer.pendingBalance > 0 && (
+                    <div className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                      Pending Debt: Rs. {viewingCustomer.pendingBalance.toLocaleString()}
+                    </div>
+                  )}
                   <div className="text-[11px] text-tea-muted">
                     Total: <strong>{viewingCustomer.orderCount} order{viewingCustomer.orderCount === 1 ? "" : "s"}</strong>
                   </div>
@@ -1077,6 +1232,20 @@ export default function AdminCustomersPage() {
                   />
                 </div>
 
+                {/* Store Owner / Contact Person */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    Store Owner / Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.ownerName}
+                    onChange={(e) => setEditForm({ ...editForm, ownerName: e.target.value })}
+                    placeholder="e.g. Mr. Sunil Shantha / Store Manager"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 font-medium text-tea-dark"
+                  />
+                </div>
+
                 {/* Telephone */}
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
@@ -1092,7 +1261,7 @@ export default function AdminCustomersPage() {
                 </div>
 
                 {/* Email */}
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
                     Email Address
                   </label>
@@ -1176,6 +1345,29 @@ export default function AdminCustomersPage() {
                 </div>
               </div>
 
+              {/* Option to re-generate QR code for Retail Stores */}
+              {(editingCustomer.channel === "SHOP" || editingCustomer.shopCode) && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-1.5">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editForm.regenerateQr}
+                      onChange={(e) => setEditForm({ ...editForm, regenerateQr: e.target.checked })}
+                      className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                        <QrCode className="w-3.5 h-3.5 text-amber-800" />
+                        <span>Re-generate New Store QR Code (Assign fresh LC-SH-XXXX code)</span>
+                      </span>
+                      <span className="text-[11px] text-amber-900 leading-relaxed block mt-0.5">
+                        Creates a fresh shop code and QR sticker for this store counter. Current code: <strong>{editingCustomer.shopCode || "Not Assigned"}</strong>.
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               {/* Crucial Core Option: Synchronize Old Orders */}
               <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2">
                 <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -1217,6 +1409,18 @@ export default function AdminCustomersPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* 3. 80mm Counter QR Sticker Modal */}
+      {stickerModalOpen && stickerShop && (
+        <ShopQrStickerModal
+          isOpen={stickerModalOpen}
+          onClose={() => {
+            setStickerModalOpen(false);
+            setStickerShop(null);
+          }}
+          shop={stickerShop}
+        />
       )}
     </div>
   );
