@@ -174,15 +174,94 @@ export async function PUT(
       body.orderStatus && body.orderStatus !== existing.orderStatus;
     const paymentChanged =
       body.paymentStatus && body.paymentStatus !== existing.paymentStatus;
+    const customerDetailsChanged =
+      Boolean(
+        (body.customerName && body.customerName !== existing.customerName) ||
+        (body.customerPhone && body.customerPhone !== existing.customerPhone) ||
+        (body.customerEmail !== undefined && body.customerEmail !== existing.customerEmail) ||
+        (body.shippingAddress && body.shippingAddress !== existing.shippingAddress) ||
+        (body.city && body.city !== existing.city) ||
+        (body.district && body.district !== existing.district) ||
+        (body.deliveryNotes !== undefined && body.deliveryNotes !== existing.deliveryNotes)
+      );
 
     const updated = await prisma.order.update({
       where: { id: params.id },
       data: {
         orderStatus: body.orderStatus || existing.orderStatus,
         paymentStatus: body.paymentStatus || existing.paymentStatus,
+        ...(body.customerName ? { customerName: body.customerName.trim() } : {}),
+        ...(body.customerPhone ? { customerPhone: body.customerPhone.trim() } : {}),
+        ...(body.customerEmail !== undefined ? { customerEmail: body.customerEmail.trim() } : {}),
+        ...(body.shippingAddress ? { shippingAddress: body.shippingAddress.trim() } : {}),
+        ...(body.city ? { city: body.city.trim() } : {}),
+        ...(body.district ? { district: body.district.trim() } : {}),
+        ...(body.postalCode !== undefined ? { postalCode: body.postalCode ? body.postalCode.trim() : null } : {}),
+        ...(body.deliveryNotes !== undefined ? { deliveryNotes: body.deliveryNotes ? body.deliveryNotes.trim() : null } : {}),
       },
       include: { items: true },
     });
+
+    let syncCount = 0;
+    if (body.syncAllCustomerOrders && customerDetailsChanged) {
+      const syncConditions: any[] = [];
+      if (existing.customerId) {
+        syncConditions.push({ customerId: existing.customerId });
+      }
+      if (existing.customerPhone && existing.customerPhone.trim()) {
+        syncConditions.push({ customerPhone: existing.customerPhone.trim() });
+      }
+      if (existing.customerName && existing.customerName.trim()) {
+        syncConditions.push({ customerName: existing.customerName.trim() });
+      }
+
+      if (syncConditions.length > 0) {
+        const syncResult = await prisma.order.updateMany({
+          where: {
+            id: { not: existing.id },
+            OR: syncConditions,
+          },
+          data: {
+            ...(body.customerName ? { customerName: body.customerName.trim() } : {}),
+            ...(body.customerPhone ? { customerPhone: body.customerPhone.trim() } : {}),
+            ...(body.customerEmail !== undefined ? { customerEmail: body.customerEmail.trim() } : {}),
+            ...(body.shippingAddress ? { shippingAddress: body.shippingAddress.trim() } : {}),
+            ...(body.city ? { city: body.city.trim() } : {}),
+            ...(body.district ? { district: body.district.trim() } : {}),
+            ...(body.postalCode !== undefined ? { postalCode: body.postalCode ? body.postalCode.trim() : null } : {}),
+          },
+        });
+        syncCount = syncResult.count;
+      }
+
+      if (existing.customerId) {
+        try {
+          await prisma.user.update({
+            where: { id: existing.customerId },
+            data: {
+              ...(body.customerName ? { name: body.customerName.trim() } : {}),
+              ...(body.customerPhone ? { phone: body.customerPhone.trim() } : {}),
+              ...(body.customerEmail ? { email: body.customerEmail.trim() } : {}),
+            },
+          });
+        } catch (uErr) {
+          console.error("Could not update linked user record:", uErr);
+        }
+      }
+    }
+
+    if (customerDetailsChanged) {
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPDATE_CUSTOMER_DETAILS",
+          details: `Updated customer details on order #${updated.orderNumber} (Name: ${updated.customerName}, Phone: ${updated.customerPhone})${syncCount > 0 ? ` and synchronized ${syncCount} other past order(s)` : ""}.`,
+          entityType: "Order",
+          entityId: updated.id,
+        },
+      });
+    }
 
     if (statusChanged) {
       await prisma.adminActivityLog.create({
@@ -210,7 +289,12 @@ export async function PUT(
       });
     }
 
-    return NextResponse.json({ success: true, order: updated });
+    return NextResponse.json({
+      success: true,
+      order: updated,
+      synchronizedOrdersCount: syncCount,
+      message: `Order #${updated.orderNumber} updated successfully.${syncCount > 0 ? ` Synchronized ${syncCount} other customer order(s).` : ""}`,
+    });
   } catch (err: any) {
     console.error("Order status update error:", err);
     return NextResponse.json(

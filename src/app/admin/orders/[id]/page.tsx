@@ -16,6 +16,9 @@ import {
   CheckCircle,
   XCircle,
   Trash2,
+  Edit3,
+  Save,
+  X,
 } from "lucide-react";
 import {
   getWhatsAppUrl,
@@ -42,6 +45,21 @@ export default function AdminOrderDetailPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Customer details editing state
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [customerForm, setCustomerForm] = useState({
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+    shippingAddress: "",
+    city: "",
+    district: "",
+    postalCode: "",
+    deliveryNotes: "",
+    syncAllCustomerOrders: true,
+  });
+  const [savingCustomer, setSavingCustomer] = useState(false);
 
   const loadOrder = async () => {
     try {
@@ -126,6 +144,55 @@ export default function AdminOrderDetailPage() {
       alert("Network error occurred while deleting order.");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const openCustomerModal = () => {
+    setCustomerForm({
+      customerName: order.customerName || "",
+      customerPhone: order.customerPhone || "",
+      customerEmail: order.customerEmail || "",
+      shippingAddress: order.shippingAddress || "",
+      city: order.city || "",
+      district: order.district || "",
+      postalCode: order.postalCode || "",
+      deliveryNotes: order.deliveryNotes || "",
+      syncAllCustomerOrders: true,
+    });
+    setShowCustomerModal(true);
+  };
+
+  const handleSaveCustomerDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerForm.customerName.trim()) {
+      alert("Customer / Store name is required.");
+      return;
+    }
+    try {
+      setSavingCustomer(true);
+      const res = await fetch(`/api/orders/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(customerForm),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotice(data.message || "Customer details updated successfully.");
+        setTimeout(() => setNotice(null), 4000);
+        setShowCustomerModal(false);
+        if (data.order) {
+          setOrder(data.order);
+        } else {
+          loadOrder();
+        }
+      } else {
+        alert(data.error || "Failed to update customer details.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error saving customer details.");
+    } finally {
+      setSavingCustomer(false);
     }
   };
 
@@ -288,10 +355,21 @@ export default function AdminOrderDetailPage() {
         {/* Customer & Address Details */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-tea-surface p-6 rounded-2xl border border-tea-border space-y-3 text-xs">
-            <h3 className="font-serif text-sm font-bold text-tea-dark uppercase tracking-wider flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-tea-leaf" />
-              Delivery Destination
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif text-sm font-bold text-tea-dark uppercase tracking-wider flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-tea-leaf" />
+                Delivery Destination
+              </h3>
+              <button
+                type="button"
+                onClick={openCustomerModal}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-tea-border bg-white hover:bg-tea-bg text-tea-dark text-[11px] font-semibold transition shadow-xs"
+                title="Edit Customer Details & Sync Orders"
+              >
+                <Edit3 className="w-3 h-3 text-tea-leaf" />
+                <span>Edit Details</span>
+              </button>
+            </div>
             <div className="space-y-1 text-tea-dark">
               <p className="font-bold text-sm">{order.customerName}</p>
               <p>{order.shippingAddress}</p>
@@ -494,6 +572,168 @@ export default function AdminOrderDetailPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Details Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-tea-border shadow-2xl space-y-4 animate-scale-up my-8">
+            <div className="flex items-start justify-between border-b border-tea-border/60 pb-3">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-tea-dark">
+                  Edit Customer Details
+                </h3>
+                <p className="text-xs text-tea-muted mt-0.5">
+                  Order #{order.orderNumber} • Synchronize with customer records
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomerModal(false)}
+                className="p-1.5 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomerDetails} className="space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                  Customer / Store Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customerForm.customerName}
+                  onChange={(e) => setCustomerForm({ ...customerForm, customerName: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 font-semibold text-tea-dark"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    Telephone / WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    value={customerForm.customerPhone}
+                    onChange={(e) => setCustomerForm({ ...customerForm, customerPhone: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 font-mono text-tea-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={customerForm.customerEmail}
+                    onChange={(e) => setCustomerForm({ ...customerForm, customerEmail: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 text-tea-dark"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                  Shipping Address / Landmark
+                </label>
+                <input
+                  type="text"
+                  value={customerForm.shippingAddress}
+                  onChange={(e) => setCustomerForm({ ...customerForm, shippingAddress: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 text-tea-dark"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    City / Town
+                  </label>
+                  <input
+                    type="text"
+                    value={customerForm.city}
+                    onChange={(e) => setCustomerForm({ ...customerForm, city: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 text-tea-dark font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    District
+                  </label>
+                  <input
+                    type="text"
+                    value={customerForm.district}
+                    onChange={(e) => setCustomerForm({ ...customerForm, district: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 text-tea-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={customerForm.postalCode}
+                    onChange={(e) => setCustomerForm({ ...customerForm, postalCode: e.target.value })}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 font-mono text-tea-dark"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-tea-dark mb-1">
+                  Delivery Notes / Rep Instructions
+                </label>
+                <textarea
+                  rows={2}
+                  value={customerForm.deliveryNotes}
+                  onChange={(e) => setCustomerForm({ ...customerForm, deliveryNotes: e.target.value })}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/40 text-tea-dark"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                <label className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={customerForm.syncAllCustomerOrders}
+                    onChange={(e) => setCustomerForm({ ...customerForm, syncAllCustomerOrders: e.target.checked })}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="text-[11px]">
+                    <span className="font-bold text-amber-900 block">
+                      Synchronize with all other orders for this customer
+                    </span>
+                    <span className="text-amber-800 block mt-0.5">
+                      Updates all other past shop orders (<code>SHOP-...</code>) and online/WhatsApp orders for this customer to maintain consistent contact and billing records.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-tea-border/60">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(false)}
+                  className="px-4 py-2 rounded-xl border border-tea-border hover:bg-tea-surface text-xs font-semibold text-tea-dark transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCustomer}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-tea-dark hover:bg-tea-dark/90 text-white text-xs font-semibold uppercase tracking-wider shadow-sm transition disabled:opacity-50"
+                >
+                  <Save className={`w-3.5 h-3.5 ${savingCustomer ? "animate-spin" : ""}`} />
+                  {savingCustomer ? "Saving..." : "Save Details"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
