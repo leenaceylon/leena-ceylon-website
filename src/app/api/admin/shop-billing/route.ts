@@ -215,3 +215,154 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { action, orderId, paymentStatus, paymentMethod, paymentNote, cancelReason } = body;
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: "Order ID is required." },
+        { status: 400 }
+      );
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return NextResponse.json(
+        { error: "Shop bill not found." },
+        { status: 404 }
+      );
+    }
+
+    // 1. UPDATE PAYMENT STATUS & METHOD
+    if (action === "UPDATE_PAYMENT") {
+      if (!paymentStatus && !paymentMethod) {
+        return NextResponse.json(
+          { error: "Please specify payment status or method to update." },
+          { status: 400 }
+        );
+      }
+
+      const timestamp = new Date().toLocaleString("en-GB");
+      let updatedNotes = order.deliveryNotes || "";
+      if (paymentNote && paymentNote.trim()) {
+        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name} (${admin.role})]: Status=${paymentStatus || order.paymentStatus}, Method=${paymentMethod || order.paymentMethod} - Note: ${paymentNote.trim()}`;
+      } else {
+        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name}]: Status=${paymentStatus || order.paymentStatus}, Method=${paymentMethod || order.paymentMethod}`;
+      }
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: paymentStatus || order.paymentStatus,
+          paymentMethod: paymentMethod || order.paymentMethod,
+          deliveryNotes: updatedNotes,
+        },
+        include: { items: true },
+      });
+
+      // Log activity
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "UPDATE_SHOP_BILL_PAYMENT",
+          details: `Updated Payment for Bill #${order.orderNumber} (${order.customerName}): Status=${updatedOrder.paymentStatus}, Method=${updatedOrder.paymentMethod}${paymentNote ? ` - Note: ${paymentNote.trim()}` : ""}`,
+          entityType: "Order",
+          entityId: order.id,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        order: updatedOrder,
+        message: `Payment for Bill #${order.orderNumber} updated to ${updatedOrder.paymentStatus} (${updatedOrder.paymentMethod}).`,
+      });
+    }
+
+    // 2. CANCEL BILL WITH AUTOMATIC INVENTORY RESTOCKING
+    if (action === "CANCEL_BILL") {
+      if (order.orderStatus === "CANCELLED") {
+        return NextResponse.json(
+          { error: "This shop bill has already been cancelled." },
+          { status: 400 }
+        );
+      }
+
+      const timestamp = new Date().toLocaleString("en-GB");
+      const reasonText = cancelReason?.trim() || "Cancelled by Sales Representative";
+      const updatedNotes = `${order.deliveryNotes || ""} | [CANCELLED ${timestamp} by ${admin.name} (${admin.role})]: ${reasonText}`;
+
+      // Update Order to CANCELLED
+      const updatedOrder = await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          orderStatus: "CANCELLED",
+          deliveryNotes: updatedNotes,
+        },
+        include: { items: true },
+      });
+
+      // Automatically Restock Product Inventory
+      let restockedCount = 0;
+      for (const item of order.items) {
+        if (item.productId) {
+          try {
+            await prisma.product.update({
+              where: { id: item.productId },
+              data: {
+                stock: {
+                  increment: item.quantity,
+                },
+              },
+            });
+            restockedCount += item.quantity;
+          } catch (restockErr) {
+            console.warn("Could not restock product ID:", item.productId, restockErr);
+          }
+        }
+      }
+
+      // Log activity
+      await prisma.adminActivityLog.create({
+        data: {
+          adminId: admin.id,
+          adminName: admin.name,
+          action: "CANCEL_SHOP_BILL",
+          details: `Cancelled Shop Bill #${order.orderNumber} for "${order.customerName}" - Reason: ${reasonText}. Restocked ${restockedCount} units across ${order.items.length} item lines to warehouse inventory.`,
+          entityType: "Order",
+          entityId: order.id,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        order: updatedOrder,
+        message: `Shop Bill #${order.orderNumber} cancelled successfully. ${restockedCount} items restocked back to warehouse inventory.`,
+      });
+    }
+
+    return NextResponse.json(
+      { error: `Invalid action "${action}". Must be UPDATE_PAYMENT or CANCEL_BILL.` },
+      { status: 400 }
+    );
+  } catch (err: any) {
+    console.error("Shop billing PATCH error:", err);
+    return NextResponse.json(
+      { error: "Failed to update shop bill. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+

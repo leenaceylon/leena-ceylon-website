@@ -318,42 +318,73 @@ export default async function AdminDashboardPage() {
                     <th className="pb-3">Town / Route</th>
                     <th className="pb-3">Net Total</th>
                     <th className="pb-3">Payment</th>
+                    <th className="pb-3">Status</th>
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-tea-border/40">
-                  {recentRepOrders.map((o) => (
-                    <tr key={o.id} className="hover:bg-tea-surface/60 transition">
-                      <td className="py-3 font-bold text-tea-dark">#{o.orderNumber}</td>
-                      <td className="py-3">
-                        <div className="font-medium text-tea-dark">{o.customerName}</div>
-                        <div className="text-[10px] text-tea-muted">{o.customerPhone}</div>
-                      </td>
-                      <td className="py-3 text-tea-dark">{o.city || "Direct Route"}</td>
-                      <td className="py-3 font-bold text-tea-forest">
-                        Rs. {o.grandTotal.toLocaleString()}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            o.paymentStatus === "PAID"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}
-                        >
-                          {o.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <Link
-                          href={`/admin/orders/${o.id}`}
-                          className="px-2.5 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-[11px] font-semibold text-tea-forest"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {recentRepOrders.map((o) => {
+                    const isCancelled = o.orderStatus === "CANCELLED";
+                    const isPaid = o.paymentStatus === "PAID";
+
+                    return (
+                      <tr key={o.id} className={`transition ${isCancelled ? "bg-rose-50/30 opacity-75" : "hover:bg-tea-surface/60"}`}>
+                        <td className="py-3 font-mono font-bold text-tea-dark whitespace-nowrap">
+                          #{o.orderNumber}
+                        </td>
+                        <td className="py-3">
+                          <div className="font-medium text-tea-dark">{o.customerName}</div>
+                          <div className="text-[10px] text-tea-muted">{o.customerPhone}</div>
+                        </td>
+                        <td className="py-3 text-tea-dark">{o.city || "Direct Route"}</td>
+                        <td className="py-3 font-bold text-tea-forest whitespace-nowrap">
+                          <span className={isCancelled ? "line-through text-tea-muted" : ""}>
+                            Rs. {o.grandTotal.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="py-3 whitespace-nowrap">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isPaid
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {o.paymentStatus}
+                          </span>
+                        </td>
+                        <td className="py-3 whitespace-nowrap">
+                          {isCancelled ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                              Cancelled
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Active
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Link
+                              href={`/admin/shop-billing?tab=history&search=${o.orderNumber}`}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[11px] font-bold text-emerald-800 transition"
+                              title="Update Payment or Cancel in Ledger"
+                            >
+                              Manage Bill
+                            </Link>
+                            <Link
+                              href={`/admin/orders/${o.id}`}
+                              className="px-2 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-[11px] font-semibold text-tea-forest"
+                              title="Full Order Details"
+                            >
+                              Details
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -29,6 +29,11 @@ import {
   Package,
   Tag,
   Filter,
+  AlertTriangle,
+  Ban,
+  Check,
+  DollarSign,
+  XCircle,
 } from "lucide-react";
 import { getWhatsAppUrl, compileShopInvoiceWhatsAppMessage, ShopInvoiceData } from "@/lib/whatsapp";
 
@@ -113,6 +118,23 @@ export default function ShopBillingPage() {
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
+  // Shop Bills Ledger Search & Filters
+  const [searchLedger, setSearchLedger] = useState("");
+  const [filterPaymentStatus, setFilterPaymentStatus] = useState("ALL");
+  const [filterOrderStatus, setFilterOrderStatus] = useState("ALL");
+
+  // Payment Update Modal State
+  const [paymentModalOrder, setPaymentModalOrder] = useState<any | null>(null);
+  const [paymentModalStatus, setPaymentModalStatus] = useState("PAID");
+  const [paymentModalMethod, setPaymentModalMethod] = useState("CASH_ON_DELIVERY");
+  const [paymentModalNote, setPaymentModalNote] = useState("");
+  const [paymentModalSubmitting, setPaymentModalSubmitting] = useState(false);
+
+  // Cancel Bill Modal State
+  const [cancelModalOrder, setCancelModalOrder] = useState<any | null>(null);
+  const [cancelModalReason, setCancelModalReason] = useState("");
+  const [cancelModalSubmitting, setCancelModalSubmitting] = useState(false);
+
   // Load Inventory & Orders
   const loadData = async () => {
     try {
@@ -139,8 +161,146 @@ export default function ShopBillingPage() {
       const p = new URLSearchParams(window.location.search).get("tab");
       if (p === "products") setActiveTab("products");
       else if (p === "history") setActiveTab("history");
+
+      const s = new URLSearchParams(window.location.search).get("search");
+      if (s) setSearchLedger(s);
     }
   }, []);
+
+  // Quick Action Handlers for Sales Reps
+  const handleOpenPaymentModal = (order: any) => {
+    setPaymentModalOrder(order);
+    setPaymentModalStatus(order.paymentStatus || "PAID");
+    setPaymentModalMethod(order.paymentMethod || "CASH_ON_DELIVERY");
+    setPaymentModalNote("");
+  };
+
+  const handleSavePaymentUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentModalOrder) return;
+    try {
+      setPaymentModalSubmitting(true);
+      const res = await fetch("/api/admin/shop-billing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_PAYMENT",
+          orderId: paymentModalOrder.id,
+          paymentStatus: paymentModalStatus,
+          paymentMethod: paymentModalMethod,
+          paymentNote: paymentModalNote,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to update payment status.");
+        return;
+      }
+
+      setNotice(
+        `Payment for Bill #${paymentModalOrder.orderNumber} updated to ${paymentModalStatus} (${paymentModalMethod})!`
+      );
+      setTimeout(() => setNotice(null), 3500);
+      setPaymentModalOrder(null);
+      loadData();
+    } catch (err) {
+      console.error("Payment update error:", err);
+      alert("Network error updating payment.");
+    } finally {
+      setPaymentModalSubmitting(false);
+    }
+  };
+
+  const handleOpenCancelModal = (order: any) => {
+    setCancelModalOrder(order);
+    setCancelModalReason("");
+  };
+
+  const handleConfirmCancelBill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cancelModalOrder) return;
+    try {
+      setCancelModalSubmitting(true);
+      const res = await fetch("/api/admin/shop-billing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "CANCEL_BILL",
+          orderId: cancelModalOrder.id,
+          cancelReason: cancelModalReason,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to cancel bill.");
+        return;
+      }
+
+      setNotice(
+        `Bill #${cancelModalOrder.orderNumber} cancelled successfully. Items restocked to inventory!`
+      );
+      setTimeout(() => setNotice(null), 4000);
+      setCancelModalOrder(null);
+      loadData();
+    } catch (err) {
+      console.error("Cancel bill error:", err);
+      alert("Network error cancelling bill.");
+    } finally {
+      setCancelModalSubmitting(false);
+    }
+  };
+
+  // Filtered Ledger Orders with Real-Time Search
+  const filteredLedgerOrders = useMemo(() => {
+    return recentOrders.filter((o) => {
+      const q = searchLedger.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        o.orderNumber.toLowerCase().includes(q) ||
+        (o.customerName && o.customerName.toLowerCase().includes(q)) ||
+        (o.customerPhone && o.customerPhone.toLowerCase().includes(q)) ||
+        (o.city && o.city.toLowerCase().includes(q)) ||
+        (o.shippingAddress && o.shippingAddress.toLowerCase().includes(q)) ||
+        (o.deliveryNotes && o.deliveryNotes.toLowerCase().includes(q));
+
+      const matchesPayment =
+        filterPaymentStatus === "ALL" || o.paymentStatus === filterPaymentStatus;
+
+      const matchesOrder =
+        filterOrderStatus === "ALL" ||
+        (filterOrderStatus === "CONFIRMED" && o.orderStatus !== "CANCELLED") ||
+        (filterOrderStatus === "CANCELLED" && o.orderStatus === "CANCELLED");
+
+      return matchesSearch && matchesPayment && matchesOrder;
+    });
+  }, [recentOrders, searchLedger, filterPaymentStatus, filterOrderStatus]);
+
+  // Ledger High-Level Metrics
+  const ledgerStats = useMemo(() => {
+    const nonCancelled = recentOrders.filter((o) => o.orderStatus !== "CANCELLED");
+    const totalRevenue = nonCancelled.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+    const totalPaid = nonCancelled
+      .filter((o) => o.paymentStatus === "PAID")
+      .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+    const totalCredit = nonCancelled
+      .filter((o) => o.paymentStatus !== "PAID")
+      .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+    const paidCount = nonCancelled.filter((o) => o.paymentStatus === "PAID").length;
+    const creditCount = nonCancelled.filter((o) => o.paymentStatus !== "PAID").length;
+    const cancelledCount = recentOrders.filter((o) => o.orderStatus === "CANCELLED").length;
+
+    return {
+      totalBills: recentOrders.length,
+      totalRevenue,
+      totalPaid,
+      totalCredit,
+      paidCount,
+      creditCount,
+      cancelledCount,
+    };
+  }, [recentOrders]);
 
   const handleSelectProductForBill = (prod: Product, preferredSize?: string) => {
     setSelectedProductId(prod.id);
@@ -1279,130 +1439,472 @@ export default function ShopBillingPage() {
 
       {/* History & Ledger View */}
       {activeTab === "history" && (
-        <div className="bg-white rounded-3xl border border-tea-border shadow-card overflow-hidden">
-          <div className="p-6 border-b border-tea-border flex items-center justify-between">
-            <div>
-              <h3 className="font-serif text-lg font-bold text-tea-dark">
-                Shop Billing History & Ledger
-              </h3>
-              <p className="text-xs text-tea-muted">
-                All shop-by-shop orders taken on the ground with items, payment statuses, and routes.
-              </p>
+        <div className="space-y-6">
+          {/* Top Ledger Header & Quick Create */}
+          <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-tea-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                    Sales Rep Ground Ledger
+                  </span>
+                  <span className="text-xs text-tea-muted">• Real-Time Tracking & Payment Collection</span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark mt-1">
+                  Shop Bills & Field Ledger
+                </h3>
+                <p className="text-xs text-tea-muted mt-0.5">
+                  Search bills by shop or route, collect payments on the road, mark credit as paid, or cancel bills with automatic stock restock.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("billing")}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold text-xs uppercase tracking-wider transition shadow-sm self-start sm:self-auto"
+              >
+                <Plus className="w-4 h-4 text-tea-gold" />
+                <span>+ Create New Bill</span>
+              </button>
+            </div>
+
+            {/* Financial & Operational Summary Metrics */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="p-4 rounded-2xl bg-tea-surface/60 border border-tea-border/60">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                  Total Bills Recorded
+                </span>
+                <span className="text-xl sm:text-2xl font-extrabold text-tea-dark font-mono block mt-1">
+                  {ledgerStats.totalBills}
+                </span>
+                <span className="text-[10px] text-tea-muted mt-0.5 block">
+                  Across all field sales routes
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-tea-surface/60 border border-tea-border/60">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                  Gross Bill Value
+                </span>
+                <span className="text-xl sm:text-2xl font-extrabold text-tea-forest font-mono block mt-1">
+                  Rs. {ledgerStats.totalRevenue.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-tea-muted mt-0.5 block">
+                  Active confirmed orders
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                  Collected Payments (PAID)
+                </span>
+                <span className="text-xl sm:text-2xl font-extrabold text-emerald-900 font-mono block mt-1">
+                  Rs. {ledgerStats.totalPaid.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-emerald-700 mt-0.5 block">
+                  {ledgerStats.paidCount} bills settled in full
+                </span>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 block">
+                  Due / Credit (PENDING)
+                </span>
+                <span className="text-xl sm:text-2xl font-extrabold text-amber-900 font-mono block mt-1">
+                  Rs. {ledgerStats.totalCredit.toLocaleString()}
+                </span>
+                <span className="text-[10px] text-amber-700 mt-0.5 block">
+                  {ledgerStats.creditCount} bills awaiting payment
+                </span>
+              </div>
+            </div>
+
+            {/* Search Bar & Filter Controls */}
+            <div className="pt-2 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+              {/* Search Box */}
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by Bill # (e.g. SHOP-...), Shop Name, Phone, Route/Town..."
+                  value={searchLedger}
+                  onChange={(e) => setSearchLedger(e.target.value)}
+                  className="w-full pl-9 pr-9 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf font-medium"
+                />
+                <Search className="w-4 h-4 text-tea-muted absolute left-3 top-3" />
+                {searchLedger && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchLedger("")}
+                    className="p-1 text-tea-muted hover:text-tea-dark absolute right-2.5 top-2.5"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Payment Filter */}
+                <div className="flex items-center gap-1 bg-tea-surface p-1 rounded-xl border border-tea-border text-xs">
+                  <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-tea-muted">
+                    Pay:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterPaymentStatus("ALL")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterPaymentStatus === "ALL"
+                        ? "bg-tea-dark text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterPaymentStatus("PAID")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterPaymentStatus === "PAID"
+                        ? "bg-emerald-700 text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    Paid ({ledgerStats.paidCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterPaymentStatus("PENDING")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterPaymentStatus === "PENDING"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    Credit ({ledgerStats.creditCount})
+                  </button>
+                </div>
+
+                {/* Order Status Filter */}
+                <div className="flex items-center gap-1 bg-tea-surface p-1 rounded-xl border border-tea-border text-xs">
+                  <span className="px-2 text-[10px] font-bold uppercase tracking-wider text-tea-muted">
+                    Status:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilterOrderStatus("ALL")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterOrderStatus === "ALL"
+                        ? "bg-tea-dark text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterOrderStatus("CONFIRMED")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterOrderStatus === "CONFIRMED"
+                        ? "bg-tea-forest text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    Active
+                  </button>
+                  {ledgerStats.cancelledCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterOrderStatus("CANCELLED")}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                        filterOrderStatus === "CANCELLED"
+                          ? "bg-rose-700 text-white shadow-xs"
+                          : "text-tea-muted hover:text-tea-dark"
+                      }`}
+                    >
+                      Cancelled ({ledgerStats.cancelledCount})
+                    </button>
+                  )}
+                </div>
+
+                {(searchLedger || filterPaymentStatus !== "ALL" || filterOrderStatus !== "ALL") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchLedger("");
+                      setFilterPaymentStatus("ALL");
+                      setFilterOrderStatus("ALL");
+                    }}
+                    className="px-3 py-2 text-xs font-semibold text-tea-muted hover:text-rose-600 transition"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {recentOrders.length === 0 ? (
-            <div className="p-12 text-center text-tea-muted text-xs">
-              No shop orders recorded yet. Switch to "Active Billing Counter" to take your first shop order.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
-                  <tr>
-                    <th className="py-3.5 px-4">Invoice #</th>
-                    <th className="py-3.5 px-4">Date</th>
-                    <th className="py-3.5 px-4">Shop / Store</th>
-                    <th className="py-3.5 px-4">Route / Town</th>
-                    <th className="py-3.5 px-4">Phone</th>
-                    <th className="py-3.5 px-4">Items</th>
-                    <th className="py-3.5 px-4">Total</th>
-                    <th className="py-3.5 px-4">Payment</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-tea-border/60">
-                  {recentOrders.map((o) => (
-                    <tr key={o.id} className="hover:bg-tea-surface/40 transition">
-                      <td className="py-3 px-4 font-mono font-bold text-tea-dark whitespace-nowrap">
-                        #{o.orderNumber}
-                      </td>
-                      <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
-                        {new Date(o.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4 font-bold text-tea-dark">
-                        {o.customerName}
-                      </td>
-                      <td className="py-3 px-4 text-tea-muted">
-                        {o.city || "Direct Route"}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-tea-dark">
-                        {o.customerPhone}
-                      </td>
-                      <td className="py-3 px-4 text-tea-muted">
-                        {o.items?.length || 0} item(s)
-                      </td>
-                      <td className="py-3 px-4 font-bold text-tea-forest whitespace-nowrap">
-                        Rs. {o.grandTotal.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            o.paymentStatus === "PAID"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-amber-100 text-amber-800"
+          {/* Ledger Table */}
+          <div className="bg-white rounded-3xl border border-tea-border shadow-card overflow-hidden">
+            {filteredLedgerOrders.length === 0 ? (
+              <div className="p-12 text-center text-tea-muted text-xs space-y-3">
+                <Search className="w-8 h-8 text-tea-muted mx-auto opacity-50" />
+                <p className="font-semibold text-tea-dark text-sm">
+                  {recentOrders.length === 0
+                    ? "No shop bills recorded yet."
+                    : "No shop bills matching your search or filters."}
+                </p>
+                <div className="flex justify-center gap-2 pt-1">
+                  {recentOrders.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchLedger("");
+                        setFilterPaymentStatus("ALL");
+                        setFilterOrderStatus("ALL");
+                      }}
+                      className="px-4 py-2 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-dark font-bold text-xs"
+                    >
+                      Clear Search Filters
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("billing")}
+                    className="px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold text-xs uppercase tracking-wider"
+                  >
+                    Take New Shop Bill
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
+                    <tr>
+                      <th className="py-3.5 px-4 whitespace-nowrap">Invoice # & Date</th>
+                      <th className="py-3.5 px-4">Shop / Store Name</th>
+                      <th className="py-3.5 px-4">Route / Town</th>
+                      <th className="py-3.5 px-4">Phone / WhatsApp</th>
+                      <th className="py-3.5 px-4">Items</th>
+                      <th className="py-3.5 px-4">Net Total</th>
+                      <th className="py-3.5 px-4">Payment</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-tea-border/60">
+                    {filteredLedgerOrders.map((o) => {
+                      const isCancelled = o.orderStatus === "CANCELLED";
+                      const isPaid = o.paymentStatus === "PAID";
+
+                      return (
+                        <tr
+                          key={o.id}
+                          className={`transition ${
+                            isCancelled
+                              ? "bg-rose-50/20 hover:bg-rose-50/40 text-tea-muted opacity-80"
+                              : "hover:bg-tea-surface/40"
                           }`}
                         >
-                          {o.paymentStatus} ({o.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Cash"})
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCompletedOrder(o);
-                              setPrintModalOpen(true);
-                            }}
-                            className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark"
-                            title="Print Invoice"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Invoice # & Date */}
+                          <td className="py-3 px-4 font-mono font-bold text-tea-dark whitespace-nowrap">
+                            <span className="block text-tea-dark">#{o.orderNumber}</span>
+                            <span className="text-[10px] text-tea-muted font-sans font-normal block">
+                              {new Date(o.createdAt).toLocaleDateString("en-GB")} •{" "}
+                              {new Date(o.createdAt).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </td>
 
-                          <a
-                            href={getWhatsAppUrl(
-                              o.customerPhone,
-                              compileShopInvoiceWhatsAppMessage({
-                                orderNumber: o.orderNumber,
-                                shopName: o.customerName,
-                                shopPhone: o.customerPhone,
-                                routeTown: o.city,
-                                address: o.shippingAddress,
-                                items: o.items || [],
-                                subtotal: o.subtotal,
-                                discount: o.discount,
-                                deliveryCharge: o.deliveryCharge,
-                                grandTotal: o.grandTotal,
-                                paymentMethod: o.paymentMethod,
-                                paymentStatus: o.paymentStatus,
-                              })
+                          {/* Shop Name */}
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-tea-dark">{o.customerName}</div>
+                            {o.shippingAddress && (
+                              <div className="text-[10px] text-tea-muted truncate max-w-[180px]">
+                                {o.shippingAddress}
+                              </div>
                             )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            title="WhatsApp Bill"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
-                          </a>
+                          </td>
 
-                          <Link
-                            href={`/admin/orders/${o.id}`}
-                            className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-forest"
-                            title="Order Details"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          {/* Route / Town */}
+                          <td className="py-3 px-4 text-tea-dark font-medium">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-tea-muted shrink-0" />
+                              <span>{o.city || "Direct Route"}</span>
+                            </span>
+                          </td>
+
+                          {/* Phone */}
+                          <td className="py-3 px-4 font-mono text-[11px] text-tea-dark whitespace-nowrap">
+                            {o.customerPhone}
+                          </td>
+
+                          {/* Items */}
+                          <td className="py-3 px-4 text-tea-muted whitespace-nowrap">
+                            <span className="font-semibold text-tea-dark">
+                              {o.items?.length || 0} line(s)
+                            </span>
+                          </td>
+
+                          {/* Net Total */}
+                          <td className="py-3 px-4 font-mono font-bold text-tea-forest whitespace-nowrap">
+                            <span className={isCancelled ? "line-through text-tea-muted" : ""}>
+                              Rs. {o.grandTotal.toLocaleString()}
+                            </span>
+                            {isCancelled && (
+                              <span className="text-[10px] text-rose-600 block font-sans">
+                                Restocked
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Payment Status & Method */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="space-y-1">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  isPaid
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {isPaid ? (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                                ) : (
+                                  <Clock className="w-3 h-3 text-amber-700" />
+                                )}
+                                <span>{isPaid ? "PAID" : "DUE / CREDIT"}</span>
+                              </span>
+                              <div className="text-[10px] text-tea-muted capitalize">
+                                {o.paymentMethod === "CREDIT_SHOP"
+                                  ? "Credit"
+                                  : o.paymentMethod === "BANK_TRANSFER"
+                                  ? "Bank Transfer"
+                                  : o.paymentMethod === "CHEQUE"
+                                  ? "Cheque"
+                                  : "Cash"}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Order Status */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {isCancelled ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                <Ban className="w-3 h-3" />
+                                <span>Cancelled</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span>Active</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Action Buttons */}
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* 1. Update Payment Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPaymentModal(o)}
+                                disabled={isCancelled}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition ${
+                                  isCancelled
+                                    ? "opacity-30 cursor-not-allowed bg-tea-surface text-tea-muted"
+                                    : isPaid
+                                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                    : "bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 shadow-xs"
+                                }`}
+                                title="Update Payment Status / Mode"
+                              >
+                                <CreditCard className="w-3.5 h-3.5" />
+                                <span>{isPaid ? "Payment" : "Update Pay"}</span>
+                              </button>
+
+                              {/* 2. Cancel Bill Button */}
+                              {!isCancelled ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenCancelModal(o)}
+                                  className="p-1.5 rounded-lg border border-tea-border hover:bg-rose-50 hover:text-rose-700 text-tea-muted transition"
+                                  title="Cancel Bill & Restock Inventory"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <span
+                                  className="p-1.5 text-tea-muted opacity-40 cursor-not-allowed"
+                                  title="Bill is already cancelled"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                </span>
+                              )}
+
+                              {/* 3. WhatsApp Invoice */}
+                              <a
+                                href={getWhatsAppUrl(
+                                  o.customerPhone,
+                                  compileShopInvoiceWhatsAppMessage({
+                                    orderNumber: o.orderNumber,
+                                    shopName: o.customerName,
+                                    shopPhone: o.customerPhone,
+                                    routeTown: o.city,
+                                    address: o.shippingAddress,
+                                    items: o.items || [],
+                                    subtotal: o.subtotal,
+                                    discount: o.discount,
+                                    deliveryCharge: o.deliveryCharge,
+                                    grandTotal: o.grandTotal,
+                                    paymentMethod: o.paymentMethod,
+                                    paymentStatus: o.paymentStatus,
+                                  })
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                title="Send WhatsApp Bill"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
+                              </a>
+
+                              {/* 4. Print Invoice */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCompletedOrder(o);
+                                  setPrintModalOpen(true);
+                                }}
+                                className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark"
+                                title="Print Invoice"
+                              >
+                                <Printer className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* 5. View Details */}
+                              <Link
+                                href={`/admin/orders/${o.id}`}
+                                className="p-1.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-forest"
+                                title="Order Details"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
+
 
       {/* Printable Official Invoice Modal */}
       {printModalOpen && (
@@ -1588,6 +2090,252 @@ export default function ShopBillingPage() {
           </div>
         </div>
       )}
+
+      {/* 1. Payment Update Modal */}
+      {paymentModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-tea-border shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-tea-border">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-tea-dark">
+                    Update Bill Payment
+                  </h3>
+                  <p className="text-[11px] font-mono text-tea-muted">
+                    #{paymentModalOrder.orderNumber}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPaymentModalOrder(null)}
+                className="p-1.5 rounded-lg text-tea-muted hover:text-tea-dark hover:bg-tea-surface transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bill Summary Information */}
+            <div className="p-3.5 rounded-2xl bg-tea-surface/60 border border-tea-border/60 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-tea-muted">Customer / Store:</span>
+                <span className="font-bold text-tea-dark">{paymentModalOrder.customerName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-tea-muted">Route / Town:</span>
+                <span className="text-tea-dark">{paymentModalOrder.city || "Direct Route"}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-tea-border/40 font-mono">
+                <span className="text-tea-muted font-sans">Net Total Payable:</span>
+                <span className="font-bold text-sm text-tea-forest">
+                  Rs. {paymentModalOrder.grandTotal.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSavePaymentUpdate} className="space-y-4 text-xs">
+              {/* Payment Status Selector */}
+              <div>
+                <label className="block font-bold text-tea-dark mb-1.5">
+                  Payment Collection Status *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalStatus("PAID")}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                      paymentModalStatus === "PAID"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-tea-surface text-tea-muted border-tea-border hover:bg-tea-bg"
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>PAID IN FULL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalStatus("PENDING")}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                      paymentModalStatus === "PENDING"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                        : "bg-tea-surface text-tea-muted border-tea-border hover:bg-tea-bg"
+                    }`}
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span>CREDIT / DUE</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div>
+                <label className="block font-bold text-tea-dark mb-1.5">
+                  Payment Mode / Channel *
+                </label>
+                <select
+                  value={paymentModalMethod}
+                  onChange={(e) => setPaymentModalMethod(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-tea-border bg-tea-surface font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                >
+                  <option value="CASH_ON_DELIVERY">Cash on Spot</option>
+                  <option value="BANK_TRANSFER">Direct Bank Transfer</option>
+                  <option value="CHEQUE">Cheque Payment</option>
+                  <option value="CREDIT_SHOP">Credit / On Account (Pay Later)</option>
+                </select>
+              </div>
+
+              {/* Payment Reference Note */}
+              <div>
+                <label className="block font-semibold text-tea-dark mb-1">
+                  Payment Reference / Remarks
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Collected cash on visit, Cheque #40292, or slip confirmed"
+                  value={paymentModalNote}
+                  onChange={(e) => setPaymentModalNote(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-tea-border bg-tea-surface text-xs focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentModalOrder(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={paymentModalSubmitting}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {paymentModalSubmitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-tea-gold" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-tea-gold" />
+                      <span>Update Payment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Cancel Bill Modal */}
+      {cancelModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-tea-border shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-tea-border">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-rose-950">
+                    Cancel Shop Bill
+                  </h3>
+                  <p className="text-[11px] font-mono text-tea-muted">
+                    #{cancelModalOrder.orderNumber}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCancelModalOrder(null)}
+                className="p-1.5 rounded-lg text-tea-muted hover:text-tea-dark hover:bg-tea-surface transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Restock Warning Box */}
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                <Boxes className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>Automatic Stock Restocking</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Cancelling this bill will immediately restore all items (
+                <strong>{cancelModalOrder.items?.length || 0} line items</strong>) back into the warehouse
+                inventory stock.
+              </p>
+            </div>
+
+            {/* Bill Details Box */}
+            <div className="p-3 rounded-xl bg-tea-surface/60 border border-tea-border/60 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-tea-muted">Shop:</span>
+                <span className="font-bold text-tea-dark">{cancelModalOrder.customerName}</span>
+              </div>
+              <div className="flex justify-between font-mono">
+                <span className="text-tea-muted font-sans">Bill Total:</span>
+                <span className="font-bold text-tea-forest">
+                  Rs. {cancelModalOrder.grandTotal.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmCancelBill} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-tea-dark mb-1">
+                  Reason for Cancellation *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Shop closed, customer refused delivery, entry mistake"
+                  value={cancelModalReason}
+                  onChange={(e) => setCancelModalReason(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-tea-border bg-tea-surface text-xs focus:outline-none focus:ring-2 focus:ring-rose-400"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCancelModalOrder(null)}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface font-bold text-xs"
+                >
+                  Keep Bill Active
+                </button>
+                <button
+                  type="submit"
+                  disabled={cancelModalSubmitting}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {cancelModalSubmitting ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      <span>Cancelling...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>Confirm & Cancel</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
