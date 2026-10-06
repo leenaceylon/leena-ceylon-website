@@ -793,7 +793,120 @@ export default function ShopBillingPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const elementId = printFormat === "terminal" ? "printable-receipt" : "printable-invoice";
+    const printElement = document.getElementById(elementId);
+    if (!printElement) {
+      window.print();
+      return;
+    }
+
+    // Clean up any previous print iframe
+    const oldIframe = document.getElementById("receipt-print-iframe");
+    if (oldIframe && oldIframe.parentNode) {
+      oldIframe.parentNode.removeChild(oldIframe);
+    }
+
+    // Create an invisible iframe dedicated to printing ONLY the bill
+    const iframe = document.createElement("iframe");
+    iframe.id = "receipt-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.top = "-9999px";
+    iframe.style.left = "-9999px";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
+
+    const pri = iframe.contentWindow;
+    if (!pri) {
+      window.print();
+      return;
+    }
+
+    const isTerminal = printFormat === "terminal";
+    const billHtml = printElement.outerHTML;
+
+    // Collect all stylesheets and style tags from current document to preserve exact styling
+    let stylesHtml = "";
+    document.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => {
+      stylesHtml += node.outerHTML;
+    });
+
+    pri.document.open();
+    pri.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${isTerminal ? "POS_Receipt" : "Invoice"}_${completedOrder?.orderNumber || "Bill"}</title>
+          ${stylesHtml}
+          <style>
+            @page {
+              size: ${isTerminal ? "80mm auto" : "A4 portrait"};
+              margin: ${isTerminal ? "0mm 0mm 3mm 0mm" : "8mm"};
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body {
+              width: ${isTerminal ? "76mm" : "100%"} !important;
+              max-width: ${isTerminal ? "76mm" : "100%"} !important;
+              margin: 0 auto !important;
+              padding: ${isTerminal ? "2mm 2mm 5mm 2mm" : "4mm"} !important;
+              font-family: ${isTerminal ? "'Courier New', Courier, monospace" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"} !important;
+            }
+            #printable-receipt {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              font-size: 11px !important;
+              line-height: 1.25 !important;
+              display: block !important;
+            }
+            #printable-invoice {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              display: block !important;
+            }
+          </style>
+        </head>
+        <body class="${isTerminal ? 'font-mono' : ''}">
+          ${billHtml}
+        </body>
+      </html>
+    `);
+    pri.document.close();
+
+    // Trigger print once iframe content is rendered
+    setTimeout(() => {
+      try {
+        pri.focus();
+        pri.print();
+      } catch (err) {
+        console.error("Isolated print error, falling back to window.print:", err);
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 3000);
+      }
+    }, 250);
   };
 
   // Compile WhatsApp URL for completed bill or current bill
@@ -2874,9 +2987,12 @@ export default function ShopBillingPage() {
             : null);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-tea-dark/75 backdrop-blur-xs overflow-y-auto">
+          <div
+            id="print-modal-container"
+            className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-tea-dark/75 backdrop-blur-xs overflow-y-auto print:fixed print:inset-0 print:p-0 print:m-0 print:bg-white print:overflow-visible print:z-[99999]"
+          >
             <div
-              className={`bg-white rounded-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-auto max-h-[94vh] overflow-y-auto animate-scale-up ${
+              className={`bg-white rounded-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-auto max-h-[94vh] overflow-y-auto animate-scale-up print:m-0 print:p-0 print:border-none print:shadow-none print:max-h-none print:overflow-visible print:w-auto print:max-w-none ${
                 printFormat === "terminal" ? "max-w-md" : "max-w-3xl"
               }`}
             >
