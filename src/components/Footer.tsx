@@ -191,6 +191,11 @@ export default function Footer({
                   {t("footer.customerService", "Customer Support")}
                 </Link>
               </li>
+              <li>
+                <Link href="/track" className="hover:text-white transition font-medium text-tea-gold">
+                  {t("nav.trackOrder", "Track Order (Live Status)")}
+                </Link>
+              </li>
             </ul>
           </div>
 

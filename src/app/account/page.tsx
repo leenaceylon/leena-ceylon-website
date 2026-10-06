@@ -67,31 +67,42 @@ export default async function AccountPage() {
         )}
       </div>
 
-      {/* Quick Order Lookup by Order Number */}
-      <div className="bg-tea-surface p-6 rounded-2xl border border-tea-border space-y-3">
-        <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
-          <Search className="w-4 h-4 text-tea-leaf" />
-          Track Any Order Instantly
-        </h3>
-        <p className="text-xs text-tea-muted">
-          Enter your Order Number (e.g. <strong>LC-2026-0001</strong>) to view live fulfillment and courier tracking.
-        </p>
+      {/* Quick Order Lookup by Order Number or Phone */}
+      <div className="bg-tea-surface p-6 sm:p-8 rounded-3xl border border-tea-border space-y-4 shadow-subtle">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-serif text-lg font-bold text-tea-dark flex items-center gap-2">
+              <Search className="w-5 h-5 text-tea-leaf" />
+              <span>Track Any Order Instantly</span>
+            </h3>
+            <p className="text-xs text-tea-muted mt-0.5">
+              Enter your <strong>Phone Number</strong> (e.g. 071 777 4717) or <strong>Order Reference</strong> (e.g. LC-2026-0001).
+            </p>
+          </div>
+          <Link
+            href="/track"
+            className="text-xs font-bold text-tea-forest hover:text-tea-dark hover:underline flex items-center gap-1"
+          >
+            <span>Open Dedicated Tracking Hub</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
 
         <form
-          action="/account/orders/track"
+          action="/track"
           method="GET"
           className="flex flex-col sm:flex-row gap-2 pt-1"
         >
           <input
             type="text"
-            name="orderNumber"
+            name="q"
             required
-            placeholder="Enter Order Number (e.g. LC-2026-0001)"
-            className="flex-1 px-4 py-2.5 text-xs rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf uppercase"
+            placeholder="Enter Phone Number or Order Reference (e.g. 071 777 4717 or LC-2026-0001)"
+            className="flex-1 px-4 py-3 text-xs sm:text-sm rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
           />
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition"
+            className="px-8 py-3 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-sm"
           >
             Track Order
           </button>

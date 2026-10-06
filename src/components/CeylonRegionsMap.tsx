@@ -328,19 +328,36 @@ export default function CeylonRegionsMap({
           </div>
 
           {/* Guaranteed Non-Collapsing Luxury Map Frame */}
-          <div className="relative w-full max-w-[420px] h-[520px] sm:h-[580px] rounded-2xl overflow-hidden border border-emerald-900/20 shadow-inner my-2">
+          <div className="relative w-full max-w-[440px] aspect-[896/1200] rounded-2xl overflow-hidden border border-emerald-900/20 shadow-inner my-2">
             {/* High-Resolution Luxury Cartographic Artwork */}
             <Image
               src="/images/sri-lanka-tea-regions-map.jpg"
               alt="Authentic Cartographic Map of Ceylon Tea Regions Sri Lanka"
               fill
               priority
-              sizes="(max-width: 640px) 380px, 420px"
+              sizes="(max-width: 640px) 380px, 440px"
               className="object-cover object-center select-none"
             />
 
             {/* Subtle Vignette Overlay for Pin Contrast */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/15 pointer-events-none" />
+
+            {/* LEENA CEYLON Headquarters & Pick-up Hub Marker (Kekirawa) */}
+            <div
+              style={{
+                left: "49%",
+                top: "38%",
+                transform: "translate(-50%, -50%)",
+              }}
+              className="absolute z-30 pointer-events-none"
+            >
+              <div className="flex flex-col items-center">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950 text-tea-gold text-[9px] font-extrabold shadow-md border border-tea-gold/70 uppercase tracking-wider whitespace-nowrap">
+                  <span>★ LEENA HQ (Kekirawa)</span>
+                </div>
+                <div className="w-2 h-2 rounded-full bg-tea-gold border border-white shadow-sm mt-0.5" />
+              </div>
+            </div>
 
             {/* Interactive Glowing Pins for the 7 Ceylon Tea Regions */}
             {CEYLON_TEA_REGIONS.map((region) => {

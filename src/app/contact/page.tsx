@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Phone, Mail, MapPin, MessageSquare, Clock, CheckCircle2 } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Clock,
+  CheckCircle2,
+  Navigation,
+  Building2,
+  ExternalLink,
+} from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 
 export default function ContactPage() {
@@ -219,6 +229,108 @@ export default function ContactPage() {
               </button>
             </form>
           )}
+        </div>
+      </div>
+
+      {/* Interactive Google Map & Office Pick-Up Center Section */}
+      <div className="bg-white rounded-3xl border border-tea-border p-6 sm:p-10 shadow-card space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-tea-border">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider mb-2">
+              <Building2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Head Office & Pick-Up Center</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-tea-dark">
+              Visit Us in Kekirawa, Sri Lanka
+            </h2>
+            <p className="text-xs sm:text-sm text-tea-muted mt-1 max-w-xl">
+              Customers, wholesale partners, and tea enthusiasts are welcome to visit our central facility. Pick up your orders in person with zero delivery fees!
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <a
+              href="https://www.google.com/maps/search/?api=1&query=Pubbogama+Kekirawa+Sri+Lanka"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-sm"
+            >
+              <Navigation className="w-4 h-4 text-tea-gold" />
+              <span>Get Directions</span>
+              <ExternalLink className="w-3.5 h-3.5 text-white/70" />
+            </a>
+
+            <a
+              href={getWhatsAppUrl("0717774717", "Hello LEENA CEYLON, I would like to get directions or notify you before picking up my order in Kekirawa.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-sm"
+            >
+              <MessageSquare className="w-4 h-4 fill-current" />
+              <span>WhatsApp for Pickup</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Map Frame + Quick Details Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Responsive Embedded Map */}
+          <div className="lg:col-span-8 rounded-2xl overflow-hidden border border-tea-border shadow-inner min-h-[350px] sm:min-h-[420px] relative bg-tea-surface">
+            <iframe
+              title="LEENA CEYLON Head Office Map Location"
+              src="https://maps.google.com/maps?q=Kekirawa%2C%20North%20Central%20Province%2C%20Sri%20Lanka&t=&z=13&ie=UTF8&iwloc=&output=embed"
+              className="w-full h-full min-h-[350px] sm:min-h-[420px] border-0"
+              loading="lazy"
+              allowFullScreen
+            />
+          </div>
+
+          {/* Location Summary Card */}
+          <div className="lg:col-span-4 bg-tea-surface p-6 rounded-2xl border border-tea-border flex flex-col justify-between space-y-4 text-xs">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-800 text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-tea-dark text-sm">Physical Address</h4>
+                  <p className="text-tea-muted mt-1 leading-relaxed">
+                    LEENA CEYLON (PVT) LTD<br />
+                    A/Bandarapothana, Pubbogama,<br />
+                    Kekirawa, North Central Province,<br />
+                    Sri Lanka.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-tea-border/70 pt-3">
+                <span className="font-bold text-tea-dark block">Pick-Up Availability:</span>
+                <p className="text-tea-muted mt-0.5">
+                  Monday – Saturday: 8:30 AM – 6:00 PM<br />
+                  Sunday: Prior WhatsApp notice recommended
+                </p>
+              </div>
+
+              <div className="border-t border-tea-border/70 pt-3">
+                <span className="font-bold text-tea-dark block">Pick-Up Benefit:</span>
+                <span className="inline-block mt-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
+                  ✓ Rs. 0 Delivery Charge (Free Pick-Up)
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-tea-border/70">
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=Pubbogama+Kekirawa+Sri+Lanka"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold tracking-wider uppercase transition text-[11px]"
+              >
+                <Navigation className="w-3.5 h-3.5 text-tea-gold" />
+                Open in Google Maps App
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>

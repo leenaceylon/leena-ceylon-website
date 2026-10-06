@@ -324,3 +324,107 @@ export function compileBankTransferWhatsAppMessage(options: {
   return lines.join("\n");
 }
 
+export interface WhatsAppAdminOrderData {
+  orderNumber: string;
+  customerName: string;
+  customerPhone?: string;
+  shippingAddress: string;
+  city?: string;
+  district?: string;
+  paymentMethod: string;
+  paymentStatus?: string;
+  grandTotal: number;
+  deliveryCharge?: number;
+  discount?: number;
+  subtotal?: number;
+  deliveryNotes?: string;
+  items?: Array<{ productName: string; size: string; quantity: number; unitPrice?: number; subtotal?: number }>;
+  brandName?: string;
+}
+
+export function compileOrderConfirmationWhatsAppMessage(order: WhatsAppAdminOrderData): string {
+  const brand = order.brandName || "LEENA CEYLON";
+  const isPickup =
+    order.paymentMethod === "PAY_ON_PICKUP" ||
+    (order.shippingAddress && order.shippingAddress.toLowerCase().includes("pick-up"));
+
+  const lines: string[] = [
+    `✅ *ORDER CONFIRMED — ${brand.toUpperCase()}* ✅`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `Dear ${order.customerName || "Valued Customer"},`,
+    ``,
+    `Great news! We have reviewed and *CONFIRMED* your pure Ceylon tea order.`,
+    ``,
+    `📌 *Order Reference:* *#${order.orderNumber}*`,
+    `🛍️ *Confirmed Order Items:*`,
+  ];
+
+  if (order.items && order.items.length > 0) {
+    order.items.forEach((item, idx) => {
+      lines.push(`${idx + 1}. *${item.productName}* (${item.size}) × ${item.quantity} pack(s)`);
+    });
+  }
+
+  lines.push(``);
+  lines.push(`💰 *Total Payable:* *Rs. ${order.grandTotal.toLocaleString("en-US")}*`);
+
+  if (isPickup) {
+    lines.push(`🏬 *Fulfillment:* *Office Pick-up (Kekirawa Head Office)*`);
+    lines.push(`📍 *Location:* LEENA CEYLON (PVT) LTD, Kekirawa, Sri Lanka`);
+    lines.push(
+      `💳 *Payment:* ${
+        order.paymentMethod === "BANK_TRANSFER"
+          ? "Bank Transfer"
+          : `Pay at Collection (Rs. ${order.grandTotal.toLocaleString("en-US")})`
+      }`
+    );
+    lines.push(`📦 *Status:* Being packed and prepared for your collection!`);
+  } else {
+    lines.push(`🚚 *Fulfillment:* *Islandwide Courier Delivery*`);
+    lines.push(`📍 *Delivery Address:* ${order.shippingAddress}${order.city ? `, ${order.city}` : ""}`);
+    lines.push(
+      `💳 *Payment Method:* ${
+        order.paymentMethod === "BANK_TRANSFER"
+          ? "Direct Bank Transfer"
+          : "Cash on Delivery (COD)"
+      }`
+    );
+    lines.push(`📦 *Status:* Freshly packed & prepared for courier dispatch!`);
+    lines.push(`⏱️ *Estimated Delivery:* 24–48 Hours`);
+  }
+
+  lines.push(``);
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`Thank you for choosing authentic Single-Origin Ceylon Tea!`);
+  lines.push(`If you need to adjust anything or provide special instructions, simply reply here.`);
+  lines.push(``);
+  lines.push(`Warm regards,`);
+  lines.push(`🌿 *${brand} Team*`);
+
+  return lines.join("\n").trim();
+}
+
+export function compileOrderShippedWhatsAppMessage(
+  order: WhatsAppAdminOrderData,
+  trackingNumber?: string
+): string {
+  const brand = order.brandName || "LEENA CEYLON";
+  const lines: string[] = [
+    `🚚 *ORDER DISPATCHED — ${brand.toUpperCase()}* 🚚`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `Dear ${order.customerName || "Valued Customer"},`,
+    ``,
+    `Your order *#${order.orderNumber}* has been dispatched via courier!`,
+    ``,
+    ...(trackingNumber ? [`📦 *Tracking / Waybill Number:* *${trackingNumber}*`, ``] : []),
+    `📍 *Delivery Destination:* ${order.shippingAddress}${order.city ? `, ${order.city}` : ""}`,
+    `💰 *Payable on Arrival:* *Rs. ${order.grandTotal.toLocaleString("en-US")}*`,
+    ``,
+    `Your package will arrive within 24–48 hours. Please ensure someone is available at the address to receive the parcel.`,
+    ``,
+    `Enjoy your fresh Ceylon tea cup! 🍵`,
+    `🌿 *${brand} (PVT) LTD*`,
+  ];
+  return lines.join("\n").trim();
+}
+

@@ -9,7 +9,19 @@ import {
   Filter,
   ArrowUpDown,
   ShoppingBag,
+  MessageSquare,
+  Truck,
+  Package,
+  X,
+  Send,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
+import {
+  getWhatsAppUrl,
+  compileOrderConfirmationWhatsAppMessage,
+  compileOrderShippedWhatsAppMessage,
+} from "@/lib/whatsapp";
 
 const STATUS_OPTIONS = [
   "PENDING",
@@ -52,6 +64,9 @@ function AdminOrdersView() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmationModalOrder, setConfirmationModalOrder] = useState<any | null>(null);
+  const [deleteModalOrder, setDeleteModalOrder] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     try {
@@ -70,6 +85,30 @@ function AdminOrdersView() {
     loadData();
   }, []);
 
+  const handleDeleteOrder = async () => {
+    if (!deleteModalOrder) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/orders/${deleteModalOrder.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNotice(data.message || `Order #${deleteModalOrder.orderNumber} deleted successfully.`);
+        setTimeout(() => setNotice(null), 3500);
+        setDeleteModalOrder(null);
+        loadData();
+      } else {
+        alert(data.error || "Failed to delete order.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network error while deleting order.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -77,10 +116,19 @@ function AdminOrdersView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderStatus: newStatus }),
       });
+      const data = await res.json();
       if (res.ok) {
         setNotice(`Order status updated to ${newStatus}.`);
-        setTimeout(() => setNotice(null), 3000);
+        setTimeout(() => setNotice(null), 3500);
         loadData();
+
+        // Automatically prompt to send WhatsApp confirmation when status is set to CONFIRMED
+        if (newStatus === "CONFIRMED") {
+          const target = data?.order || orders.find((o) => o.id === orderId);
+          if (target) {
+            setConfirmationModalOrder({ ...target, orderStatus: "CONFIRMED" });
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -235,13 +283,33 @@ function AdminOrdersView() {
                       </select>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <Link
-                        href={`/admin/orders/${o.id}`}
-                        className="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-tea-forest font-semibold"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Details
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setConfirmationModalOrder(o)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] transition shadow-xs"
+                          title="Send WhatsApp Confirmation / Updates to Customer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 fill-current text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </button>
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-tea-forest font-semibold text-[11px] transition"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Details</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalOrder(o)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-rose-200 hover:border-rose-300 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-[11px] transition"
+                          title="Delete this order"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span className="hidden sm:inline">Delete</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -250,6 +318,179 @@ function AdminOrdersView() {
           </div>
         )}
       </div>
+
+      {/* Automatic WhatsApp Confirmation & Customer Notification Modal */}
+      {confirmationModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full space-y-4 shadow-2xl border border-emerald-300">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full inline-block mb-1">
+                    Order #{confirmationModalOrder.orderNumber}
+                  </span>
+                  <h3 className="font-serif text-lg font-bold text-tea-dark">
+                    Send WhatsApp Confirmation to Customer
+                  </h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmationModalOrder(null)}
+                className="p-1 rounded-lg text-tea-muted hover:text-tea-dark hover:bg-tea-surface transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-4 text-xs space-y-2 text-tea-dark">
+              <div className="flex justify-between items-center pb-1.5 border-b border-emerald-200/50">
+                <span className="text-tea-muted font-medium">Customer:</span>
+                <strong className="text-tea-dark">{confirmationModalOrder.customerName}</strong>
+              </div>
+              <div className="flex justify-between items-center pb-1.5 border-b border-emerald-200/50">
+                <span className="text-tea-muted font-medium">WhatsApp Number:</span>
+                <span className="font-mono font-bold text-emerald-800">{confirmationModalOrder.customerPhone}</span>
+              </div>
+              <div className="flex justify-between items-center pb-1.5 border-b border-emerald-200/50">
+                <span className="text-tea-muted font-medium">Total Amount:</span>
+                <strong className="text-emerald-700 font-bold">Rs. {confirmationModalOrder.grandTotal.toLocaleString()}</strong>
+              </div>
+              <div className="flex justify-between items-center pb-1.5 border-b border-emerald-200/50">
+                <span className="text-tea-muted font-medium">Delivery:</span>
+                <span className="truncate max-w-[200px]">{confirmationModalOrder.shippingAddress || "Sri Lanka Delivery"}</span>
+              </div>
+              <div className="pt-0.5">
+                <span className="text-tea-muted font-medium block text-[11px] mb-1">Items:</span>
+                <p className="text-tea-dark text-[11px] bg-white p-2 rounded-xl border border-emerald-200">
+                  {confirmationModalOrder.items && confirmationModalOrder.items.length > 0
+                    ? confirmationModalOrder.items.map((it: any) => `${it.productName} (${it.size}) × ${it.quantity}`).join(", ")
+                    : "Pure Ceylon Tea Pack"}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-tea-muted leading-relaxed">
+              Click below to automatically launch WhatsApp with a complete order confirmation message including items, price, delivery details, and reference number:
+            </p>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const msg = compileOrderConfirmationWhatsAppMessage(confirmationModalOrder);
+                  const url = getWhatsAppUrl(confirmationModalOrder.customerPhone, msg);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setConfirmationModalOrder(null);
+                }}
+                className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4 fill-current" />
+                <span>SEND ORDER CONFIRMATION VIA WHATSAPP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const msg = compileOrderShippedWhatsAppMessage(confirmationModalOrder);
+                  const url = getWhatsAppUrl(confirmationModalOrder.customerPhone, msg);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setConfirmationModalOrder(null);
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest font-bold text-xs uppercase tracking-wider transition border border-tea-border flex items-center justify-center gap-2"
+              >
+                <Truck className="w-3.5 h-3.5 text-tea-leaf" />
+                <span>SEND DISPATCH / COURIER UPDATE</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setConfirmationModalOrder(null)}
+                className="w-full py-2 text-center text-xs text-tea-muted hover:text-tea-dark transition"
+              >
+                Close / Do Not Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Order Delete Confirmation Modal */}
+      {deleteModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 border border-tea-border shadow-2xl space-y-5 animate-scale-up">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center text-rose-700">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-tea-dark">
+                    Delete Order #{deleteModalOrder.orderNumber}
+                  </h3>
+                  <p className="text-xs text-tea-muted">
+                    Permanent Administrative Removal
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModalOrder(null)}
+                className="p-1 rounded-lg text-tea-muted hover:text-tea-dark hover:bg-tea-surface transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-4 text-xs space-y-2 text-rose-900">
+              <div className="flex justify-between items-center pb-1 border-b border-rose-200/60">
+                <span className="text-rose-800">Customer:</span>
+                <strong>{deleteModalOrder.customerName}</strong>
+              </div>
+              <div className="flex justify-between items-center pb-1 border-b border-rose-200/60">
+                <span className="text-rose-800">Phone:</span>
+                <span className="font-mono">{deleteModalOrder.customerPhone}</span>
+              </div>
+              <div className="flex justify-between items-center pb-1 border-b border-rose-200/60">
+                <span className="text-rose-800">Total:</span>
+                <strong className="text-rose-900">Rs. {deleteModalOrder.grandTotal.toLocaleString()}</strong>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-rose-800">Status:</span>
+                <span className="font-bold">{deleteModalOrder.orderStatus}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-tea-muted leading-relaxed">
+              Are you sure you want to permanently delete this order? All items and record entries associated with this order will be permanently erased.
+            </p>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleDeleteOrder}
+                disabled={deleting}
+                className="flex-1 py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{deleting ? "Deleting..." : "Permanently Delete Order"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setDeleteModalOrder(null)}
+                disabled={deleting}
+                className="py-3 px-4 rounded-xl border border-tea-border hover:bg-tea-surface text-tea-dark font-bold text-xs uppercase tracking-wider transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShieldCheck,
   ChevronRight,
+  Truck,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -58,8 +59,9 @@ export default function Navbar({
   const navLinks = [
     { name: t("nav.home", "Home"), href: "/" },
     { name: t("nav.products", "Products"), href: "/products" },
-    { name: t("nav.about", "About"), href: "/about" },
     { name: t("nav.ceylonTea", "Ceylon Tea"), href: "/ceylon-tea" },
+    { name: t("nav.trackOrder", "Track Order"), href: "/track" },
+    { name: t("nav.about", "About"), href: "/about" },
     { name: t("nav.contact", "Contact"), href: "/contact" },
   ];
 
@@ -84,6 +86,14 @@ export default function Navbar({
                 <Phone className="w-3 h-3 text-tea-gold" />
                 <span>{phone}</span>
               </a>
+              <span className="text-white/20">|</span>
+              <Link
+                href="/track"
+                className="flex items-center gap-1 text-tea-pale/90 hover:text-white transition"
+              >
+                <Truck className="w-3.5 h-3.5 text-tea-gold" />
+                <span>{t("nav.trackOrder", "Track Order")}</span>
+              </Link>
               <span className="text-white/20">|</span>
               <span className="flex items-center gap-1 text-tea-gold">
                 <ShieldCheck className="w-3.5 h-3.5" />
