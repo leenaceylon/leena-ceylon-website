@@ -19,6 +19,7 @@ import {
   Store,
   Smartphone,
   Printer,
+  UserCheck,
 } from "lucide-react";
 import {
   getWhatsAppUrl,
@@ -296,6 +297,7 @@ function AdminOrdersView() {
                   <th className="py-3.5 px-4">Order ID</th>
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4">Customer / Channel</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Sales Rep (Shop Only)</th>
                   <th className="py-3.5 px-4">Phone</th>
                   <th className="py-3.5 px-4">Items</th>
                   <th className="py-3.5 px-4">Total</th>
@@ -324,17 +326,24 @@ function AdminOrdersView() {
                       <td className="py-3 px-4">
                         <div className="font-semibold text-tea-dark">{o.customerName}</div>
                         {isShop ? (
-                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              🏬 Shop Bill
-                            </span>
-                            <span className="text-[10px] text-tea-dark font-medium">
-                              Rep: <strong className="text-amber-900">{o.salesRepName || "Sales Rep"}</strong>
-                            </span>
-                          </div>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-block mt-0.5">
+                            🏬 Ground Shop Bill
+                          </span>
                         ) : (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 inline-block mt-0.5">
                             📱 Online / WhatsApp
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {isShop ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                            <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <span>{o.salesRepName || "Sales Rep"}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-tea-muted font-normal italic">
+                            — (Online / WhatsApp)
                           </span>
                         )}
                       </td>

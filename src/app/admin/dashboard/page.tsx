@@ -26,9 +26,19 @@ import {
   ChevronRight,
   MapPin,
   CheckCircle2,
+  UserCheck,
 } from "lucide-react";
 
 export const revalidate = 0; // Always real-time database driven
+
+function extractSalesRepName(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:SALES_REP|SALES REP|REP):\s*([^|]+)/i);
+  if (match) return match[1].trim();
+  const byMatch = notes.match(/by\s+([A-Za-z0-9._ -]+)\s*\((?:SALES_REP|ADMIN|MANAGER)\)/i);
+  if (byMatch) return byMatch[1].trim();
+  return null;
+}
 
 export default async function AdminDashboardPage() {
   const admin = await getCurrentAdmin();
@@ -1139,15 +1149,27 @@ export default async function AdminDashboardPage() {
                         </td>
                         <td className="py-3">
                           {isShop ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold text-[10px]">
-                              <Store className="w-3 h-3" />
-                              Shop Bill
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-[10px]">
+                                <Store className="w-3 h-3 text-amber-700" />
+                                Ground Shop Bill
+                              </span>
+                              <div className="text-[10px] text-tea-dark font-medium mt-0.5 flex items-center gap-1">
+                                <UserCheck className="w-3 h-3 text-emerald-700 shrink-0" />
+                                <span>Rep:</span>
+                                <strong className="text-emerald-950 font-bold">{extractSalesRepName(o.deliveryNotes) || "Sales Rep"}</strong>
+                              </div>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-[10px]">
-                              <ShoppingCart className="w-3 h-3" />
-                              Online
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold text-[10px]">
+                                <ShoppingCart className="w-3 h-3" />
+                                Direct Online
+                              </span>
+                              <div className="text-[10px] text-tea-muted font-normal mt-0.5">
+                                (No Rep • Online Customer)
+                              </div>
+                            </div>
                           )}
                         </td>
                         <td className="py-3 font-bold text-tea-forest">

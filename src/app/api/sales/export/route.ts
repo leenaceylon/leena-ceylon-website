@@ -53,7 +53,9 @@ export async function GET(req: NextRequest) {
           o.orderNumber.startsWith("SHOP-") ||
           o.paymentMethod === "CREDIT_SHOP" ||
           Boolean(o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")));
-        const rep = extractSalesRepName(o.deliveryNotes) || (isShop ? "Sales Rep" : "Online Website");
+        const rep = isShop
+          ? (extractSalesRepName(o.deliveryNotes) || "Direct Sales Rep")
+          : "N/A (Online / WhatsApp Order)";
         const channel = isShop ? "Sales Rep Ground Bill" : "Online / WhatsApp";
 
         return [

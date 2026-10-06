@@ -560,6 +560,11 @@ export default function AdminUsersPage() {
                   <option value="ORDER_MANAGER">ORDER_MANAGER (Fulfillment & Couriers)</option>
                   <option value="SHOP_ORDER_REP">SHOP_ORDER_REP (Shop Order Taking & Available Products Only)</option>
                 </select>
+                {formData.roleName === "SHOP_ORDER_REP" && (
+                  <p className="mt-1 text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                    ℹ️ <strong>Field Sales Representative:</strong> The Full Name entered above (<strong>{formData.name || "Rep Name"}</strong>) will be automatically attributed on all bills, printed on receipts, and credited in sales reports.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -666,6 +671,11 @@ export default function AdminUsersPage() {
                     <option value="ORDER_MANAGER">ORDER_MANAGER (Fulfillment & Couriers)</option>
                     <option value="SHOP_ORDER_REP">SHOP_ORDER_REP (Shop Order Taking & Available Products Only)</option>
                   </select>
+                )}
+                {editFormData.roleName === "SHOP_ORDER_REP" && (
+                  <p className="mt-1 text-[11px] text-emerald-800 bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                    ℹ️ <strong>Field Sales Representative:</strong> The Name entered above (<strong>{editFormData.name || "Rep Name"}</strong>) will be attributed on all shop bills, printed on receipts, and credited in sales reports.
+                  </p>
                 )}
               </div>
 

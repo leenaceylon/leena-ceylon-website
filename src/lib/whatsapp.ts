@@ -433,6 +433,7 @@ export interface ShopInvoiceData {
   shopName: string;
   ownerName?: string;
   shopPhone?: string;
+  salesRepName?: string;
   routeTown?: string;
   address?: string;
   items: Array<{
@@ -475,6 +476,7 @@ export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string
     `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
     `🏬 *Shop / Store:* *${data.shopName}*`,
     ...(data.ownerName ? [`👤 *Contact Person:* ${data.ownerName}`] : []),
+    ...(data.salesRepName ? [`🧑‍💼 *Sales Representative:* *${data.salesRepName}*`] : []),
     ...(data.routeTown ? [`📍 *Route / Area:* ${data.routeTown}`] : []),
     `📌 *Invoice / Bill #:* *${data.orderNumber}*`,
     `📅 *Date:* ${dateStr}`,

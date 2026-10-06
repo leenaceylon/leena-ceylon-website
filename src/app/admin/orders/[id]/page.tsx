@@ -26,6 +26,7 @@ import {
   getWhatsAppUrl,
   compileOrderConfirmationWhatsAppMessage,
   compileOrderShippedWhatsAppMessage,
+  compileShopInvoiceWhatsAppMessage,
 } from "@/lib/whatsapp";
 
 const ORDER_STEPS = [
@@ -116,6 +117,28 @@ export default function AdminOrderDetailPage() {
   }
 
   const handleSendConfirmation = () => {
+    if (order.isShopOrder) {
+      const msg = compileShopInvoiceWhatsAppMessage({
+        orderNumber: order.orderNumber,
+        shopName: order.customerName,
+        shopPhone: order.customerPhone,
+        salesRepName: order.salesRepName || "Sales Rep",
+        routeTown: order.city,
+        address: order.shippingAddress,
+        items: order.items || [],
+        subtotal: order.subtotal,
+        discount: order.discount,
+        deliveryCharge: order.deliveryCharge,
+        grandTotal: order.grandTotal,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        notes: order.deliveryNotes,
+      });
+      const url = getWhatsAppUrl(order.customerPhone, msg);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setShowConfirmModal(false);
+      return;
+    }
     const msg = compileOrderConfirmationWhatsAppMessage(order);
     const url = getWhatsAppUrl(order.customerPhone, msg);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -223,7 +246,7 @@ export default function AdminOrderDetailPage() {
           {order.isShopOrder ? (
             <>
               <Link
-                href="/admin/shop-billing"
+                href={`/admin/shop-billing?tab=history&search=${encodeURIComponent(order.orderNumber)}`}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
               >
                 <Printer className="w-4 h-4" />

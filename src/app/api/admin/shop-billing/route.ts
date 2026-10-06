@@ -177,6 +177,12 @@ export async function GET() {
       products,
       recentShopOrders: enrichedShopOrders,
       knownShops,
+      currentAdmin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
     });
   } catch (err: any) {
     console.error("Shop billing GET error:", err);
@@ -210,6 +216,7 @@ export async function POST(req: NextRequest) {
       paymentStatus = "PAID",
       paidAmount = 0,
       notes,
+      salesRepName: inputSalesRepName,
       combinedPayment, // { isCombined: boolean, oldBalance: number, totalReceived: number, afterBalance: number }
     } = body;
 
@@ -371,7 +378,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const repDisplayName = body.salesRepName || admin.name || "Sales Rep";
+    const repDisplayName =
+      (inputSalesRepName && inputSalesRepName.trim()) ||
+      (body.salesRepName && body.salesRepName.trim()) ||
+      admin.name ||
+      "Sales Rep";
     // Save in Order model with shop metadata including Sales Rep attribution
     const shopMetadata = `SALES_REP: ${repDisplayName} | REP_ROLE: ${admin.role} | SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${combinedTag ? `${combinedTag} | ` : ""}${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
 
@@ -440,6 +451,7 @@ export async function POST(req: NextRequest) {
       success: true,
       order: {
         ...order,
+        salesRepName: repDisplayName,
         paidAmount: actualPaidAmount,
         dueAmount: actualDueAmount,
         combinedDetails: parseCombinedPaymentDetails(order.deliveryNotes),

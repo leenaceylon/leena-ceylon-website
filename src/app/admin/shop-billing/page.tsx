@@ -35,6 +35,8 @@ import {
   Check,
   DollarSign,
   XCircle,
+  UserCheck,
+  User,
 } from "lucide-react";
 import { getWhatsAppUrl, compileShopInvoiceWhatsAppMessage, ShopInvoiceData } from "@/lib/whatsapp";
 
@@ -129,6 +131,17 @@ export default function ShopBillingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Sales Representative State (Who is taking this ground shop bill)
+  const [salesRepName, setSalesRepName] = useState<string>("");
+  const [currentAdmin, setCurrentAdmin] = useState<any>(null);
+
+  const handleSalesRepNameChange = (name: string) => {
+    setSalesRepName(name);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("leena_saved_sales_rep_name", name);
+    }
+  };
+
   // Inventory & Known Shops
   const [products, setProducts] = useState<Product[]>([]);
   const [knownShops, setKnownShops] = useState<KnownShop[]>([]);
@@ -191,6 +204,18 @@ export default function ShopBillingPage() {
       if (data.products) setProducts(data.products);
       if (data.knownShops) setKnownShops(data.knownShops);
       if (data.recentShopOrders) setRecentOrders(data.recentShopOrders);
+      if (data.currentAdmin) setCurrentAdmin(data.currentAdmin);
+
+      // Initialize persistent sales rep name from localStorage or logged-in account
+      if (typeof window !== "undefined") {
+        const savedRep = localStorage.getItem("leena_saved_sales_rep_name");
+        if (savedRep && savedRep.trim()) {
+          setSalesRepName(savedRep.trim());
+        } else if (data.currentAdmin?.name) {
+          setSalesRepName(data.currentAdmin.name);
+          localStorage.setItem("leena_saved_sales_rep_name", data.currentAdmin.name);
+        }
+      }
 
       if (data.products && data.products.length > 0 && !selectedProductId) {
         initProductSelection(data.products[0]);
@@ -678,6 +703,10 @@ export default function ShopBillingPage() {
 
   // Finalize & Save Shop Bill
   const handleSaveOrder = async () => {
+    if (!salesRepName.trim()) {
+      alert("Please enter the Sales Representative Name who is taking this shop order.");
+      return;
+    }
     if (!shopName.trim()) {
       alert("Please enter the Shop / Store Name.");
       return;
@@ -698,6 +727,7 @@ export default function ShopBillingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          salesRepName: salesRepName.trim(),
           shopName,
           ownerName,
           shopPhone,
@@ -807,6 +837,7 @@ export default function ShopBillingPage() {
       orderNumber: targetOrder.orderNumber,
       shopName: targetOrder.customerName || shopName,
       ownerName,
+      salesRepName: targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || salesRepName || "Sales Rep",
       shopPhone: targetOrder.customerPhone || shopPhone,
       routeTown: targetOrder.city || routeTown,
       address: targetOrder.shippingAddress || address,
@@ -957,6 +988,56 @@ export default function ShopBillingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Shop Details & Item-by-Item Entry */}
           <div className="lg:col-span-7 space-y-6">
+            {/* 0. Sales Representative Identification */}
+            <div className="bg-gradient-to-r from-amber-50 to-emerald-50/60 rounded-3xl border border-amber-300/80 p-5 shadow-card space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-200/60 flex items-center justify-center text-amber-900 shrink-0">
+                    <UserCheck className="w-4 h-4 text-emerald-800" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-sm font-bold text-tea-dark uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Sales Representative In-Charge *</span>
+                    </h3>
+                    <p className="text-[11px] text-tea-muted">
+                      Who is taking & fulfilling this ground retail shop order
+                    </p>
+                  </div>
+                </div>
+
+                {salesRepName.trim() ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 text-[11px] font-bold self-start sm:self-auto">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Attributed Rep: {salesRepName}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-900 border border-rose-300 text-[11px] font-bold self-start sm:self-auto">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Rep Name Required</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter Sales Rep Full Name (e.g., Ruwan Perera, Kamal, etc.)..."
+                  value={salesRepName}
+                  onChange={(e) => handleSalesRepNameChange(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-amber-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 font-bold text-xs text-tea-dark shadow-xs"
+                />
+                <UserCheck className="w-4 h-4 text-emerald-600 absolute left-3.5 top-3" />
+              </div>
+
+              <div className="text-[11px] text-tea-muted flex items-start gap-1.5 pt-0.5">
+                <span className="text-amber-700 font-bold">ℹ️ Note:</span>
+                <span>
+                  This Sales Representative's name will be prominently printed on the <strong>Thermal POS Receipt</strong>, <strong>Standard A4 Invoice</strong>, and tracked in all <strong>Admin Sales Reports</strong>.
+                </span>
+              </div>
+            </div>
+
             {/* 1. Shop Profile & Route Section */}
             <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-4">
               <div className="flex items-center justify-between border-b border-tea-border/60 pb-3">
@@ -2260,6 +2341,7 @@ export default function ShopBillingPage() {
                   <thead className="bg-tea-surface border-b border-tea-border text-tea-muted font-semibold">
                     <tr>
                       <th className="py-3.5 px-4 whitespace-nowrap">Invoice # & Date</th>
+                      <th className="py-3.5 px-4">Sales Rep</th>
                       <th className="py-3.5 px-4">Shop / Store Name</th>
                       <th className="py-3.5 px-4">Route / Town</th>
                       <th className="py-3.5 px-4">Phone / WhatsApp</th>
@@ -2296,6 +2378,14 @@ export default function ShopBillingPage() {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
+                            </span>
+                          </td>
+
+                          {/* Sales Rep */}
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-950 font-bold text-[11px]">
+                              <UserCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                              <span>{o.salesRepName || extractSalesRepName(o.deliveryNotes) || "Direct Sales Rep"}</span>
                             </span>
                           </td>
 
@@ -2670,10 +2760,10 @@ export default function ShopBillingPage() {
                         {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between py-0.5 border-y border-dashed border-black/40 my-0.5 font-bold">
                       <span className="font-bold">SALES REP:</span>
                       <span className="font-bold uppercase truncate max-w-[190px]">
-                        {targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || "Rep In-Charge"}
+                        {targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || salesRepName || "Rep In-Charge"}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -2887,7 +2977,7 @@ export default function ShopBillingPage() {
                         Date: {new Date(targetOrder.createdAt || Date.now()).toLocaleDateString("en-GB")}
                       </p>
                       <p className="text-tea-dark font-medium text-[11px] pt-0.5">
-                        Sales Rep: <strong className="text-tea-forest">{targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || "Direct Sales Rep"}</strong>
+                        Sales Rep: <strong className="text-tea-forest font-bold uppercase">{targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || salesRepName || "Direct Sales Rep"}</strong>
                       </p>
                     </div>
                   </div>
