@@ -21,6 +21,7 @@ import {
   RefreshCw,
   ShoppingBag,
   ArrowRight,
+  ArrowLeft,
   ShieldCheck,
   ChevronDown,
   X,
@@ -174,6 +175,7 @@ export default function ShopBillingPage() {
   const [routeTown, setRouteTown] = useState("");
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
+  const [customerConfirmed, setCustomerConfirmed] = useState<boolean>(false);
 
   // Item Selector State
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -252,6 +254,7 @@ export default function ShopBillingPage() {
             handleSelectKnownShop(match);
           } else {
             setShopName(pShop);
+            setCustomerConfirmed(true);
           }
         }
 
@@ -769,6 +772,7 @@ export default function ShopBillingPage() {
     setRouteTown(shop.routeTown);
     setAddress(shop.address);
     if (shop.ownerName) setOwnerName(shop.ownerName);
+    setCustomerConfirmed(true);
   };
 
   // Finalize & Save Shop Bill
@@ -860,6 +864,7 @@ export default function ShopBillingPage() {
     setPaidAmount("");
     setIsManualPaid(false);
     setCompletedOrder(null);
+    setCustomerConfirmed(false);
   };
 
   // Synchronize dedicated body-level portal for direct print spooling (Mobile & Desktop)
@@ -1094,19 +1099,6 @@ export default function ShopBillingPage() {
 
           <button
             type="button"
-            onClick={() => setActiveTab("products")}
-            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
-              activeTab === "products"
-                ? "bg-tea-dark text-white shadow-sm"
-                : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
-            }`}
-          >
-            <Boxes className="w-4 h-4 text-emerald-400" />
-            <span>Products ({products.length})</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab("history")}
             className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "history"
@@ -1177,11 +1169,47 @@ export default function ShopBillingPage() {
         </div>
       )}
 
-      {activeTab === "billing" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Shop Details & Item-by-Item Entry */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* 0. Sales Representative Identification */}
+      {/* Step 1: Customer / Retail Store Selection (Visible BEFORE customer is confirmed) */}
+      {activeTab === "billing" && (!customerConfirmed || !shopName.trim()) && (
+        <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+          {/* Step 1 Header Card */}
+          <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full bg-tea-leaf/10 text-tea-forest text-xs font-bold uppercase tracking-wider">
+                Step 1: Select Customer / Retail Shop
+              </span>
+              <h2 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark">
+                Choose Shop Before Adding Bill Items
+              </h2>
+              <p className="text-xs text-tea-muted">
+                Scan counter QR code, pick known shop, or enter details below to load products & wholesale prices.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setQrScannerOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold flex items-center gap-2 shadow-xs transition"
+                title="Scan Shop Counter QR with Mobile Camera"
+              >
+                <Camera className="w-4 h-4 text-tea-gold" />
+                <span>Scan Shop QR</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRegisterShopModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-tea-surface text-tea-dark text-xs font-bold border border-tea-border flex items-center gap-1.5 shadow-xs transition"
+                title="Register a new retail store"
+              >
+                <PlusCircle className="w-4 h-4 text-tea-leaf" />
+                <span>+ New Shop</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 0. Sales Representative Identification */}
             <div className="bg-gradient-to-r from-amber-50 to-emerald-50/60 rounded-3xl border border-amber-300/80 p-5 shadow-card space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -1539,92 +1567,134 @@ export default function ShopBillingPage() {
                   )}
                 </div>
               )}
+
+              {/* Action Button: Proceed to Add Products & Bill */}
+              <div className="pt-3 border-t border-tea-border/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!salesRepName.trim()) {
+                      alert("Please enter Sales Representative Name.");
+                      return;
+                    }
+                    if (!shopName.trim()) {
+                      alert("Please enter or select a Shop / Store Name.");
+                      return;
+                    }
+                    if (!shopPhone.trim()) {
+                      alert("Please enter Shop WhatsApp / Mobile number.");
+                      return;
+                    }
+                    setCustomerConfirmed(true);
+                  }}
+                  className="w-full py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2"
+                >
+                  <span>Proceed to Add Products & Bill →</span>
+                </button>
+              </div>
+            </div>
+        </div>
+      )}
+
+      {/* Step 2: Two-Column Billing Counter (Unlocked AFTER Customer is Selected) */}
+      {activeTab === "billing" && customerConfirmed && Boolean(shopName.trim()) && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in">
+          {/* Left Column: Selected Shop Summary + Item-by-Item Entry */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Selected Customer Confirmation & Switch Card */}
+            <div className="bg-white rounded-3xl border border-tea-border p-5 shadow-card space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-tea-border/60 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-emerald-700" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-serif text-base font-bold text-tea-dark">
+                        {shopName}
+                      </h3>
+                      {selectedKnownShop?.shopCode && (
+                        <span className="px-2 py-0.5 rounded-md bg-tea-surface text-tea-forest font-mono text-[10px] font-bold border border-tea-border">
+                          #{selectedKnownShop.shopCode}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-tea-muted flex items-center gap-2">
+                      <span>{shopPhone}</span>
+                      {routeTown && <span>• {routeTown}</span>}
+                      {ownerName && <span>• Owner: {ownerName}</span>}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomerConfirmed(false)}
+                    className="px-3 py-1.5 rounded-xl border border-tea-border hover:bg-tea-surface text-tea-dark font-bold text-xs flex items-center gap-1.5 transition shadow-xs"
+                    title="Change or edit current shop"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Change Shop</span>
+                  </button>
+
+                  {selectedKnownShop && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStickerShop(selectedKnownShop);
+                        setQrStickerModalOpen(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-tea-gold/20 hover:bg-tea-gold/30 text-amber-950 border border-tea-gold/50 text-xs font-bold flex items-center gap-1 transition shadow-xs"
+                      title="Print Counter QR Sticker"
+                    >
+                      <QrCode className="w-3.5 h-3.5 text-amber-800" />
+                      <span>QR Sticker</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Rep attribution & debt banner if any */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-tea-muted">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Sales Rep: <strong className="text-tea-dark">{salesRepName || "Unassigned"}</strong></span>
+                </div>
+                {selectedKnownShop && (selectedKnownShop.pendingBalance || 0) > 0 ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px]">
+                    <AlertTriangle className="w-3 h-3 text-amber-700" />
+                    Old Credit: Rs. {selectedKnownShop.pendingBalance?.toLocaleString()} (Auto-combined)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[11px]">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Account Clean (Rs. 0 Due)
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* 2. Fast Item-by-Item Entry Counter (Unlocked only AFTER customer is selected) */}
+            {/* 2. Fast Item-by-Item Entry Counter (Simple Old Setup) */}
             <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-5">
               <div className="flex items-center justify-between border-b border-tea-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
                     <ShoppingBag className="w-4 h-4 text-tea-leaf" />
-                    <span>2. Add Products Item-by-Item</span>
+                    <span>Select Products & Add to Bill</span>
                   </h3>
-                  {shopName.trim() && (
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      Customer Ready
-                    </span>
-                  )}
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                    Wholesale Pricing Active
+                  </span>
                 </div>
                 <span className="text-[11px] text-tea-muted">
                   Standard & Wholesale Shop Billing
                 </span>
               </div>
 
-              {!shopName.trim() ? (
-                /* Step 1: Customer Not Selected Yet Placeholder */
-                <div className="p-8 text-center bg-tea-surface/40 rounded-2xl border border-dashed border-tea-border space-y-3 animate-fade-in">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-xs">
-                    <Building2 className="w-6 h-6 text-amber-700" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-bold text-sm text-tea-dark">
-                      Step 1: Select Customer First
-                    </h4>
-                    <p className="text-xs text-tea-muted max-w-md mx-auto">
-                      Please enter or select the customer / shop details above (or scan shop QR code) to display products, wholesale prices, and create bill items.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setQrScannerOpen(true)}
-                      className="px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold flex items-center gap-2 shadow-xs transition"
-                    >
-                      <Camera className="w-4 h-4 text-tea-gold" />
-                      <span>Scan Shop QR Code</span>
-                    </button>
-                    {knownShops.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const el = document.getElementById("known-shop-quick-picker");
-                          if (el) el.focus();
-                        }}
-                        className="px-4 py-2 rounded-xl bg-white hover:bg-tea-surface text-tea-dark text-xs font-bold border border-tea-border shadow-xs transition flex items-center gap-1.5"
-                      >
-                        <Store className="w-4 h-4 text-tea-leaf" />
-                        <span>Quick Pick Known Shop ({knownShops.length})</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                /* Customer IS Selected: Simple Old Setup (Search, Dropdown, Pack Size, Price, Qty, Add Item) */
-                <div className="space-y-4 animate-fade-in">
-                  {/* Selected Customer Confirmation Strip */}
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 block">
-                          Customer Selected:
-                        </span>
-                        <span className="font-bold text-xs text-tea-dark">
-                          {shopName} {routeTown ? `(${routeTown})` : ""}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedKnownShop?.shopCode && (
-                      <span className="px-2 py-0.5 rounded-md bg-white text-tea-forest font-mono text-[10px] font-bold border border-emerald-200">
-                        #{selectedKnownShop.shopCode}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Product Search & Dropdown Picker */}
-                  <div className="space-y-3 text-xs">
+              <div className="space-y-4">
+                {/* Product Search & Dropdown Picker */}
+                <div className="space-y-3 text-xs">
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <input
@@ -1792,7 +1862,6 @@ export default function ShopBillingPage() {
                     </form>
                   </div>
                 </div>
-              )}
             </div>
           </div>
 
