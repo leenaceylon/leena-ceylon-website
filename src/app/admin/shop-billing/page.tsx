@@ -37,8 +37,16 @@ import {
   XCircle,
   UserCheck,
   User,
+  Camera,
+  QrCode,
+  PlusCircle,
+  ScanLine,
+  UserPlus,
 } from "lucide-react";
 import { getWhatsAppUrl, compileShopInvoiceWhatsAppMessage, ShopInvoiceData } from "@/lib/whatsapp";
+import ShopQrScannerModal from "@/components/admin/ShopQrScannerModal";
+import ShopQrStickerModal from "@/components/admin/ShopQrStickerModal";
+import RegisterShopModal from "@/components/admin/RegisterShopModal";
 
 interface ProductVariant {
   id: string;
@@ -73,11 +81,15 @@ interface BillItem {
 }
 
 interface KnownShop {
+  shopCode?: string;
   shopName: string;
+  ownerName?: string;
   phone: string;
   routeTown: string;
   address: string;
   district?: string;
+  assignedRep?: string;
+  isRegistered?: boolean;
   totalBillsCount?: number;
   totalSalesAmount?: number;
   pendingBalance?: number;
@@ -124,12 +136,20 @@ function extractSalesRepName(notes?: string | null): string | null {
 }
 
 export default function ShopBillingPage() {
-  const [activeTab, setActiveTab] = useState<"billing" | "products" | "history">("billing");
+  const [activeTab, setActiveTab] = useState<"billing" | "products" | "history" | "shops">("billing");
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // QR Code Scanner, Sticker & Shop Registration Modals
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const [qrStickerModalOpen, setQrStickerModalOpen] = useState(false);
+  const [registerShopModalOpen, setRegisterShopModalOpen] = useState(false);
+  const [stickerShop, setStickerShop] = useState<KnownShop | null>(null);
+  const [shopFilterTown, setShopFilterTown] = useState("ALL");
+  const [shopSearchQuery, setShopSearchQuery] = useState("");
 
   // Sales Representative State (Who is taking this ground shop bill)
   const [salesRepName, setSalesRepName] = useState<string>("");
@@ -234,6 +254,12 @@ export default function ShopBillingPage() {
             setShopName(pShop);
           }
         }
+
+        // Check if URL has ?scan=true to automatically launch camera scanner
+        const pScan = new URLSearchParams(window.location.search).get("scan");
+        if (pScan === "true" || pScan === "1") {
+          setQrScannerOpen(true);
+        }
       }
     } catch (e) {
       console.error("Failed to load inventory:", e);
@@ -248,11 +274,54 @@ export default function ShopBillingPage() {
       const p = new URLSearchParams(window.location.search).get("tab");
       if (p === "products") setActiveTab("products");
       else if (p === "history") setActiveTab("history");
+      else if (p === "shops") setActiveTab("shops");
 
       const s = new URLSearchParams(window.location.search).get("search");
       if (s) setSearchLedger(s);
     }
   }, []);
+
+  // Handlers for Shop QR Scanning & Registration
+  const handleShopDetectedFromQr = (shop: any, rawCode?: string) => {
+    handleSelectKnownShop(shop);
+    setActiveTab("billing");
+    setQrScannerOpen(false);
+
+    const hasDue = (shop.pendingBalance || 0) > 0;
+    setNotice(
+      `✅ Scanned Shop: "${shop.shopName}" (${shop.routeTown || "Route"})${
+        hasDue ? ` • [OLD DUE: Rs. ${shop.pendingBalance.toLocaleString()}]` : " • [ACCOUNT CLEAN]"
+      }. History loaded & new bill ready!`
+    );
+    setTimeout(() => setNotice(null), 6000);
+  };
+
+  const handleShopNotFoundFromQr = (rawQuery: string) => {
+    setQrScannerOpen(false);
+    if (
+      confirm(
+        `Shop "${rawQuery}" is not found in registered shops. Would you like to register this new shop now?`
+      )
+    ) {
+      setRegisterShopModalOpen(true);
+    }
+  };
+
+  const handleShopRegistered = (newShop: any) => {
+    setKnownShops((prev) => [
+      newShop,
+      ...prev.filter((s) => s.shopName.toLowerCase() !== newShop.shopName.toLowerCase()),
+    ]);
+    handleSelectKnownShop(newShop);
+    setActiveTab("billing");
+
+    // Open QR Sticker modal immediately for the new shop so rep can print/download it
+    setStickerShop(newShop);
+    setQrStickerModalOpen(true);
+
+    setNotice(`🎉 Shop "${newShop.shopName}" registered successfully! QR Sticker generated.`);
+    setTimeout(() => setNotice(null), 5000);
+  };
 
   // Quick Action Handlers for Sales Reps
   const handleOpenPaymentModal = (order: any, defaultStatus?: string) => {
@@ -699,6 +768,7 @@ export default function ShopBillingPage() {
     setShopPhone(shop.phone);
     setRouteTown(shop.routeTown);
     setAddress(shop.address);
+    if (shop.ownerName) setOwnerName(shop.ownerName);
   };
 
   // Finalize & Save Shop Bill
@@ -957,24 +1027,45 @@ export default function ShopBillingPage() {
     <div className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Top Banner Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-tea-border">
-        <div>
+        <div className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
               <Store className="w-3.5 h-3.5 text-emerald-700" />
               <span>Shop-by-Shop POS & Van Sale</span>
             </span>
-            <span className="text-xs text-tea-muted font-medium">• Item-by-Item Quick Billing</span>
+            <span className="text-xs text-tea-muted font-medium">• QR Scanner & Automatic History</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-tea-dark mt-1">
             Shop Order Taking & Invoicing
           </h1>
           <p className="text-xs text-tea-muted mt-0.5">
-            Take retail shop orders on the ground, add products item-by-item, generate instant bills, and send WhatsApp receipts.
+            Scan shop counter QR codes, automatically load debt history, take items, create instant bills, and print 80mm receipts.
           </p>
+
+          {/* Quick QR & Shop Action Buttons on Mobile & Desktop */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setQrScannerOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-tea-dark to-tea-forest hover:from-tea-forest hover:to-tea-dark text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition"
+            >
+              <Camera className="w-4 h-4 text-tea-gold" />
+              <span>Scan Shop QR</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRegisterShopModalOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-tea-surface text-tea-dark font-bold text-xs uppercase tracking-wider flex items-center gap-2 border border-tea-border shadow-xs transition"
+            >
+              <PlusCircle className="w-4 h-4 text-tea-leaf" />
+              <span>+ Register New Shop</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Toggle */}
-        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab("billing")}
@@ -985,7 +1076,20 @@ export default function ShopBillingPage() {
             }`}
           >
             <Plus className="w-4 h-4 text-tea-gold" />
-            <span>Active Billing Counter</span>
+            <span>Billing Counter</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("shops")}
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+              activeTab === "shops"
+                ? "bg-tea-dark text-white shadow-sm"
+                : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
+            }`}
+          >
+            <QrCode className="w-4 h-4 text-tea-gold" />
+            <span>Shops & QR ({knownShops.length})</span>
           </button>
 
           <button
@@ -998,7 +1102,7 @@ export default function ShopBillingPage() {
             }`}
           >
             <Boxes className="w-4 h-4 text-emerald-400" />
-            <span>Available Products ({products.length})</span>
+            <span>Products ({products.length})</span>
           </button>
 
           <button
@@ -1011,7 +1115,7 @@ export default function ShopBillingPage() {
             }`}
           >
             <History className="w-4 h-4 text-tea-gold" />
-            <span>Shop Bills Ledger ({recentOrders.length})</span>
+            <span>Ledger ({recentOrders.length})</span>
           </button>
         </div>
       </div>
@@ -1129,33 +1233,77 @@ export default function ShopBillingPage() {
 
             {/* 1. Shop Profile & Route Section */}
             <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-4">
-              <div className="flex items-center justify-between border-b border-tea-border/60 pb-3">
-                <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-tea-leaf" />
-                  <span>1. Target Shop / Store Details</span>
-                </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-tea-border/60 pb-3 gap-2.5">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-tea-leaf" />
+                    <span>1. Target Shop / Store Details</span>
+                  </h3>
+                  {selectedKnownShop?.shopCode && (
+                    <span className="px-2 py-0.5 rounded-md bg-tea-surface text-tea-forest font-mono text-[10px] font-bold border border-tea-border">
+                      #{selectedKnownShop.shopCode}
+                    </span>
+                  )}
+                </div>
 
-                {knownShops.length > 0 && (
-                  <div className="relative">
-                    <select
-                      onChange={(e) => {
-                        const sh = knownShops.find((x) => x.shopName === e.target.value);
-                        if (sh) handleSelectKnownShop(sh);
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setQrScannerOpen(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-[11px] font-bold flex items-center gap-1.5 shadow-xs transition"
+                    title="Scan Shop Counter QR with Mobile Camera"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-tea-gold" />
+                    <span>Scan QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegisterShopModalOpen(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-tea-surface text-tea-dark text-[11px] font-bold border border-tea-border flex items-center gap-1 shadow-xs transition"
+                    title="Register a new retail store"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5 text-tea-leaf" />
+                    <span>+ New Shop</span>
+                  </button>
+
+                  {selectedKnownShop && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStickerShop(selectedKnownShop);
+                        setQrStickerModalOpen(true);
                       }}
-                      className="text-[11px] font-semibold text-tea-forest bg-tea-surface border border-tea-border rounded-lg px-2.5 py-1 focus:outline-none"
+                      className="px-2.5 py-1.5 rounded-xl bg-tea-gold/20 hover:bg-tea-gold/30 text-amber-950 border border-tea-gold/50 text-[11px] font-bold flex items-center gap-1 shadow-xs transition"
+                      title="View & Print 80mm Counter QR Sticker"
                     >
-                      <option value="">Quick Pick Known Shop ({knownShops.length})...</option>
-                      {knownShops.map((sh, idx) => {
-                        const hasDue = sh.pendingBalance && sh.pendingBalance > 0;
-                        return (
-                          <option key={idx} value={sh.shopName}>
-                            {sh.shopName} ({sh.routeTown || "Route"}) {hasDue ? `• [DUE: Rs. ${sh.pendingBalance?.toLocaleString()}]` : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
+                      <QrCode className="w-3.5 h-3.5 text-amber-800" />
+                      <span>QR Sticker</span>
+                    </button>
+                  )}
+
+                  {knownShops.length > 0 && (
+                    <div className="relative">
+                      <select
+                        onChange={(e) => {
+                          const sh = knownShops.find((x) => x.shopName === e.target.value);
+                          if (sh) handleSelectKnownShop(sh);
+                        }}
+                        className="text-[11px] font-semibold text-tea-forest bg-tea-surface border border-tea-border rounded-xl px-2.5 py-1.5 focus:outline-none"
+                      >
+                        <option value="">Quick Pick Known Shop ({knownShops.length})...</option>
+                        {knownShops.map((sh, idx) => {
+                          const hasDue = sh.pendingBalance && sh.pendingBalance > 0;
+                          return (
+                            <option key={idx} value={sh.shopName}>
+                              {sh.shopName} ({sh.routeTown || "Route"}) {hasDue ? `• [DUE: Rs. ${sh.pendingBalance?.toLocaleString()}]` : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -2895,6 +3043,256 @@ export default function ShopBillingPage() {
         </div>
       )}
 
+      {/* 4. Registered Shops & QR Codes Directory */}
+      {activeTab === "shops" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Bar */}
+          <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark flex items-center gap-2">
+                  <Store className="w-6 h-6 text-tea-forest" />
+                  <span>Retail Shops & QR Code Directory</span>
+                </h2>
+                <p className="text-xs text-tea-muted mt-1">
+                  Manage retail shops, view past orders and debt ledgers, scan counter QR codes, and print 80mm thermal stickers.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQrScannerOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition"
+                >
+                  <Camera className="w-4 h-4 text-tea-gold" />
+                  <span>Scan Shop QR</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRegisterShopModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>+ Register New Shop</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-tea-border/60">
+              <div className="p-3.5 rounded-2xl bg-tea-surface/60 border border-tea-border">
+                <span className="text-[10px] font-bold uppercase text-tea-muted block">
+                  Total Shops
+                </span>
+                <span className="text-lg font-serif font-bold text-tea-dark">
+                  {knownShops.length}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                <span className="text-[10px] font-bold uppercase text-amber-800 block">
+                  Shops With Credit Due
+                </span>
+                <span className="text-lg font-serif font-bold text-amber-950">
+                  {knownShops.filter((s) => (s.pendingBalance || 0) > 0).length}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200">
+                <span className="text-[10px] font-bold uppercase text-rose-800 block">
+                  Total Outstanding Debt
+                </span>
+                <span className="text-lg font-mono font-bold text-rose-700">
+                  Rs. {knownShops.reduce((sum, s) => sum + (s.pendingBalance || 0), 0).toLocaleString()}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                <span className="text-[10px] font-bold uppercase text-emerald-800 block">
+                  Total Retail Sales
+                </span>
+                <span className="text-lg font-mono font-bold text-emerald-800">
+                  Rs. {knownShops.reduce((sum, s) => sum + (s.totalSalesAmount || 0), 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="sm:col-span-2 relative">
+                <input
+                  type="text"
+                  value={shopSearchQuery}
+                  onChange={(e) => setShopSearchQuery(e.target.value)}
+                  placeholder="Search by shop name, owner, phone, or shop code..."
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-tea-border bg-tea-surface/40 text-xs focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                />
+                <Search className="w-4 h-4 text-tea-muted absolute left-3 top-3" />
+              </div>
+
+              <div>
+                <select
+                  value={shopFilterTown}
+                  onChange={(e) => setShopFilterTown(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-tea-border bg-tea-surface/40 text-xs focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                >
+                  <option value="ALL">All Routes & Towns</option>
+                  {Array.from(new Set(knownShops.map((s) => s.routeTown).filter(Boolean))).map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Shops Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {knownShops
+              .filter((s) => {
+                if (shopFilterTown !== "ALL" && s.routeTown !== shopFilterTown) return false;
+                if (!shopSearchQuery.trim()) return true;
+                const q = shopSearchQuery.toLowerCase().trim();
+                return (
+                  s.shopName.toLowerCase().includes(q) ||
+                  (s.ownerName && s.ownerName.toLowerCase().includes(q)) ||
+                  (s.phone && s.phone.includes(q)) ||
+                  (s.shopCode && s.shopCode.toLowerCase().includes(q)) ||
+                  (s.routeTown && s.routeTown.toLowerCase().includes(q))
+                );
+              })
+              .map((sh, idx) => {
+                const hasDue = (sh.pendingBalance || 0) > 0;
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-3xl border border-tea-border p-5 shadow-card hover:shadow-md transition space-y-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {sh.shopCode && (
+                              <span className="px-2 py-0.5 rounded-md bg-tea-surface font-mono text-[10px] font-bold text-tea-dark border border-tea-border">
+                                #{sh.shopCode}
+                              </span>
+                            )}
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                hasDue
+                                  ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              }`}
+                            >
+                              {hasDue
+                                ? `DUE: Rs. ${sh.pendingBalance?.toLocaleString()}`
+                                : "ACCOUNT CLEAN"}
+                            </span>
+                          </div>
+                          <h3 className="font-serif text-base font-bold text-tea-dark mt-1 leading-snug">
+                            {sh.shopName}
+                          </h3>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setStickerShop(sh);
+                            setQrStickerModalOpen(true);
+                          }}
+                          className="p-2 rounded-xl bg-tea-surface hover:bg-tea-border/50 text-tea-dark border border-tea-border shrink-0 transition"
+                          title="View & Print Shop QR Sticker"
+                        >
+                          <QrCode className="w-5 h-5 text-tea-forest" />
+                        </button>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-1 text-xs text-tea-muted">
+                        {sh.ownerName && (
+                          <div className="flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5 text-tea-forest shrink-0" />
+                            <span className="truncate">Owner: <strong>{sh.ownerName}</strong></span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-tea-forest shrink-0" />
+                          <span className="font-mono text-tea-dark">{sh.phone || "No phone"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-tea-forest shrink-0" />
+                          <span className="truncate">{sh.routeTown || "No town specified"}</span>
+                        </div>
+                      </div>
+
+                      {/* Financial Metrics */}
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-tea-border/60 text-xs">
+                        <div className="p-2 rounded-xl bg-tea-surface/40">
+                          <span className="text-[10px] text-tea-muted block">Total Bills:</span>
+                          <span className="font-bold text-tea-dark">
+                            {sh.totalBillsCount || 0} order(s)
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-tea-surface/40">
+                          <span className="text-[10px] text-tea-muted block">Total Sales:</span>
+                          <span className="font-bold font-mono text-tea-forest">
+                            Rs. {(sh.totalSalesAmount || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Pending Bills Alert if any */}
+                      {hasDue && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-1">
+                          <div className="flex justify-between font-bold">
+                            <span>Outstanding Old Debt:</span>
+                            <span className="font-mono text-rose-700">
+                              Rs. {sh.pendingBalance?.toLocaleString()}
+                            </span>
+                          </div>
+                          <span className="text-[10px] opacity-80 block">
+                            {sh.pendingBillsCount || 1} unpaid bill(s) pending collection.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Actions */}
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-tea-border/60 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSelectKnownShop(sh);
+                          setActiveTab("billing");
+                        }}
+                        className="py-2 px-3 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold flex items-center justify-center gap-1 shadow-xs transition"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-tea-gold" />
+                        <span>Create Bill</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStickerShop(sh);
+                          setQrStickerModalOpen(true);
+                        }}
+                        className="py-2 px-3 rounded-xl bg-white hover:bg-tea-surface text-tea-dark font-bold border border-tea-border flex items-center justify-center gap-1 shadow-xs transition"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-tea-forest" />
+                        <span>QR Sticker</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
 
       {/* Printable Official Invoice / POS Thermal Terminal Modal */}
       {printModalOpen && (() => {
@@ -3834,6 +4232,37 @@ export default function ShopBillingPage() {
           </div>
         </div>
       )}
+
+      {/* 3. Shop QR Code Scanner Modal */}
+      <ShopQrScannerModal
+        isOpen={qrScannerOpen}
+        onClose={() => setQrScannerOpen(false)}
+        knownShops={knownShops}
+        onShopDetected={handleShopDetectedFromQr}
+        onShopNotFound={handleShopNotFoundFromQr}
+      />
+
+      {/* 4. Shop QR Counter Sticker & Print Modal */}
+      <ShopQrStickerModal
+        isOpen={qrStickerModalOpen}
+        onClose={() => {
+          setQrStickerModalOpen(false);
+          setStickerShop(null);
+        }}
+        shop={stickerShop}
+        onStartBilling={(sh) => {
+          handleSelectKnownShop(sh);
+          setActiveTab("billing");
+        }}
+      />
+
+      {/* 5. Register New Shop Modal */}
+      <RegisterShopModal
+        isOpen={registerShopModalOpen}
+        onClose={() => setRegisterShopModalOpen(false)}
+        defaultSalesRepName={salesRepName}
+        onShopRegistered={handleShopRegistered}
+      />
     </div>
   );
 }

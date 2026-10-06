@@ -97,6 +97,7 @@ export async function GET() {
       if (!uniqueShopsMap.has(key)) {
         uniqueShopsMap.set(key, {
           shopName: o.customerName.trim(),
+          ownerName: "",
           phone: o.customerPhone,
           routeTown: o.city,
           address: o.shippingAddress,
@@ -156,8 +157,71 @@ export async function GET() {
       }
     });
 
+    // 4. Load explicitly registered shops from database
+    const registeredShopsSetting = await prisma.siteSetting.findUnique({
+      where: { key: "leena_registered_shops" },
+    });
+    let registeredShopsList: any[] = [];
+    if (registeredShopsSetting?.value) {
+      try {
+        registeredShopsList = JSON.parse(registeredShopsSetting.value);
+      } catch (e) {
+        registeredShopsList = [];
+      }
+    }
+
+    // Merge registered shops into uniqueShopsMap
+    registeredShopsList.forEach((reg) => {
+      const key = reg.shopName ? reg.shopName.toLowerCase().trim() : "";
+      if (!key) return;
+
+      if (!uniqueShopsMap.has(key)) {
+        uniqueShopsMap.set(key, {
+          shopCode: reg.shopCode || `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`,
+          shopName: reg.shopName.trim(),
+          ownerName: reg.ownerName || "",
+          phone: reg.phone || "",
+          routeTown: reg.routeTown || "",
+          address: reg.address || "",
+          district: reg.district || "",
+          assignedRep: reg.assignedRep || "",
+          totalBillsCount: 0,
+          totalSalesAmount: 0,
+          pendingBalance: Number(reg.openingBalance || 0),
+          pendingBillsCount: Number(reg.openingBalance || 0) > 0 ? 1 : 0,
+          pendingBills: [],
+          allBills: [],
+          isRegistered: true,
+          createdAt: reg.createdAt,
+        });
+      } else {
+        const existing = uniqueShopsMap.get(key);
+        existing.shopCode = reg.shopCode || existing.shopCode || `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+        if (reg.ownerName && !existing.ownerName) existing.ownerName = reg.ownerName;
+        if (reg.phone && !existing.phone) existing.phone = reg.phone;
+        if (reg.routeTown && !existing.routeTown) existing.routeTown = reg.routeTown;
+        if (reg.address && !existing.address) existing.address = reg.address;
+        if (reg.district && !existing.district) existing.district = reg.district;
+        if (reg.assignedRep) existing.assignedRep = reg.assignedRep;
+        existing.isRegistered = true;
+      }
+    });
+
+    // Ensure every known shop has a unique, readable shopCode
+    uniqueShopsMap.forEach((shop, key) => {
+      if (!shop.shopCode) {
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+          hash = (hash << 5) - hash + key.charCodeAt(i);
+          hash |= 0;
+        }
+        const numericCode = Math.abs(hash % 9000) + 1000;
+        shop.shopCode = `LC-SH-${numericCode}`;
+      }
+    });
+
     const knownShops = Array.from(uniqueShopsMap.values()).sort(
-      (a, b) => b.totalBillsCount - a.totalBillsCount
+      (a, b) => (b.totalBillsCount || 0) - (a.totalBillsCount || 0)
     );
 
     const enrichedShopOrders = allShopOrders.map((o) => {
@@ -177,6 +241,7 @@ export async function GET() {
       products,
       recentShopOrders: enrichedShopOrders,
       knownShops,
+      registeredShops: registeredShopsList,
       currentAdmin: {
         id: admin.id,
         name: admin.name,
@@ -201,6 +266,101 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+
+    // 0. SHOP REGISTRATION HANDLER
+    if (body.action === "register_shop") {
+      const {
+        shopName,
+        ownerName = "",
+        phone,
+        routeTown = "",
+        address = "",
+        district = "Anuradhapura",
+        assignedRep = "",
+        openingBalance = 0,
+        notes = "",
+      } = body;
+
+      if (!shopName || !shopName.trim()) {
+        return NextResponse.json(
+          { error: "Shop / Store Name is required for registration." },
+          { status: 400 }
+        );
+      }
+
+      if (!phone || !phone.trim()) {
+        return NextResponse.json(
+          { error: "Shop Phone / WhatsApp number is required for registration." },
+          { status: 400 }
+        );
+      }
+
+      // Load existing registered shops from SiteSetting
+      const existingSetting = await prisma.siteSetting.findUnique({
+        where: { key: "leena_registered_shops" },
+      });
+
+      let registeredShops: any[] = [];
+      if (existingSetting?.value) {
+        try {
+          registeredShops = JSON.parse(existingSetting.value);
+        } catch (e) {
+          registeredShops = [];
+        }
+      }
+
+      const cleanName = shopName.trim();
+      const existingIdx = registeredShops.findIndex(
+        (s) => s.shopName.toLowerCase().trim() === cleanName.toLowerCase()
+      );
+
+      const shopCode =
+        existingIdx > -1 && registeredShops[existingIdx].shopCode
+          ? registeredShops[existingIdx].shopCode
+          : `LC-SH-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const newShopEntry = {
+        id: `shop-${Date.now()}`,
+        shopCode,
+        shopName: cleanName,
+        ownerName: ownerName?.trim() || "",
+        phone: phone.trim(),
+        routeTown: routeTown?.trim() || "",
+        address: address?.trim() || "",
+        district: district?.trim() || "",
+        assignedRep: assignedRep?.trim() || admin.name || "Sales Rep",
+        openingBalance: Number(openingBalance) || 0,
+        notes: notes?.trim() || "",
+        createdAt: new Date().toISOString(),
+      };
+
+      if (existingIdx > -1) {
+        registeredShops[existingIdx] = {
+          ...registeredShops[existingIdx],
+          ...newShopEntry,
+          createdAt: registeredShops[existingIdx].createdAt || newShopEntry.createdAt,
+        };
+      } else {
+        registeredShops.unshift(newShopEntry);
+      }
+
+      await prisma.siteSetting.upsert({
+        where: { key: "leena_registered_shops" },
+        update: { value: JSON.stringify(registeredShops), updatedAt: new Date() },
+        create: {
+          key: "leena_registered_shops",
+          value: JSON.stringify(registeredShops),
+          group: "SYSTEM",
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        shop: newShopEntry,
+        message: `Shop "${cleanName}" registered successfully with QR code ${shopCode}.`,
+      });
+    }
+
     const {
       shopName,
       ownerName,
