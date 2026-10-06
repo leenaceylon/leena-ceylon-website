@@ -43,6 +43,7 @@ const ADMIN_NAV_ITEMS = [
 ];
 
 const SHOP_REP_NAV_ITEMS = [
+  { name: "Rep Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Shop Billing (Take Order)", href: "/admin/shop-billing", icon: Store },
   { name: "Available Products", href: "/admin/shop-billing?tab=products", icon: Boxes },
 ];
@@ -62,8 +63,8 @@ export default function AdminSidebar({
   // Auto-redirect SHOP_ORDER_REP away from unauthorized executive pages
   useEffect(() => {
     if (isShopRep) {
-      if (!pathname.startsWith("/admin/shop-billing")) {
-        router.replace("/admin/shop-billing");
+      if (!pathname.startsWith("/admin/shop-billing") && pathname !== "/admin/dashboard") {
+        router.replace("/admin/dashboard");
       }
     }
   }, [isShopRep, pathname, router]);

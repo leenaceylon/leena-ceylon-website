@@ -29,11 +29,7 @@ export default function AdminLoginPage() {
         throw new Error(data.error || "Authentication failed");
       }
 
-      if (data.admin?.role === "SHOP_ORDER_REP") {
-        router.push("/admin/shop-billing");
-      } else {
-        router.push("/admin/dashboard");
-      }
+      router.push("/admin/dashboard");
       router.refresh();
     } catch (err: any) {
       setStatus("error");

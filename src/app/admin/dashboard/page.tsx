@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 import {
@@ -20,6 +21,9 @@ import {
   Building2,
   ShieldCheck,
   FileSpreadsheet,
+  Boxes,
+  Printer,
+  ChevronRight,
 } from "lucide-react";
 
 export const revalidate = 0; // Always real-time database driven
@@ -30,12 +34,339 @@ export default async function AdminDashboardPage() {
     redirect("/admin/login");
   }
 
-  // Requirement 1: SHOP_ORDER_REP accounts must NOT open the executive dashboard
-  if (admin.role === "SHOP_ORDER_REP") {
-    redirect("/admin/shop-billing");
+  const isShopRep = admin.role === "SHOP_ORDER_REP";
+
+  // ==========================================
+  // 1. SALES REPRESENTATIVE DEDICATED DASHBOARD
+  // "that dashboard need only list of available product and billing option"
+  // ==========================================
+  if (isShopRep) {
+    let repProducts: any[] = [];
+    let recentRepOrders: any[] = [];
+
+    try {
+      const [prods, orders] = await Promise.all([
+        prisma.product.findMany({
+          where: { isActive: true },
+          include: {
+            category: true,
+            sizes: {
+              where: { isActive: true },
+              orderBy: { weightGram: "asc" },
+            },
+          },
+          orderBy: { name: "asc" },
+        }),
+        prisma.order.findMany({
+          where: {
+            OR: [
+              { orderNumber: { startsWith: "SHOP-" } },
+              { paymentMethod: "CREDIT_SHOP" },
+              { deliveryNotes: { contains: "SHOP:" } },
+            ],
+          },
+          include: { items: true },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+        }),
+      ]);
+      repProducts = prods || [];
+      recentRepOrders = orders || [];
+    } catch (err: any) {
+      console.warn("Could not load sales rep data:", err?.message);
+    }
+
+    const totalInStock = repProducts.filter((p) => p.stock > 0).length;
+    const lowStockCount = repProducts.filter((p) => p.stock <= 15).length;
+
+    return (
+      <div className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
+        {/* Sales Rep Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-tea-border">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
+                <Store className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Sales Rep Ground Terminal</span>
+              </span>
+              <span className="text-xs text-tea-muted font-medium">• Field Operations</span>
+            </div>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-tea-dark mt-1">
+              Welcome, {admin.name}
+            </h1>
+            <p className="text-xs text-tea-muted mt-0.5">
+              Your field rep workstation: Access available warehouse teas, stock counts, wholesale rates, and take retail shop orders.
+            </p>
+          </div>
+
+          <Link
+            href="/admin/shop-billing"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-md self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4 text-emerald-200" />
+            <span>Open Billing Counter</span>
+          </Link>
+        </div>
+
+        {/* 2 Primary Action Cards: Billing Option & Stock Count */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: Fast Billing Option */}
+          <div className="bg-gradient-to-br from-tea-dark to-tea-forest rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-tea-gold">
+                <Store className="w-6 h-6" />
+              </div>
+              <span className="text-[11px] font-mono tracking-widest uppercase text-tea-gold font-bold block pt-1">
+                Active Billing Option
+              </span>
+              <h3 className="font-serif text-2xl font-bold text-white">
+                Shop Order Taking & Invoicing
+              </h3>
+              <p className="text-xs text-tea-pale/80 leading-relaxed">
+                Add tea items one-by-one, specify shop discounts, print instant PDF invoices, and send official WhatsApp receipts directly to shop owners.
+              </p>
+            </div>
+
+            <Link
+              href="/admin/shop-billing"
+              className="inline-flex items-center justify-between w-full py-3 px-5 rounded-2xl bg-white hover:bg-tea-surface text-tea-dark font-bold text-xs uppercase tracking-wider transition shadow-sm"
+            >
+              <span>Take New Shop Order Now</span>
+              <ArrowRight className="w-4 h-4 text-tea-leaf" />
+            </Link>
+          </div>
+
+          {/* Card 2: Warehouse Stock Summary */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-tea-border shadow-card flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <Boxes className="w-6 h-6" />
+              </div>
+              <span className="text-[11px] font-mono tracking-widest uppercase text-tea-forest font-bold block pt-1">
+                Warehouse Catalog
+              </span>
+              <h3 className="font-serif text-2xl font-bold text-tea-dark">
+                {repProducts.length} Tea Products Available
+              </h3>
+              <p className="text-xs text-tea-muted leading-relaxed">
+                Live warehouse inventory status: <strong className="text-emerald-700">{totalInStock} items in stock</strong>,{" "}
+                <strong className="text-amber-700">{lowStockCount} items low stock</strong>. Browse full grades, pack sizes, and wholesale rates below.
+              </p>
+            </div>
+
+            <a
+              href="#available-products"
+              className="inline-flex items-center justify-between w-full py-3 px-5 rounded-2xl bg-tea-surface hover:bg-tea-bg border border-tea-border text-tea-dark font-bold text-xs uppercase tracking-wider transition"
+            >
+              <span>View Available Products Below</span>
+              <ChevronRight className="w-4 h-4 text-tea-muted" />
+            </a>
+          </div>
+        </div>
+
+        {/* LIST OF AVAILABLE PRODUCTS (Shop Order Rep Core Dashboard Requirement) */}
+        <div id="available-products" className="bg-white rounded-3xl border border-tea-border p-6 sm:p-8 shadow-card space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-tea-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-tea-forest" />
+                <h3 className="font-serif text-xl font-bold text-tea-dark">
+                  Available Products & Live Warehouse Stock
+                </h3>
+              </div>
+              <p className="text-xs text-tea-muted mt-0.5">
+                Official tea grades, pack sizes, wholesale rates, and remaining warehouse inventory.
+              </p>
+            </div>
+
+            <Link
+              href="/admin/shop-billing"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 text-tea-gold" />
+              <span>Create Bill</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {repProducts.map((p) => {
+              const isOutOfStock = p.stock === 0;
+              const isLowStock = p.stock > 0 && p.stock <= 15;
+
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-2xl border border-tea-border shadow-subtle hover:shadow-card transition duration-200 overflow-hidden flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Image & Grade Badge */}
+                    <div className="relative h-44 w-full bg-tea-surface p-4 flex items-center justify-center border-b border-tea-border/60">
+                      <div className="relative w-32 h-32">
+                        <Image
+                          src={p.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
+                          alt={p.name}
+                          fill
+                          className="object-contain"
+                        />
+                      </div>
+                      <div className="absolute top-3 left-3 flex flex-col gap-1">
+                        <span className="px-2 py-0.5 rounded-full bg-tea-dark text-tea-gold font-mono text-[10px] font-bold">
+                          {p.teaGrade || "Ceylon Tea"}
+                        </span>
+                      </div>
+                      <div className="absolute top-3 right-3">
+                        {isOutOfStock ? (
+                          <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white font-bold text-[10px]">
+                            Out of Stock
+                          </span>
+                        ) : isLowStock ? (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold text-[10px]">
+                            {p.stock} units left
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px]">
+                            {p.stock} in stock
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <h4 className="font-serif font-bold text-sm text-tea-dark">
+                          {p.name}
+                        </h4>
+                        <p className="text-[11px] text-tea-muted mt-0.5">
+                          {p.category?.name || "Pure Ceylon Tea"} • {p.teaType || "Black Tea"}
+                        </p>
+                      </div>
+
+                      {/* Sizes & Prices Breakdown */}
+                      <div className="space-y-1.5 pt-2 border-t border-tea-border/60">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                          Pack Sizes & Wholesale Rates
+                        </span>
+                        {p.sizes && p.sizes.length > 0 ? (
+                          <div className="space-y-1">
+                            {p.sizes.map((v: any) => (
+                              <div
+                                key={v.id}
+                                className="flex items-center justify-between p-1.5 rounded-lg bg-tea-surface border border-tea-border/40 text-[11px]"
+                              >
+                                <span className="font-semibold text-tea-dark">{v.sizeName}</span>
+                                <span className="font-mono font-bold text-tea-forest">
+                                  Rs. {(v.salePrice || v.regularPrice).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-1.5 rounded-lg bg-tea-surface border border-tea-border/40 text-[11px]">
+                            <span className="font-semibold text-tea-dark">Standard Pack</span>
+                            <span className="font-mono font-bold text-tea-forest">
+                              Rs. {p.regularPrice.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Action: Start Bill */}
+                  <div className="p-4 pt-0">
+                    <Link
+                      href="/admin/shop-billing"
+                      className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Take Order For This Item</span>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recent Shop Bills Taken by Field Reps */}
+        <div className="bg-white rounded-3xl border border-tea-border p-6 sm:p-8 shadow-card space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-tea-border">
+            <h3 className="font-serif text-base font-bold text-tea-dark">
+              Recent Ground Shop Bills Taken ({recentRepOrders.length})
+            </h3>
+            <Link
+              href="/admin/shop-billing?tab=history"
+              className="text-xs font-semibold text-tea-forest hover:text-tea-dark transition flex items-center gap-1"
+            >
+              <span>View Full Ledger</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {recentRepOrders.length === 0 ? (
+            <div className="py-8 text-center text-tea-muted text-xs">
+              No shop orders recorded yet. Tap "Open Billing Counter" to take your first shop order.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-tea-border/60 text-tea-muted font-semibold">
+                    <th className="pb-3">Bill #</th>
+                    <th className="pb-3">Retail Shop</th>
+                    <th className="pb-3">Town / Route</th>
+                    <th className="pb-3">Net Total</th>
+                    <th className="pb-3">Payment</th>
+                    <th className="pb-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-tea-border/40">
+                  {recentRepOrders.map((o) => (
+                    <tr key={o.id} className="hover:bg-tea-surface/60 transition">
+                      <td className="py-3 font-bold text-tea-dark">#{o.orderNumber}</td>
+                      <td className="py-3">
+                        <div className="font-medium text-tea-dark">{o.customerName}</div>
+                        <div className="text-[10px] text-tea-muted">{o.customerPhone}</div>
+                      </td>
+                      <td className="py-3 text-tea-dark">{o.city || "Direct Route"}</td>
+                      <td className="py-3 font-bold text-tea-forest">
+                        Rs. {o.grandTotal.toLocaleString()}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            o.paymentStatus === "PAID"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {o.paymentStatus}
+                        </span>
+                      </td>
+                      <td className="py-3 text-right">
+                        <Link
+                          href={`/admin/orders/${o.id}`}
+                          className="px-2.5 py-1 rounded-lg border border-tea-border hover:bg-tea-bg text-[11px] font-semibold text-tea-forest"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
-  // Calculate real metrics from database
+  // ==========================================
+  // 2. EXECUTIVE DASHBOARD (SUPER_ADMIN & MANAGER)
+  // "all accont need super admin and menager admin need all show sales amount"
+  // ==========================================
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -97,7 +428,7 @@ export default async function AdminDashboardPage() {
     console.warn("Notice: could not load all dashboard metrics:", err?.message);
   }
 
-  // Requirement 2: Calculate full sales amounts for Super Admin and Manager
+  // Calculate full sales amounts for Super Admin and Manager
   const totalSales = allOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
   const todaySales = todayOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
   const monthSales = monthOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
@@ -253,7 +584,7 @@ export default async function AdminDashboardPage() {
             </p>
           </div>
 
-          {/* Paid / Collected Revenue */}
+          {/* Paid / Realized Revenue */}
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs space-y-1">
             <div className="flex items-center justify-between text-xs text-tea-pale/80">
               <span className="flex items-center gap-1.5 font-medium">

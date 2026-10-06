@@ -67,7 +67,7 @@ export async function getCurrentAdmin(): Promise<SessionUser | null> {
   const token = cookieStore.get("lc_admin_token")?.value;
   if (!token) return null;
   const session = await verifyToken(token);
-  if (!session || !["SUPER_ADMIN", "MANAGER", "PRODUCT_MANAGER", "ORDER_MANAGER"].includes(session.role)) {
+  if (!session || !["SUPER_ADMIN", "MANAGER", "PRODUCT_MANAGER", "ORDER_MANAGER", "SHOP_ORDER_REP"].includes(session.role)) {
     return null;
   }
   return session;

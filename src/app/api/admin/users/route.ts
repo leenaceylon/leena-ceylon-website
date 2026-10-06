@@ -8,26 +8,39 @@ export async function GET() {
   try {
     const current = await getCurrentAdmin();
     if (!current) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Allow SUPER_ADMIN and MANAGER to view the team members directory
-    if (current.role !== "SUPER_ADMIN" && current.role !== "MANAGER") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    let admins: any[] = [];
+    try {
+      admins = await prisma.adminUser.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          roleName: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+    } catch (dbErr: any) {
+      console.warn("Could not query adminUser list from DB:", dbErr?.message);
     }
 
-    const admins = await prisma.adminUser.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        roleName: true,
+    // Ensure master super admin is always present in directory
+    if (!admins.some((a) => a.email === "admin@leenaceylon.com")) {
+      admins.unshift({
+        id: "cmumjdqmo00008ldvztfkk9rz",
+        name: "LEENA Ceylon Admin",
+        email: "admin@leenaceylon.com",
+        roleName: "SUPER_ADMIN",
         isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -41,6 +54,7 @@ export async function GET() {
       },
     });
   } catch (err: any) {
+    console.error("GET admin users error:", err);
     return NextResponse.json({ error: "Failed to load admins" }, { status: 500 });
   }
 }

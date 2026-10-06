@@ -70,12 +70,21 @@ export default function AdminUsersPage() {
   const loadAdmins = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/users");
+      const res = await fetch("/api/admin/users", { cache: "no-store" });
       const data = await res.json();
-      if (data.admins) setAdmins(data.admins);
-      if (data.currentAdmin) setCurrentAdmin(data.currentAdmin);
-    } catch (e) {
-      console.error(e);
+      if (!res.ok) {
+        showError(data.error || "Failed to load team accounts");
+        return;
+      }
+      if (data.admins && Array.isArray(data.admins)) {
+        setAdmins(data.admins);
+      }
+      if (data.currentAdmin) {
+        setCurrentAdmin(data.currentAdmin);
+      }
+    } catch (e: any) {
+      console.error("Error loading admins:", e);
+      showError(e?.message || "Failed to load team accounts");
     } finally {
       setLoading(false);
     }
