@@ -136,7 +136,7 @@ function extractSalesRepName(notes?: string | null): string | null {
 }
 
 export default function ShopBillingPage() {
-  const [activeTab, setActiveTab] = useState<"billing" | "history" | "shops">("billing");
+  const [activeTab, setActiveTab] = useState<"billing" | "products" | "history" | "shops">("billing");
   const [catalogSearch, setCatalogSearch] = useState("");
   const [catalogCategory, setCatalogCategory] = useState("ALL");
   const [loading, setLoading] = useState(true);
@@ -272,7 +272,7 @@ export default function ShopBillingPage() {
     loadData();
     if (typeof window !== "undefined") {
       const p = new URLSearchParams(window.location.search).get("tab");
-      if (p === "products") setActiveTab("billing");
+      if (p === "products") setActiveTab("products");
       else if (p === "history") setActiveTab("history");
       else if (p === "shops") setActiveTab("shops");
 
@@ -559,58 +559,8 @@ export default function ShopBillingPage() {
     }
     setItemQuantity(1);
     setActiveTab("billing");
-    setNotice(`Selected "${prod.name}" (${preferredSize || "Standard"}). Enter qty and tap Add to Bill.`);
+    setNotice(`Selected "${prod.name}" (${preferredSize || "Standard"}). Specify quantity and tap Add Line to Bill.`);
     setTimeout(() => setNotice(null), 3500);
-
-    if (typeof window !== "undefined") {
-      const el = document.getElementById("item-adder-box");
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }
-  };
-
-  const handleQuickAddOnePacket = (prod: Product, sizeName?: string) => {
-    let price = prod.regularPrice;
-    let finalSize = "Standard";
-    if (prod.sizes && prod.sizes.length > 0) {
-      const match = sizeName ? prod.sizes.find((s) => s.sizeName === sizeName) : prod.sizes[0];
-      const targetSize = match || prod.sizes[0];
-      finalSize = targetSize.sizeName;
-      price = targetSize.salePrice || targetSize.regularPrice;
-    }
-
-    setBillItems((prev) => {
-      const existingIdx = prev.findIndex(
-        (it) => it.productId === prod.id && it.size === finalSize
-      );
-      if (existingIdx > -1) {
-        const copy = [...prev];
-        const existing = copy[existingIdx];
-        const newQty = existing.quantity + 1;
-        copy[existingIdx] = {
-          ...existing,
-          unitPrice: price,
-          quantity: newQty,
-          subtotal: price * newQty,
-        };
-        return copy;
-      }
-      const newItem: BillItem = {
-        id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        productId: prod.id,
-        productName: prod.name,
-        size: finalSize,
-        unitPrice: price,
-        quantity: 1,
-        subtotal: price * 1,
-        image: prod.mainImage || "/uploads/leena-tea-powder-200g.jpeg",
-      };
-      return [...prev, newItem];
-    });
-
-    setNotice(`+ 1 pkt "${prod.name} (${finalSize})" added directly to bill.`);
-    setTimeout(() => setNotice(null), 3000);
   };
 
   const initProductSelection = (prod: Product) => {
@@ -626,6 +576,18 @@ export default function ShopBillingPage() {
     setItemQuantity(1);
   };
 
+  // Filtered Products for quick picker
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return products;
+    const term = productSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.teaGrade.toLowerCase().includes(term) ||
+        p.category?.name.toLowerCase().includes(term)
+    );
+  }, [products, productSearch]);
+
   const categoriesList = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => {
@@ -634,10 +596,9 @@ export default function ShopBillingPage() {
     return Array.from(set);
   }, [products]);
 
-  // Unified Filtered Products for picker & visual catalog in Bill Creation
   const filteredCatalogProducts = useMemo(() => {
     return products.filter((p) => {
-      const q = (productSearch || catalogSearch).toLowerCase().trim();
+      const q = catalogSearch.toLowerCase().trim();
       const matchesSearch =
         !q ||
         p.name.toLowerCase().includes(q) ||
@@ -650,9 +611,7 @@ export default function ShopBillingPage() {
 
       return matchesSearch && matchesCat;
     });
-  }, [products, productSearch, catalogSearch, catalogCategory]);
-
-  const filteredProducts = filteredCatalogProducts;
+  }, [products, catalogSearch, catalogCategory]);
 
   const currentSelectedProduct = useMemo(() => {
     return products.find((p) => p.id === selectedProductId) || null;
@@ -1106,11 +1065,11 @@ export default function ShopBillingPage() {
         </div>
 
         {/* Tab Toggle */}
-        <div className="grid grid-cols-3 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab("billing")}
-            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "billing"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
@@ -1123,27 +1082,40 @@ export default function ShopBillingPage() {
           <button
             type="button"
             onClick={() => setActiveTab("shops")}
-            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "shops"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
             }`}
           >
             <QrCode className="w-4 h-4 text-tea-gold" />
-            <span className="truncate">Shops & QR ({knownShops.length})</span>
+            <span>Shops & QR ({knownShops.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("products")}
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+              activeTab === "products"
+                ? "bg-tea-dark text-white shadow-sm"
+                : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
+            }`}
+          >
+            <Boxes className="w-4 h-4 text-emerald-400" />
+            <span>Products ({products.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab("history")}
-            className={`flex items-center justify-center sm:justify-start gap-2 px-3 sm:px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+            className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-3 sm:py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
               activeTab === "history"
                 ? "bg-tea-dark text-white shadow-sm"
                 : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
             }`}
           >
             <History className="w-4 h-4 text-tea-gold" />
-            <span className="truncate">Ledger ({recentOrders.length})</span>
+            <span>Ledger ({recentOrders.length})</span>
           </button>
         </div>
       </div>
@@ -1313,6 +1285,7 @@ export default function ShopBillingPage() {
                   {knownShops.length > 0 && (
                     <div className="relative">
                       <select
+                        id="known-shop-quick-picker"
                         onChange={(e) => {
                           const sh = knownShops.find((x) => x.shopName === e.target.value);
                           if (sh) handleSelectKnownShop(sh);
@@ -1568,395 +1541,258 @@ export default function ShopBillingPage() {
               )}
             </div>
 
-            {/* 2. Select Tea Products & Add Line Items */}
-            <div id="product-selection-section" className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-tea-border/60 pb-3 gap-2">
-                <div>
+            {/* 2. Fast Item-by-Item Entry Counter (Unlocked only AFTER customer is selected) */}
+            <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-5">
+              <div className="flex items-center justify-between border-b border-tea-border/60 pb-3">
+                <div className="flex items-center gap-2">
                   <h3 className="font-serif text-base font-bold text-tea-dark flex items-center gap-2">
                     <ShoppingBag className="w-4 h-4 text-tea-leaf" />
-                    <span>2. Select Tea Products & Pack Sizes</span>
+                    <span>2. Add Products Item-by-Item</span>
                   </h3>
-                  <p className="text-[11px] text-tea-muted mt-0.5">
-                    Browse warehouse products below, tap any pack size to set rate or add directly to the bill.
-                  </p>
+                  {shopName.trim() && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      Customer Ready
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                    {products.length} Products Available
-                  </span>
-                </div>
+                <span className="text-[11px] text-tea-muted">
+                  Standard & Wholesale Shop Billing
+                </span>
               </div>
 
-              {/* Active Line Item Adjustment Box */}
-              <div id="item-adder-box" className="p-4 sm:p-5 rounded-2xl bg-tea-surface/80 border border-tea-border/80 space-y-4">
-                {currentSelectedProduct ? (
-                  <div className="flex items-center gap-3 pb-3 border-b border-tea-border/60">
-                    <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-tea-border shrink-0 p-1 flex items-center justify-center">
-                      <Image
-                        src={currentSelectedProduct.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
-                        alt={currentSelectedProduct.name}
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-tea-dark truncate text-xs sm:text-sm">
-                          {currentSelectedProduct.name}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full bg-tea-dark text-tea-gold font-mono text-[9px] font-bold shrink-0">
-                          {currentSelectedProduct.teaGrade || "Ceylon Tea"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[11px] text-tea-muted mt-0.5">
-                        <span>{currentSelectedProduct.category?.name || "Pure Ceylon"}</span>
-                        <span>•</span>
-                        <span className="text-emerald-700 font-semibold">
-                          Total Stock: {currentSelectedProduct.stock} packs
-                        </span>
-                      </div>
-                    </div>
+              {!shopName.trim() ? (
+                /* Step 1: Customer Not Selected Yet Placeholder */
+                <div className="p-8 text-center bg-tea-surface/40 rounded-2xl border border-dashed border-tea-border space-y-3 animate-fade-in">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-xs">
+                    <Building2 className="w-6 h-6 text-amber-700" />
                   </div>
-                ) : (
-                  <div className="text-xs text-tea-muted flex items-center gap-2 pb-1">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                    <span>Select a tea from the product catalog below to start adding lines:</span>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-tea-dark">
+                      Step 1: Select Customer First
+                    </h4>
+                    <p className="text-xs text-tea-muted max-w-md mx-auto">
+                      Please enter or select the customer / shop details above (or scan shop QR code) to display products, wholesale prices, and create bill items.
+                    </p>
                   </div>
-                )}
-
-                {/* Size, Rate, Quantity & Add Button Row */}
-                <form onSubmit={handleAddItem} className="space-y-3 text-xs">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
-                    {/* Size Selector */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-tea-dark mb-1">
-                        Pack Size / Weight
-                      </label>
-                      {currentSelectedProduct?.sizes && currentSelectedProduct.sizes.length > 0 ? (
-                        <select
-                          value={selectedSize}
-                          onChange={(e) => handleVariantChange(e.target.value)}
-                          className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
-                        >
-                          {currentSelectedProduct.sizes.map((v) => (
-                            <option key={v.id} value={v.sizeName}>
-                              {v.sizeName} ({v.stock} in stock)
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={selectedSize}
-                          onChange={(e) => setSelectedSize(e.target.value)}
-                          placeholder="Standard Pack"
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-white"
-                        />
-                      )}
-                    </div>
-
-                    {/* Unit Price (Rate) */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-tea-dark mb-1">
-                        Rate (Rs. / pack)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="10"
-                        value={itemUnitPrice === 0 ? "" : itemUnitPrice}
-                        onChange={(e) =>
-                          setItemUnitPrice(
-                            e.target.value === "" ? 0 : Math.max(0, Number(e.target.value))
-                          )
-                        }
-                        className="w-full px-3 py-2 text-xs font-bold text-tea-forest rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono"
-                      />
-                    </div>
-
-                    {/* Quantity */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-tea-dark mb-1">
-                        Qty (Packs)
-                      </label>
-                      <div className="flex items-center h-10">
-                        <button
-                          type="button"
-                          onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                          className="w-9 h-10 rounded-l-xl border border-r-0 border-tea-border bg-white hover:bg-tea-surface active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="1"
-                          value={itemQuantity}
-                          onChange={(e) =>
-                            setItemQuantity(
-                              e.target.value === "" ? 1 : Math.max(1, Number(e.target.value))
-                            )
-                          }
-                          className="w-full h-10 py-1 text-center text-xs font-bold text-tea-dark border-y border-tea-border bg-white focus:outline-none font-mono"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setItemQuantity(itemQuantity + 1)}
-                          className="w-9 h-10 rounded-r-xl border border-l-0 border-tea-border bg-white hover:bg-tea-surface active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Add Item Button */}
-                    <div>
-                      <button
-                        type="submit"
-                        disabled={!currentSelectedProduct}
-                        className="w-full h-10 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Add Line</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Real-time Line Total Calculation Preview */}
-                  <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/80 flex items-center justify-between text-xs">
-                    <span className="text-emerald-950 font-semibold flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>
-                        Line Total ({itemQuantity} pkts × Rs.{" "}
-                        {Number(itemUnitPrice || 0).toLocaleString()}):
-                      </span>
-                    </span>
-                    <span className="font-mono font-extrabold text-emerald-900 text-sm">
-                      Rs. {(Number(itemUnitPrice || 0) * Number(itemQuantity || 1)).toLocaleString()}
-                    </span>
-                  </div>
-                </form>
-              </div>
-
-              {/* TEA PRODUCTS & LIVE STOCK CATALOG (Shown directly when creating bill) */}
-              <div className="space-y-3 pt-1">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder="Search tea grade (BOPF, Pekoe) or name..."
-                      value={productSearch}
-                      onChange={(e) => setProductSearch(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface/40 focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-medium"
-                    />
-                    <Search className="w-4 h-4 text-tea-muted absolute left-3 top-2.5" />
-                    {productSearch && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setQrScannerOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold flex items-center gap-2 shadow-xs transition"
+                    >
+                      <Camera className="w-4 h-4 text-tea-gold" />
+                      <span>Scan Shop QR Code</span>
+                    </button>
+                    {knownShops.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setProductSearch("")}
-                        className="p-1 text-tea-muted hover:text-tea-dark absolute right-2 top-2"
+                        onClick={() => {
+                          const el = document.getElementById("known-shop-quick-picker");
+                          if (el) el.focus();
+                        }}
+                        className="px-4 py-2 rounded-xl bg-white hover:bg-tea-surface text-tea-dark text-xs font-bold border border-tea-border shadow-xs transition flex items-center gap-1.5"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <Store className="w-4 h-4 text-tea-leaf" />
+                        <span>Quick Pick Known Shop ({knownShops.length})</span>
                       </button>
                     )}
                   </div>
-
-                  {/* Category Filter Pills */}
-                  <div className="flex flex-wrap items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setCatalogCategory("ALL")}
-                      className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition ${
-                        catalogCategory === "ALL"
-                          ? "bg-tea-dark text-white shadow-xs"
-                          : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
-                      }`}
-                    >
-                      All ({products.length})
-                    </button>
-                    {categoriesList.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setCatalogCategory(cat)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition ${
-                          catalogCategory === cat
-                            ? "bg-tea-dark text-white shadow-xs"
-                            : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-
-                {/* Available Products Grid */}
-                {filteredCatalogProducts.length === 0 ? (
-                  <div className="p-8 text-center bg-tea-surface/30 rounded-2xl border border-dashed border-tea-border text-xs text-tea-muted space-y-1">
-                    <p className="font-semibold text-tea-dark">No products found matching your search.</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProductSearch("");
-                        setCatalogCategory("ALL");
-                      }}
-                      className="text-tea-forest hover:underline font-bold"
-                    >
-                      Clear search
-                    </button>
+              ) : (
+                /* Customer IS Selected: Simple Old Setup (Search, Dropdown, Pack Size, Price, Qty, Add Item) */
+                <div className="space-y-4 animate-fade-in">
+                  {/* Selected Customer Confirmation Strip */}
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-900 block">
+                          Customer Selected:
+                        </span>
+                        <span className="font-bold text-xs text-tea-dark">
+                          {shopName} {routeTown ? `(${routeTown})` : ""}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedKnownShop?.shopCode && (
+                      <span className="px-2 py-0.5 rounded-md bg-white text-tea-forest font-mono text-[10px] font-bold border border-emerald-200">
+                        #{selectedKnownShop.shopCode}
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[540px] overflow-y-auto pr-1">
-                    {filteredCatalogProducts.map((p) => {
-                      const isSelected = selectedProductId === p.id;
-                      const isOutOfStock = p.stock === 0;
 
-                      return (
-                        <div
-                          key={p.id}
-                          className={`p-3.5 rounded-2xl border transition-all duration-150 flex flex-col justify-between space-y-3 ${
-                            isSelected
-                              ? "bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-500/20 shadow-sm"
-                              : "bg-white hover:bg-tea-surface/40 border-tea-border/80 shadow-xs"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="relative w-16 h-16 rounded-xl bg-tea-surface border border-tea-border/60 overflow-hidden shrink-0 flex items-center justify-center p-1">
-                              <Image
-                                src={p.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
-                                alt={p.name}
-                                fill
-                                className="object-contain"
-                              />
-                            </div>
+                  {/* Product Search & Dropdown Picker */}
+                  <div className="space-y-3 text-xs">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="Search tea grade or product name..."
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface/30 focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                        />
+                        <Search className="w-3.5 h-3.5 text-tea-muted absolute left-2.5 top-2.5" />
+                      </div>
 
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2 py-0.5 rounded-md bg-tea-dark text-tea-gold font-mono text-[9px] font-bold">
-                                  {p.teaGrade || "Pure Ceylon"}
-                                </span>
-                                {isOutOfStock ? (
-                                  <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[9px] font-bold">
-                                    Out of Stock
-                                  </span>
-                                ) : p.stock <= 15 ? (
-                                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">
-                                    Low Stock ({p.stock})
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">
-                                    {p.stock} in stock
-                                  </span>
-                                )}
-                              </div>
+                      <select
+                        value={selectedProductId}
+                        onChange={(e) => handleProductChange(e.target.value)}
+                        className="flex-1 px-3 py-2 text-xs font-bold rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                      >
+                        {filteredProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} [{p.teaGrade || "Pure Ceylon"}]
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                              <h4 className="font-serif font-bold text-xs sm:text-sm text-tea-dark truncate mt-1">
-                                {p.name}
-                              </h4>
-                              <p className="text-[10px] text-tea-muted">
-                                {p.category?.name || "Pure Ceylon"} • {p.teaType || "Black Tea"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Pack Sizes & Rates Selector Chips */}
-                          <div className="space-y-1.5 pt-1.5 border-t border-tea-border/40">
-                            <div className="flex items-center justify-between text-[10px] font-bold text-tea-muted uppercase tracking-wider">
-                              <span>Available Pack Sizes:</span>
-                              <span className="text-[9px] text-tea-forest font-semibold">Tap to select</span>
-                            </div>
-
-                            {p.sizes && p.sizes.length > 0 ? (
-                              <div className="grid grid-cols-2 gap-1.5">
-                                {p.sizes.map((v) => {
-                                  const isSizeActive = isSelected && selectedSize === v.sizeName;
-                                  const rate = v.salePrice || v.regularPrice;
-
-                                  return (
-                                    <div
-                                      key={v.id}
-                                      className={`p-2 rounded-xl border text-[11px] transition flex flex-col justify-between ${
-                                        isSizeActive
-                                          ? "bg-emerald-700 text-white border-emerald-700 shadow-xs"
-                                          : "bg-tea-surface hover:bg-white border-tea-border/60 text-tea-dark"
-                                      }`}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSelectProductForBill(p, v.sizeName)}
-                                        className="text-left w-full focus:outline-none"
-                                      >
-                                        <div className="flex items-center justify-between w-full">
-                                          <span className="font-bold">{v.sizeName}</span>
-                                          <span className={`text-[9px] ${isSizeActive ? "text-emerald-100" : "text-tea-muted"}`}>
-                                            {v.stock} pkts
-                                          </span>
-                                        </div>
-                                        <span className={`font-mono font-extrabold text-xs block mt-0.5 ${isSizeActive ? "text-tea-gold" : "text-tea-forest"}`}>
-                                          Rs. {rate.toLocaleString()}
-                                        </span>
-                                      </button>
-
-                                      <div className="flex items-center gap-1 mt-1 pt-1 border-t border-black/10">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleSelectProductForBill(p, v.sizeName)}
-                                          className={`flex-1 py-0.5 rounded text-[9px] font-bold text-center transition ${
-                                            isSizeActive
-                                              ? "bg-white/20 hover:bg-white/30 text-white"
-                                              : "bg-tea-surface hover:bg-tea-border/60 text-tea-dark"
-                                          }`}
-                                        >
-                                          Select
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleQuickAddOnePacket(p, v.sizeName)}
-                                          className="py-0.5 px-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] transition"
-                                          title="Quick Add 1 packet to bill"
-                                        >
-                                          +1
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div
-                                className={`p-2 rounded-xl border text-[11px] transition flex items-center justify-between ${
-                                  isSelected
-                                    ? "bg-emerald-700 text-white border-emerald-700 shadow-xs"
-                                    : "bg-tea-surface hover:bg-white border-tea-border/60 text-tea-dark"
-                                }`}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectProductForBill(p, "Standard")}
-                                  className="text-left flex-1 focus:outline-none"
-                                >
-                                  <span className="font-bold block">Standard Pack</span>
-                                  <span className={`font-mono font-extrabold text-xs ${isSelected ? "text-tea-gold" : "text-tea-forest"}`}>
-                                    Rs. {p.regularPrice.toLocaleString()}
-                                  </span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickAddOnePacket(p, "Standard")}
-                                  className="py-1 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition shrink-0 ml-2"
-                                  title="Quick Add 1 packet to bill"
-                                >
-                                  +1 Pkt
-                                </button>
-                              </div>
-                            )}
+                    {/* Active Product Details Strip */}
+                    {currentSelectedProduct && (
+                      <div className="flex items-center gap-3 p-3 rounded-2xl bg-tea-surface/60 border border-tea-border/60">
+                        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white border border-tea-border shrink-0">
+                          <Image
+                            src={currentSelectedProduct.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
+                            alt={currentSelectedProduct.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-tea-dark truncate">
+                            {currentSelectedProduct.name}
+                          </h4>
+                          <div className="flex items-center gap-2 text-[11px] text-tea-muted">
+                            <span>Grade: {currentSelectedProduct.teaGrade}</span>
+                            <span>•</span>
+                            <span className="text-emerald-700 font-semibold">
+                              Total Stock: {currentSelectedProduct.stock} packs
+                            </span>
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
+
+                    {/* Size, Rate, Quantity & Add Button Row */}
+                    <form onSubmit={handleAddItem} className="pt-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 items-end">
+                        {/* Size Selector */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-tea-dark mb-1">
+                            Pack Size / Weight
+                          </label>
+                          {currentSelectedProduct?.sizes &&
+                          currentSelectedProduct.sizes.length > 0 ? (
+                            <select
+                              value={selectedSize}
+                              onChange={(e) => handleVariantChange(e.target.value)}
+                              className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+                            >
+                              {currentSelectedProduct.sizes.map((v) => (
+                                <option key={v.id} value={v.sizeName}>
+                                  {v.sizeName} ({v.stock} in stock)
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={selectedSize}
+                              onChange={(e) => setSelectedSize(e.target.value)}
+                              placeholder="Size (e.g. 200g)"
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-white"
+                            />
+                          )}
+                        </div>
+
+                        {/* Unit Price (Rate) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-tea-dark mb-1">
+                            Rate (Rs. / pack)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="10"
+                            value={itemUnitPrice === 0 ? "" : itemUnitPrice}
+                            onChange={(e) =>
+                              setItemUnitPrice(
+                                e.target.value === "" ? 0 : Math.max(0, Number(e.target.value))
+                              )
+                            }
+                            className="w-full px-3 py-2 text-xs font-bold text-tea-forest rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono"
+                          />
+                        </div>
+
+                        {/* Quantity */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-tea-dark mb-1">
+                            Qty (Packs)
+                          </label>
+                          <div className="flex items-center h-11">
+                            <button
+                              type="button"
+                              onClick={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                              className="w-10 h-11 rounded-l-xl border border-r-0 border-tea-border bg-tea-surface hover:bg-tea-bg active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={itemQuantity}
+                              onChange={(e) =>
+                                setItemQuantity(
+                                  e.target.value === "" ? 1 : Math.max(1, Number(e.target.value))
+                                )
+                              }
+                              className="w-full h-11 py-2 text-center text-sm font-bold text-tea-dark border-y border-tea-border bg-white focus:outline-none font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setItemQuantity(itemQuantity + 1)}
+                              className="w-10 h-11 rounded-r-xl border border-l-0 border-tea-border bg-tea-surface hover:bg-tea-bg active:bg-tea-border text-tea-dark font-bold text-sm flex items-center justify-center shrink-0"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Add Item Button */}
+                        <div>
+                          <button
+                            type="submit"
+                            className="w-full h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Add Item</span>
+                          </button>
+                        </div>
+
+                        {/* Real-time Line Total Calculation Preview */}
+                        <div className="col-span-2 sm:col-span-4 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between text-xs">
+                          <span className="text-emerald-950 font-semibold flex items-center gap-1.5">
+                            <Tag className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>
+                              Line Total ({itemQuantity} pkts × Rs.{" "}
+                              {Number(itemUnitPrice || 0).toLocaleString()}):
+                            </span>
+                          </span>
+                          <span className="font-mono font-extrabold text-emerald-900 text-sm">
+                            Rs.{" "}
+                            {(
+                              Number(itemUnitPrice || 0) * Number(itemQuantity || 1)
+                            ).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </form>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2322,6 +2158,240 @@ export default function ShopBillingPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Available Products & Stock Catalog (Shop Order Rep & Executive View) */}
+      {activeTab === "products" && (
+        <div className="space-y-6">
+          {/* Top Banner & Filters */}
+          <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-tea-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                    Live Warehouse Stock
+                  </span>
+                  <span className="text-xs text-tea-muted">• Wholesale Pack Sizes & Rates</span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark mt-1">
+                  Available Products Catalog
+                </h3>
+                <p className="text-xs text-tea-muted mt-0.5">
+                  Browse products, real-time stock levels, and grades. Click "+ Add to Bill" to instantly load any tea into your active shop bill.
+                </p>
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative w-full md:w-72">
+                <input
+                  type="text"
+                  placeholder="Search tea name, grade (BOPF)..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf font-medium"
+                />
+                <Search className="w-4 h-4 text-tea-muted absolute left-3 top-3" />
+                {catalogSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCatalogSearch("")}
+                    className="p-1 text-tea-muted hover:text-tea-dark absolute right-2.5 top-2.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Category Filter Pills & Metrics */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCatalogCategory("ALL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    catalogCategory === "ALL"
+                      ? "bg-tea-dark text-white shadow-xs"
+                      : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
+                  }`}
+                >
+                  All Varieties ({products.length})
+                </button>
+                {categoriesList.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCatalogCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                      catalogCategory === cat
+                        ? "bg-tea-dark text-white shadow-xs"
+                        : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-tea-muted">
+                <span className="bg-emerald-50 text-emerald-800 font-semibold px-2.5 py-1 rounded-lg border border-emerald-200 text-[11px]">
+                  {products.filter((p) => p.stock > 0).length} In Stock
+                </span>
+                {products.filter((p) => p.stock <= 15).length > 0 && (
+                  <span className="bg-rose-50 text-rose-800 font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-[11px]">
+                    {products.filter((p) => p.stock <= 15).length} Low Stock
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Products Catalog Grid */}
+          {filteredCatalogProducts.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-tea-border p-12 text-center text-xs text-tea-muted shadow-card space-y-2">
+              <Boxes className="w-8 h-8 text-tea-muted mx-auto opacity-50" />
+              <p className="font-semibold text-tea-dark">No products found matching your search.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCatalogSearch("");
+                  setCatalogCategory("ALL");
+                }}
+                className="text-tea-forest hover:underline font-bold text-xs"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCatalogProducts.map((p) => {
+                const isOutOfStock = p.stock === 0;
+                const isLowStock = p.stock > 0 && p.stock <= 15;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="bg-white rounded-3xl border border-tea-border shadow-card hover:shadow-hover transition duration-200 overflow-hidden flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Product Image & Badges */}
+                      <div className="relative h-48 w-full bg-tea-surface p-4 flex items-center justify-center border-b border-tea-border">
+                        <div className="relative w-36 h-36">
+                          <Image
+                            src={p.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
+                            alt={p.name}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="absolute top-3 left-3 flex flex-col gap-1">
+                          <span className="px-2.5 py-1 rounded-full bg-tea-dark text-tea-gold font-mono text-[10px] font-bold shadow-xs">
+                            {p.teaGrade || "Ceylon Tea"}
+                          </span>
+                          {p.category?.name && (
+                            <span className="px-2 py-0.5 rounded bg-white/90 text-tea-dark font-sans text-[10px] font-semibold border border-tea-border shadow-xs">
+                              {p.category.name}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="absolute top-3 right-3">
+                          {isOutOfStock ? (
+                            <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white font-bold text-[10px] shadow-xs">
+                              Out of Stock
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white font-bold text-[10px] shadow-xs">
+                              Only {p.stock} pkts
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white font-bold text-[10px] shadow-xs">
+                              {p.stock} in stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Product Content */}
+                      <div className="p-5 space-y-3">
+                        <div>
+                          <h4 className="font-serif font-bold text-base text-tea-dark leading-snug">
+                            {p.name}
+                          </h4>
+                          <div className="text-[11px] text-tea-muted mt-0.5 flex items-center gap-2">
+                            <span>Type: {p.teaType || "Black Tea"}</span>
+                            <span>•</span>
+                            <span>Starting from Rs. {p.regularPrice.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Available Pack Sizes & Pricing Table */}
+                        <div className="space-y-1.5 pt-2 border-t border-tea-border/60">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                            Available Pack Sizes & Wholesale Rates
+                          </span>
+
+                          {p.sizes && p.sizes.length > 0 ? (
+                            <div className="space-y-1">
+                              {p.sizes.map((v) => (
+                                <div
+                                  key={v.id}
+                                  className="flex items-center justify-between p-2 rounded-xl bg-tea-surface hover:bg-tea-bg border border-tea-border/50 text-xs transition"
+                                >
+                                  <div>
+                                    <span className="font-bold text-tea-dark block">
+                                      {v.sizeName}
+                                    </span>
+                                    <span className="text-[10px] text-tea-muted">
+                                      Stock: {v.stock} pkts
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold font-mono text-tea-forest">
+                                      Rs. {(v.salePrice || v.regularPrice).toLocaleString()}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectProductForBill(p, v.sizeName)}
+                                      className="px-2 py-1 rounded-lg bg-tea-dark hover:bg-tea-forest text-white text-[10px] font-bold transition flex items-center gap-1"
+                                      title="Load this specific pack size into billing counter"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      <span>Select</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between p-2 rounded-xl bg-tea-surface border border-tea-border/50 text-xs">
+                              <span className="font-bold text-tea-dark">Standard Pack</span>
+                              <span className="font-bold font-mono text-tea-forest">
+                                Rs. {p.regularPrice.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Add to Active Shop Bill Button */}
+                    <div className="p-5 pt-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectProductForBill(p)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4 text-emerald-200" />
+                        <span>Add to Shop Bill</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* History & Ledger View */}
