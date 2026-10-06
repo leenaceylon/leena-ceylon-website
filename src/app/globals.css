@@ -85,6 +85,21 @@ body {
   background: #143424;
 }
 
+/* Print Portal (Screen mode: completely inert and hidden) */
+@media screen {
+  #print-receipt-portal {
+    display: none !important;
+    visibility: hidden !important;
+    position: absolute !important;
+    top: -99999px !important;
+    left: -99999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
 /* Print Optimization for Official Invoices and POS Thermal Receipts */
 @media print {
   @page {
@@ -100,37 +115,66 @@ body {
     color: #000000 !important;
     overflow: visible !important;
     height: auto !important;
+    min-height: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide navigation, sidebars, headers, footers, and screen controls */
+  /* Always hide screen-only headers, footers, navbars and controls */
   nav, header, footer, aside, .print\:hidden {
     display: none !important;
   }
 
-  /* When printing, hide all main layout content by default */
-  body * {
-    visibility: hidden;
+  /* 
+   * MOBILE & DESKTOP ISOLATION:
+   * When is-printing-bill is active on body, HIDE EVERYTHING ELSE in body.
+   * This completely removes all background webpage elements, sidebars, tables,
+   * modals, and scroll containers from layout calculation, ensuring ZERO extra pages.
+   */
+  body.is-printing-bill > *:not(#print-receipt-portal) {
+    display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Specifically reveal only the printable receipt or printable invoice */
-  #printable-receipt,
-  #printable-receipt *,
-  #printable-invoice,
-  #printable-invoice * {
+  /* Display ONLY the isolated print receipt portal */
+  body.is-printing-bill #print-receipt-portal {
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     visibility: visible !important;
   }
 
-  /* Thermal Receipt Specific Styling (80mm Continuous Roll) */
-  #printable-receipt {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  /* 80mm POS Thermal Receipt Specific Styling */
+  body.printing-terminal {
     width: 76mm !important;
     max-width: 76mm !important;
     margin: 0 auto !important;
-    padding: 2mm 3mm !important;
+    padding: 0 !important;
+  }
+
+  body.printing-terminal #print-receipt-portal {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 1mm 2mm 3mm 2mm !important;
+  }
+
+  body.printing-terminal #printable-receipt {
+    display: block !important;
+    position: static !important;
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
     font-family: 'Courier New', Courier, monospace !important;
     color: #000000 !important;
     background: #ffffff !important;
@@ -138,22 +182,45 @@ body {
     box-shadow: none !important;
     font-size: 11px !important;
     line-height: 1.25 !important;
-    display: block !important;
   }
 
   /* Standard A4 Invoice Specific Styling */
-  #printable-invoice {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  body.printing-standard {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 6mm !important;
+    padding: 0 !important;
+  }
+
+  body.printing-standard #print-receipt-portal {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 4mm 6mm !important;
+  }
+
+  body.printing-standard #printable-invoice {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     color: #143424 !important;
     background: #ffffff !important;
     border: none !important;
     box-shadow: none !important;
-    display: block !important;
+  }
+
+  /* Fallback if is-printing-bill class is not on body */
+  body:not(.is-printing-bill) #print-modal-container {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
   }
 }
+

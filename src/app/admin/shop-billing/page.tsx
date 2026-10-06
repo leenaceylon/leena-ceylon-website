@@ -792,122 +792,98 @@ export default function ShopBillingPage() {
     setCompletedOrder(null);
   };
 
-  const handlePrint = () => {
-    const elementId = printFormat === "terminal" ? "printable-receipt" : "printable-invoice";
-    const printElement = document.getElementById(elementId);
-    if (!printElement) {
-      window.print();
-      return;
-    }
-
-    // Clean up any previous print iframe
-    const oldIframe = document.getElementById("receipt-print-iframe");
-    if (oldIframe && oldIframe.parentNode) {
-      oldIframe.parentNode.removeChild(oldIframe);
-    }
-
-    // Create an invisible iframe dedicated to printing ONLY the bill
-    const iframe = document.createElement("iframe");
-    iframe.id = "receipt-print-iframe";
-    iframe.style.position = "fixed";
-    iframe.style.top = "-9999px";
-    iframe.style.left = "-9999px";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "none";
-    iframe.style.visibility = "hidden";
-    document.body.appendChild(iframe);
-
-    const pri = iframe.contentWindow;
-    if (!pri) {
-      window.print();
+  // Synchronize dedicated body-level portal for direct print spooling (Mobile & Desktop)
+  useEffect(() => {
+    if (!printModalOpen) {
+      document.body.classList.remove("is-printing-bill", "printing-terminal", "printing-standard");
+      const pageStyle = document.getElementById("leena-print-page-style");
+      if (pageStyle && pageStyle.parentNode) {
+        pageStyle.parentNode.removeChild(pageStyle);
+      }
+      const printPortal = document.getElementById("print-receipt-portal");
+      if (printPortal) {
+        printPortal.innerHTML = "";
+      }
       return;
     }
 
     const isTerminal = printFormat === "terminal";
-    const billHtml = printElement.outerHTML;
+    document.body.classList.add("is-printing-bill");
+    document.body.classList.remove(isTerminal ? "printing-standard" : "printing-terminal");
+    document.body.classList.add(isTerminal ? "printing-terminal" : "printing-standard");
 
-    // Collect all stylesheets and style tags from current document to preserve exact styling
-    let stylesHtml = "";
-    document.querySelectorAll("style, link[rel='stylesheet']").forEach((node) => {
-      stylesHtml += node.outerHTML;
-    });
+    // Dynamic @page styling for 80mm continuous roll vs A4
+    let pageStyle = document.getElementById("leena-print-page-style");
+    if (!pageStyle) {
+      pageStyle = document.createElement("style");
+      pageStyle.id = "leena-print-page-style";
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.innerHTML = isTerminal
+      ? `@page { size: 80mm auto !important; margin: 0 !important; }`
+      : `@page { size: A4 portrait !important; margin: 8mm !important; }`;
 
-    pri.document.open();
-    pri.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>${isTerminal ? "POS_Receipt" : "Invoice"}_${completedOrder?.orderNumber || "Bill"}</title>
-          ${stylesHtml}
-          <style>
-            @page {
-              size: ${isTerminal ? "80mm auto" : "A4 portrait"};
-              margin: ${isTerminal ? "0mm 0mm 3mm 0mm" : "8mm"};
-            }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              background: #ffffff !important;
-              color: #000000 !important;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            body {
-              width: ${isTerminal ? "76mm" : "100%"} !important;
-              max-width: ${isTerminal ? "76mm" : "100%"} !important;
-              margin: 0 auto !important;
-              padding: ${isTerminal ? "2mm 2mm 5mm 2mm" : "4mm"} !important;
-              font-family: ${isTerminal ? "'Courier New', Courier, monospace" : "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"} !important;
-            }
-            #printable-receipt {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
-              font-size: 11px !important;
-              line-height: 1.25 !important;
-              display: block !important;
-            }
-            #printable-invoice {
-              width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              border: none !important;
-              box-shadow: none !important;
-              display: block !important;
-            }
-          </style>
-        </head>
-        <body class="${isTerminal ? 'font-mono' : ''}">
-          ${billHtml}
-        </body>
-      </html>
-    `);
-    pri.document.close();
-
-    // Trigger print once iframe content is rendered
-    setTimeout(() => {
-      try {
-        pri.focus();
-        pri.print();
-      } catch (err) {
-        console.error("Isolated print error, falling back to window.print:", err);
-        window.print();
-      } finally {
-        setTimeout(() => {
-          if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
-          }
-        }, 3000);
+    const syncPortal = () => {
+      const elementId = isTerminal ? "printable-receipt" : "printable-invoice";
+      const sourceEl = document.getElementById(elementId);
+      let printPortal = document.getElementById("print-receipt-portal");
+      if (!printPortal) {
+        printPortal = document.createElement("div");
+        printPortal.id = "print-receipt-portal";
+        document.body.appendChild(printPortal);
       }
-    }, 250);
+      if (sourceEl) {
+        printPortal.innerHTML = sourceEl.outerHTML;
+      }
+    };
+
+    // Sync on next frame and after brief delay to ensure render
+    requestAnimationFrame(syncPortal);
+    const timer = setTimeout(syncPortal, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [printModalOpen, printFormat, completedOrder]);
+
+  const handlePrint = () => {
+    const isTerminal = printFormat === "terminal";
+    const elementId = isTerminal ? "printable-receipt" : "printable-invoice";
+    const sourceEl = document.getElementById(elementId);
+
+    // Make sure portal is created directly on document.body with freshest HTML
+    let printPortal = document.getElementById("print-receipt-portal");
+    if (!printPortal) {
+      printPortal = document.createElement("div");
+      printPortal.id = "print-receipt-portal";
+      document.body.appendChild(printPortal);
+    }
+    if (sourceEl) {
+      printPortal.innerHTML = sourceEl.outerHTML;
+    }
+
+    // Set body classes for @media print
+    document.body.classList.add("is-printing-bill");
+    document.body.classList.remove(isTerminal ? "printing-standard" : "printing-terminal");
+    document.body.classList.add(isTerminal ? "printing-terminal" : "printing-standard");
+
+    // Ensure dynamic @page styling
+    let pageStyle = document.getElementById("leena-print-page-style");
+    if (!pageStyle) {
+      pageStyle = document.createElement("style");
+      pageStyle.id = "leena-print-page-style";
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.innerHTML = isTerminal
+      ? `@page { size: 80mm auto !important; margin: 0 !important; }`
+      : `@page { size: A4 portrait !important; margin: 8mm !important; }`;
+
+    // Direct native browser print (natively supported on Mobile Chrome/Safari & Desktop)
+    setTimeout(() => {
+      window.print();
+    }, 80);
   };
+
 
   // Compile WhatsApp URL for completed bill or current bill
   const getWhatsAppBillUrl = () => {
