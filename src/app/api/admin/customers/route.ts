@@ -4,6 +4,36 @@ import { getCurrentAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+function normalizeName(name: string): string {
+  if (!name) return "";
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+}
+
+function normalizePhone(phone: string): string {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length >= 9) {
+    return digits.slice(-9); // matches 771234567 for +94771234567, 0771234567, etc.
+  }
+  return digits;
+}
+
+function normalizeEmail(email: string): string {
+  if (!email) return "";
+  const clean = email.toLowerCase().trim();
+  if (clean.includes("@leenaceylon.com") && clean.startsWith("shop-")) return "";
+  return clean;
+}
+
+function extractSalesRepName(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:SALES_REP|SALES REP|REP):\s*([^|]+)/i);
+  if (match) return match[1].trim();
+  const byMatch = notes.match(/by\s+([A-Za-z0-9._ -]+)\s*\((?:SALES_REP|ADMIN|MANAGER)\)/i);
+  if (byMatch) return byMatch[1].trim();
+  return null;
+}
+
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
@@ -37,34 +67,33 @@ export async function GET() {
       }),
       prisma.order.findMany({
         orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          orderNumber: true,
-          customerId: true,
-          customerName: true,
-          customerPhone: true,
-          customerEmail: true,
-          shippingAddress: true,
-          city: true,
-          district: true,
-          postalCode: true,
-          deliveryNotes: true,
-          grandTotal: true,
-          paymentMethod: true,
-          paymentStatus: true,
-          orderStatus: true,
-          createdAt: true,
+        include: {
+          items: {
+            select: {
+              id: true,
+              productName: true,
+              size: true,
+              unitPrice: true,
+              quantity: true,
+              subtotal: true,
+            },
+          },
         },
       }),
     ]);
 
-    // Map to hold aggregated customer profiles
+    // Map to hold unique aggregated customer profiles
     const customerMap = new Map<string, any>();
-    const phoneToUserKey = new Map<string, string>();
+    const phoneToKey = new Map<string, string>();
+    const nameToKey = new Map<string, string>();
+    const emailToKey = new Map<string, string>();
+    const userIdToKey = new Map<string, string>();
 
     // Step A: Seed customer directory with registered user accounts
     for (const u of users) {
-      const cleanPhone = u.phone ? u.phone.replace(/\D/g, "") : "";
+      const cleanPhone = normalizePhone(u.phone || "");
+      const cleanName = normalizeName(u.name || "");
+      const cleanEmail = normalizeEmail(u.email || "");
       const userKey = `user_${u.id}`;
       const defaultAddr = u.addresses.find((a) => a.isDefault) || u.addresses[0];
 
@@ -88,36 +117,66 @@ export async function GET() {
             : u.createdAt.toISOString(),
         isActive: u.isActive,
         notes: "",
+        salesRepName: null,
         allOrderIds: u.orders.map((o) => o.id),
         allOrderNumbers: u.orders.map((o) => o.orderNumber),
+        ordersList: u.orders.map((o) => ({
+          id: o.id,
+          orderNumber: o.orderNumber,
+          createdAt: o.createdAt.toISOString(),
+          grandTotal: o.grandTotal,
+          paymentMethod: o.paymentMethod,
+          paymentStatus: "PAID",
+          orderStatus: o.orderStatus,
+          salesRepName: extractSalesRepName(o.deliveryNotes),
+          itemsCount: 1,
+          itemsSummary: "Registered online tea order",
+        })),
       });
 
-      if (cleanPhone && cleanPhone.length >= 7) {
-        phoneToUserKey.set(cleanPhone, userKey);
-      }
+      userIdToKey.set(u.id, userKey);
+      if (cleanPhone) phoneToKey.set(cleanPhone, userKey);
+      if (cleanName && cleanName.length >= 3) nameToKey.set(cleanName, userKey);
+      if (cleanEmail) emailToKey.set(cleanEmail, userKey);
     }
 
     // Step B: Process all orders to aggregate Shop Orders (SHOP-...) and Online/WhatsApp Orders (LC-...)
+    // Group repeat orders by Customer Name, Phone, Email, or User ID into ONE single customer row
     for (const o of allOrders) {
       const isShopOrder =
         o.orderNumber.startsWith("SHOP-") ||
         o.paymentMethod === "CREDIT_SHOP" ||
-        Boolean(o.deliveryNotes && o.deliveryNotes.includes("SHOP:"));
+        Boolean(o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")));
 
-      const cleanPhone = o.customerPhone ? o.customerPhone.replace(/\D/g, "") : "";
-      const cleanName = o.customerName ? o.customerName.toLowerCase().trim() : "";
+      const cleanPhone = normalizePhone(o.customerPhone || "");
+      const cleanName = normalizeName(o.customerName || "");
+      const cleanEmail = normalizeEmail(o.customerEmail || "");
+      const repName = extractSalesRepName(o.deliveryNotes);
 
       let targetKey: string | null = null;
 
-      if (o.customerId && customerMap.has(`user_${o.customerId}`)) {
-        targetKey = `user_${o.customerId}`;
-      } else if (cleanPhone && cleanPhone.length >= 7 && phoneToUserKey.has(cleanPhone)) {
-        targetKey = phoneToUserKey.get(cleanPhone)!;
-      } else if (cleanPhone && cleanPhone.length >= 7 && customerMap.has(`phone_${cleanPhone}`)) {
-        targetKey = `phone_${cleanPhone}`;
-      } else if (cleanName && customerMap.has(`name_${cleanName}`)) {
-        targetKey = `name_${cleanName}`;
+      if (o.customerId && userIdToKey.has(o.customerId)) {
+        targetKey = userIdToKey.get(o.customerId)!;
+      } else if (cleanPhone && phoneToKey.has(cleanPhone)) {
+        targetKey = phoneToKey.get(cleanPhone)!;
+      } else if (cleanName && cleanName.length >= 3 && nameToKey.has(cleanName)) {
+        targetKey = nameToKey.get(cleanName)!;
+      } else if (cleanEmail && emailToKey.has(cleanEmail)) {
+        targetKey = emailToKey.get(cleanEmail)!;
       }
+
+      const orderItemSummary = {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt.toISOString(),
+        grandTotal: o.grandTotal,
+        paymentMethod: o.paymentMethod,
+        paymentStatus: o.paymentStatus,
+        orderStatus: isShopOrder && o.orderStatus === "CONFIRMED" ? "DELIVERED" : o.orderStatus,
+        salesRepName: repName,
+        itemsCount: o.items?.length || 0,
+        itemsSummary: o.items?.map((it: any) => `${it.productName} (${it.size}) × ${it.quantity}`).join(", ") || "Ceylon Tea items",
+      };
 
       if (targetKey && customerMap.has(targetKey)) {
         const entry = customerMap.get(targetKey)!;
@@ -128,6 +187,16 @@ export async function GET() {
           entry.allOrderNumbers.push(o.orderNumber);
           entry.orderCount += 1;
           entry.totalSpent += o.grandTotal || 0;
+          if (!entry.ordersList) entry.ordersList = [];
+          entry.ordersList.push(orderItemSummary);
+
+          // Update timeline dates
+          if (new Date(o.createdAt).getTime() > new Date(entry.lastOrderDate).getTime()) {
+            entry.lastOrderDate = o.createdAt.toISOString();
+          }
+          if (new Date(o.createdAt).getTime() < new Date(entry.firstOrderDate).getTime()) {
+            entry.firstOrderDate = o.createdAt.toISOString();
+          }
         }
 
         // Fill missing address/contact details from latest order
@@ -136,25 +205,32 @@ export async function GET() {
         if (!entry.district && o.district) entry.district = o.district;
         if (!entry.postalCode && o.postalCode) entry.postalCode = o.postalCode;
         if (!entry.phone && o.customerPhone) entry.phone = o.customerPhone;
-        if (!entry.email && o.customerEmail) entry.email = o.customerEmail;
+        if (!entry.email && cleanEmail) entry.email = cleanEmail;
         if (!entry.notes && o.deliveryNotes) entry.notes = o.deliveryNotes;
+        if (repName && !entry.salesRepName) entry.salesRepName = repName;
 
         // Upgrade channel tag if shop order
         if (isShopOrder && entry.channel !== "REGISTERED") {
           entry.channel = "SHOP";
         }
-      } else {
-        // Create new Customer Profile for guest / shop / WhatsApp customer
-        const newKey =
-          cleanPhone && cleanPhone.length >= 7
-            ? `phone_${cleanPhone}`
-            : `name_${cleanName || "guest"}_${o.id}`;
 
-        customerMap.set(newKey, {
+        // Register any newly discovered identifiers for this customer
+        if (cleanPhone && !phoneToKey.has(cleanPhone)) phoneToKey.set(cleanPhone, targetKey);
+        if (cleanName && cleanName.length >= 3 && !nameToKey.has(cleanName)) nameToKey.set(cleanName, targetKey);
+        if (cleanEmail && !emailToKey.has(cleanEmail)) emailToKey.set(cleanEmail, targetKey);
+      } else {
+        // Create new single Customer Profile for guest / shop / WhatsApp customer
+        const newKey = cleanPhone
+          ? `phone_${cleanPhone}`
+          : cleanName
+          ? `name_${cleanName}`
+          : `order_${o.id}`;
+
+        const newProfile = {
           id: newKey,
           userId: o.customerId || null,
           name: o.customerName || "Customer",
-          email: o.customerEmail || "",
+          email: cleanEmail,
           phone: o.customerPhone || "",
           address: o.shippingAddress || "",
           city: o.city || "",
@@ -167,13 +243,18 @@ export async function GET() {
           lastOrderDate: o.createdAt.toISOString(),
           isActive: true,
           notes: o.deliveryNotes || "",
+          salesRepName: repName,
           allOrderIds: [o.id],
           allOrderNumbers: [o.orderNumber],
-        });
+          ordersList: [orderItemSummary],
+        };
 
-        if (cleanPhone && cleanPhone.length >= 7) {
-          phoneToUserKey.set(cleanPhone, newKey);
-        }
+        customerMap.set(newKey, newProfile);
+
+        if (o.customerId) userIdToKey.set(o.customerId, newKey);
+        if (cleanPhone) phoneToKey.set(cleanPhone, newKey);
+        if (cleanName && cleanName.length >= 3) nameToKey.set(cleanName, newKey);
+        if (cleanEmail) emailToKey.set(cleanEmail, newKey);
       }
     }
 

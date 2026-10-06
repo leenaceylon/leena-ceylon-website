@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentAdmin } from "@/lib/auth";
 
+function extractSalesRepName(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:SALES_REP|SALES REP|REP):\s*([^|]+)/i);
+  if (match) return match[1].trim();
+  const byMatch = notes.match(/by\s+([A-Za-z0-9._ -]+)\s*\((?:SALES_REP|ADMIN|MANAGER)\)/i);
+  if (byMatch) return byMatch[1].trim();
+  return null;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -22,9 +31,22 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    const isShopOrder =
+      order.orderNumber.startsWith("SHOP-") ||
+      order.paymentMethod === "CREDIT_SHOP" ||
+      Boolean(order.deliveryNotes && (order.deliveryNotes.includes("SHOP:") || order.deliveryNotes.includes("SALES_REP:")));
+
+    const salesRepName = extractSalesRepName(order.deliveryNotes);
+    const enrichedOrder = {
+      ...order,
+      isShopOrder,
+      salesRepName,
+      orderStatus: isShopOrder && order.orderStatus === "CONFIRMED" ? "DELIVERED" : order.orderStatus,
+    };
+
     // If admin, full access
     if (admin) {
-      return NextResponse.json({ success: true, order });
+      return NextResponse.json({ success: true, order: enrichedOrder });
     }
 
     // If customer, verify phone if provided or allow basic tracking info

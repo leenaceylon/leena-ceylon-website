@@ -111,6 +111,16 @@ function parseCombinedPaymentDetails(notes?: string | null) {
   };
 }
 
+// Helper to extract sales rep name from delivery notes
+function extractSalesRepName(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:SALES_REP|SALES REP|REP):\s*([^|]+)/i);
+  if (match) return match[1].trim();
+  const byMatch = notes.match(/by\s+([A-Za-z0-9._ -]+)\s*\((?:SALES_REP|ADMIN|MANAGER)\)/i);
+  if (byMatch) return byMatch[1].trim();
+  return null;
+}
+
 export default function ShopBillingPage() {
   const [activeTab, setActiveTab] = useState<"billing" | "products" | "history">("billing");
   const [catalogSearch, setCatalogSearch] = useState("");
@@ -2661,6 +2671,12 @@ export default function ShopBillingPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
+                      <span className="font-bold">SALES REP:</span>
+                      <span className="font-bold uppercase truncate max-w-[190px]">
+                        {targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || "Rep In-Charge"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
                       <span>CUSTOMER:</span>
                       <span className="font-bold uppercase truncate max-w-[190px]">
                         {targetOrder.customerName}
@@ -2869,6 +2885,9 @@ export default function ShopBillingPage() {
                       </p>
                       <p className="text-tea-muted text-[11px]">
                         Date: {new Date(targetOrder.createdAt || Date.now()).toLocaleDateString("en-GB")}
+                      </p>
+                      <p className="text-tea-dark font-medium text-[11px] pt-0.5">
+                        Sales Rep: <strong className="text-tea-forest">{targetOrder.salesRepName || extractSalesRepName(targetOrder.deliveryNotes) || "Direct Sales Rep"}</strong>
                       </p>
                     </div>
                   </div>

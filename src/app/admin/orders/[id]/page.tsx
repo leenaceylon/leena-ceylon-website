@@ -19,6 +19,8 @@ import {
   Edit3,
   Save,
   X,
+  Store,
+  Printer,
 } from "lucide-react";
 import {
   getWhatsAppUrl,
@@ -218,23 +220,46 @@ export default function AdminOrderDetailPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleSendConfirmation}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
-          >
-            <MessageSquare className="w-4 h-4 fill-current" />
-            Send WhatsApp Confirmation
-          </button>
+          {order.isShopOrder ? (
+            <>
+              <Link
+                href="/admin/shop-billing"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Shop POS / Print Bill</span>
+              </Link>
 
-          <button
-            type="button"
-            onClick={handleSendDispatch}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border text-xs font-semibold uppercase tracking-wider transition shadow-sm"
-          >
-            <Truck className="w-4 h-4 text-tea-leaf" />
-            Dispatch Update
-          </button>
+              <button
+                type="button"
+                onClick={handleSendConfirmation}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
+              >
+                <MessageSquare className="w-4 h-4 fill-current" />
+                <span>WhatsApp Receipt</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleSendConfirmation}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold uppercase tracking-wider transition shadow-sm"
+              >
+                <MessageSquare className="w-4 h-4 fill-current" />
+                <span>Send WhatsApp Confirmation</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendDispatch}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border text-xs font-semibold uppercase tracking-wider transition shadow-sm"
+              >
+                <Truck className="w-4 h-4 text-tea-leaf" />
+                <span>Dispatch Update</span>
+              </button>
+            </>
+          )}
 
           <button
             type="button"
@@ -243,7 +268,7 @@ export default function AdminOrderDetailPage() {
             title="Permanently delete this order"
           >
             <Trash2 className="w-4 h-4 text-rose-600" />
-            Delete Order
+            <span>Delete Order</span>
           </button>
         </div>
       </div>
@@ -257,25 +282,54 @@ export default function AdminOrderDetailPage() {
 
       {/* Status Management Bar */}
       <div className="bg-white p-6 rounded-2xl border border-tea-border shadow-subtle flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-bold text-tea-dark block">Fulfillment Stage:</span>
-          <span className="text-xs text-tea-muted">
-            Update stage to keep the customer tracking progress indicator current.
-          </span>
-        </div>
+        {order.isShopOrder ? (
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1.5">
+                <Store className="w-3.5 h-3.5" />
+                Sales Rep Ground Bill
+              </span>
+              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                DELIVERED (Direct Store Delivery)
+              </span>
+            </div>
+            <p className="text-xs text-tea-muted mt-1">
+              Sales Representative: <strong className="text-tea-dark font-semibold">{order.salesRepName || "Assigned Sales Rep"}</strong> • Direct ground physical store delivery (no online confirmation or courier packing required).
+            </p>
+          </div>
+        ) : (
+          <div>
+            <span className="text-xs font-bold text-tea-dark block">Fulfillment Stage:</span>
+            <span className="text-xs text-tea-muted">
+              Update stage to keep the customer tracking progress indicator current.
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
-          <select
-            value={order.orderStatus}
-            onChange={(e) => handleUpdate({ orderStatus: e.target.value })}
-            className="px-4 py-2 rounded-xl font-bold text-xs border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
-          >
-            {ORDER_STEPS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          {!order.isShopOrder ? (
+            <select
+              value={order.orderStatus}
+              onChange={(e) => handleUpdate({ orderStatus: e.target.value })}
+              className="px-4 py-2 rounded-xl font-bold text-xs border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+            >
+              {ORDER_STEPS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <select
+              value={order.orderStatus}
+              onChange={(e) => handleUpdate({ orderStatus: e.target.value })}
+              className="px-3.5 py-2 rounded-xl font-bold text-xs border border-emerald-300 bg-emerald-50 text-emerald-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            >
+              <option value="DELIVERED">Status: DELIVERED (Shop Received)</option>
+              <option value="CANCELLED">Status: CANCELLED (Void Bill)</option>
+            </select>
+          )}
 
           <select
             value={order.paymentStatus}
@@ -283,11 +337,14 @@ export default function AdminOrderDetailPage() {
             className={`px-3 py-2 rounded-xl font-bold text-xs border ${
               order.paymentStatus === "PAID"
                 ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                : "bg-amber-50 text-amber-800 border-amber-300"
+                : order.paymentStatus === "PARTIAL"
+                ? "bg-amber-50 text-amber-900 border-amber-300"
+                : "bg-rose-50 text-rose-800 border-rose-300"
             }`}
           >
-            <option value="PENDING">Payment: PENDING</option>
-            <option value="PAID">Payment: PAID</option>
+            <option value="PENDING">Payment: PENDING (Credit)</option>
+            <option value="PARTIAL">Payment: PARTIAL (Advance/Half)</option>
+            <option value="PAID">Payment: PAID IN FULL</option>
             <option value="FAILED">Payment: FAILED</option>
           </select>
         </div>
@@ -385,6 +442,12 @@ export default function AdminOrderDetailPage() {
               {order.deliveryNotes && (
                 <div className="mt-2 p-2.5 rounded-lg bg-white border border-tea-border text-[11px] text-tea-muted italic">
                   Note: "{order.deliveryNotes}"
+                </div>
+              )}
+              {order.isShopOrder && (
+                <div className="mt-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-center justify-between">
+                  <span className="font-semibold text-amber-900">Assigned Sales Rep:</span>
+                  <strong className="font-bold text-amber-950">{order.salesRepName || "Sales Rep"}</strong>
                 </div>
               )}
             </div>

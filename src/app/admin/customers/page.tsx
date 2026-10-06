@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Search,
   Users,
@@ -20,8 +21,28 @@ import {
   ShieldCheck,
   AlertCircle,
   FileText,
+  Eye,
+  Calendar,
+  ShoppingBag,
+  ArrowRight,
+  User,
+  Clock,
+  CreditCard,
 } from "lucide-react";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
+
+interface CustomerOrderSummary {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  grandTotal: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  orderStatus: string;
+  salesRepName?: string | null;
+  itemsCount: number;
+  itemsSummary?: string;
+}
 
 interface CustomerRecord {
   id: string;
@@ -40,8 +61,10 @@ interface CustomerRecord {
   lastOrderDate: string;
   isActive: boolean;
   notes: string;
+  salesRepName?: string | null;
   allOrderIds: string[];
   allOrderNumbers: string[];
+  ordersList?: CustomerOrderSummary[];
 }
 
 interface StatsSummary {
@@ -59,6 +82,9 @@ export default function AdminCustomersPage() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState<"ALL" | "SHOP" | "ONLINE" | "REGISTERED">("ALL");
   const [notice, setNotice] = useState<string | null>(null);
+
+  // View Customer Profile Modal
+  const [viewingCustomer, setViewingCustomer] = useState<CustomerRecord | null>(null);
 
   // Edit Modal State
   const [editingCustomer, setEditingCustomer] = useState<CustomerRecord | null>(null);
@@ -166,6 +192,19 @@ export default function AdminCustomersPage() {
         setNotice(data.message || "Customer details updated successfully!");
         setTimeout(() => setNotice(null), 5000);
         setEditingCustomer(null);
+        if (viewingCustomer && viewingCustomer.id === editingCustomer.id) {
+          setViewingCustomer({
+            ...viewingCustomer,
+            name: editForm.name.trim(),
+            phone: editForm.phone.trim(),
+            email: editForm.email.trim(),
+            address: editForm.shippingAddress.trim(),
+            city: editForm.city.trim(),
+            district: editForm.district.trim(),
+            postalCode: editForm.postalCode.trim(),
+            notes: editForm.notes.trim(),
+          });
+        }
         loadCustomers();
       } else {
         alert(data.error || "Failed to update customer details.");
@@ -192,6 +231,7 @@ export default function AdminCustomersPage() {
       (c.district && c.district.toLowerCase().includes(term)) ||
       (c.address && c.address.toLowerCase().includes(term)) ||
       (c.notes && c.notes.toLowerCase().includes(term)) ||
+      (c.salesRepName && c.salesRepName.toLowerCase().includes(term)) ||
       c.allOrderNumbers.some((num) => num.toLowerCase().includes(term));
 
     return matchesChannel && matchesSearch;
@@ -209,7 +249,7 @@ export default function AdminCustomersPage() {
             Customer & Retail Store Management
           </h1>
           <p className="text-xs text-tea-muted mt-0.5">
-            Manage Retail Shops (`SHOP-...`), Online & WhatsApp Orders (`LC-...`), and Registered Accounts. Edit details with full synchronization across past orders.
+            Consolidated profiles for Retail Shops (`SHOP-...`), Online & WhatsApp Clients (`LC-...`), and Registered Web Users.
           </p>
         </div>
         <button
@@ -240,7 +280,7 @@ export default function AdminCustomersPage() {
           <div className="font-serif text-2xl font-bold text-tea-dark mt-1">
             {stats ? stats.totalCustomers.toLocaleString() : customers.length}
           </div>
-          <div className="text-[10px] text-tea-muted mt-0.5">Combined client base</div>
+          <div className="text-[10px] text-tea-muted mt-0.5">Unique client profiles</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-tea-border shadow-subtle">
@@ -273,7 +313,7 @@ export default function AdminCustomersPage() {
           <div className="font-serif text-2xl font-bold text-purple-900 mt-1">
             {stats ? stats.totalRegistered.toLocaleString() : customers.filter((c) => c.channel === "REGISTERED").length}
           </div>
-          <div className="text-[10px] text-tea-muted mt-0.5">Web connoisseurs</div>
+          <div className="text-[10px] text-tea-muted mt-0.5">Web account holders</div>
         </div>
 
         <div className="col-span-2 lg:col-span-1 bg-gradient-to-br from-tea-surface to-tea-surface/40 p-4 rounded-2xl border border-tea-border shadow-subtle">
@@ -345,7 +385,7 @@ export default function AdminCustomersPage() {
           </div>
 
           <div className="text-xs text-tea-muted font-medium">
-            Showing <strong className="text-tea-dark">{filtered.length}</strong> customer{filtered.length === 1 ? "" : "s"}
+            Showing <strong className="text-tea-dark">{filtered.length}</strong> unique customer profile{filtered.length === 1 ? "" : "s"}
           </div>
         </div>
 
@@ -353,7 +393,7 @@ export default function AdminCustomersPage() {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search by customer name, store name, phone, town / city, district, address, or order #..."
+            placeholder="Search by customer name, store name, phone, town / city, district, rep name, address, or order #..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
@@ -376,7 +416,7 @@ export default function AdminCustomersPage() {
         {loading ? (
           <div className="p-16 text-center text-xs text-tea-muted flex flex-col items-center justify-center gap-2">
             <RefreshCw className="w-5 h-5 text-tea-leaf animate-spin" />
-            <span>Loading customer directory and order history...</span>
+            <span>Loading unique customer directory and order history...</span>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center text-xs text-tea-muted">
@@ -389,8 +429,8 @@ export default function AdminCustomersPage() {
                 <tr>
                   <th className="py-3.5 px-4">Customer / Shop Name</th>
                   <th className="py-3.5 px-4">Contact / WhatsApp</th>
-                  <th className="py-3.5 px-4">Location / Address</th>
-                  <th className="py-3.5 px-4">Orders & Lifetime Spend</th>
+                  <th className="py-3.5 px-4">Location / Route</th>
+                  <th className="py-3.5 px-4">Total Orders & Value</th>
                   <th className="py-3.5 px-4">Last Activity</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -418,6 +458,17 @@ export default function AdminCustomersPage() {
                           </span>
                         )}
                       </div>
+
+                      {/* Sales Rep Attribution */}
+                      {c.salesRepName && (
+                        <div className="mt-1">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 inline-flex items-center gap-1">
+                            <span>Sales Rep:</span>
+                            <span className="font-extrabold">{c.salesRepName}</span>
+                          </span>
+                        </div>
+                      )}
+
                       {c.email && (
                         <div className="text-[11px] text-tea-muted flex items-center gap-1 mt-0.5">
                           <Mail className="w-3 h-3 shrink-0" />
@@ -425,7 +476,7 @@ export default function AdminCustomersPage() {
                         </div>
                       )}
                       {c.notes && (
-                        <div className="text-[10px] text-tea-muted italic mt-0.5 max-w-xs truncate">
+                        <div className="text-[10px] text-tea-muted italic mt-0.5 max-w-xs truncate" title={c.notes}>
                           "{c.notes}"
                         </div>
                       )}
@@ -488,20 +539,25 @@ export default function AdminCustomersPage() {
                       )}
                     </td>
 
-                    {/* Orders & Spending */}
+                    {/* Orders & Lifetime Value */}
                     <td className="py-3.5 px-4">
                       <div className="font-serif font-bold text-sm text-tea-forest">
                         Rs. {c.totalSpent.toLocaleString()}
                       </div>
-                      <div className="text-[11px] text-tea-muted font-medium">
-                        {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] font-bold text-tea-dark">
+                          {c.orderCount} order{c.orderCount === 1 ? "" : "s"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setViewingCustomer(c)}
+                          className="inline-flex items-center gap-0.5 text-[10px] text-tea-leaf hover:text-tea-dark font-bold underline"
+                          title="View complete order history for this customer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          View History
+                        </button>
                       </div>
-                      {c.allOrderNumbers.length > 0 && (
-                        <div className="text-[10px] text-tea-muted truncate max-w-[150px] font-mono mt-0.5" title={c.allOrderNumbers.join(", ")}>
-                          {c.allOrderNumbers.slice(0, 2).join(", ")}
-                          {c.allOrderNumbers.length > 2 ? ` +${c.allOrderNumbers.length - 2}` : ""}
-                        </div>
-                      )}
                     </td>
 
                     {/* Date */}
@@ -515,8 +571,18 @@ export default function AdminCustomersPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
+                          onClick={() => setViewingCustomer(c)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-tea-surface text-tea-dark border border-tea-border transition shadow-xs"
+                          title="View Full Profile and Order History"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-tea-leaf" />
+                          <span>View Profile</span>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => openEditModal(c)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border transition shadow-sm"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border transition shadow-xs"
                           title="Edit Customer Details and Sync Orders"
                         >
                           <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
@@ -527,7 +593,7 @@ export default function AdminCustomersPage() {
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(c)}
-                            className={`px-2.5 py-1.5 rounded-xl text-[11px] font-semibold border transition shadow-sm ${
+                            className={`px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition shadow-xs ${
                               c.isActive
                                 ? "border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100"
                                 : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
@@ -546,7 +612,262 @@ export default function AdminCustomersPage() {
         )}
       </div>
 
-      {/* Edit Customer Details & Synchronize Past Orders Modal */}
+      {/* 1. VIEW CUSTOMER PROFILE & ORDER HISTORY MODAL */}
+      {viewingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 sm:p-8 border border-tea-border shadow-2xl space-y-6 animate-scale-up my-8">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-tea-border/60 pb-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="font-serif text-xl font-bold text-tea-dark">
+                    {viewingCustomer.name}
+                  </h3>
+                  {viewingCustomer.channel === "SHOP" && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                      🏬 Retail Shop
+                    </span>
+                  )}
+                  {viewingCustomer.channel === "ONLINE" && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      📱 Online / WhatsApp
+                    </span>
+                  )}
+                  {viewingCustomer.channel === "REGISTERED" && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-900 border border-purple-300">
+                      👤 Registered Account
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-tea-muted mt-1">
+                  Customer Profile Summary & All Order History ({viewingCustomer.orderCount} total orders)
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingCustomer(null)}
+                className="p-1.5 rounded-xl border border-tea-border text-tea-muted hover:bg-tea-surface transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Profile Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {/* Contact Card */}
+              <div className="p-4 rounded-2xl bg-tea-surface/60 border border-tea-border/80 space-y-2">
+                <span className="font-bold text-tea-dark uppercase tracking-wider block text-[11px] text-tea-forest">
+                  Contact Information
+                </span>
+                <div className="space-y-1 text-tea-dark">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-tea-leaf" />
+                    <span className="font-mono font-bold">{viewingCustomer.phone || "No phone"}</span>
+                  </div>
+                  {viewingCustomer.phone && (
+                    <a
+                      href={getWhatsAppUrl(viewingCustomer.phone, `Hello ${viewingCustomer.name}, greetings from Leena Ceylon!`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[10px] border border-emerald-300 transition mt-1"
+                    >
+                      <MessageSquare className="w-3 h-3 fill-current" />
+                      Chat on WhatsApp
+                    </a>
+                  )}
+                  {viewingCustomer.email && (
+                    <div className="flex items-center gap-2 pt-1 text-tea-muted">
+                      <Mail className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{viewingCustomer.email}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Location Card */}
+              <div className="p-4 rounded-2xl bg-tea-surface/60 border border-tea-border/80 space-y-2">
+                <span className="font-bold text-tea-dark uppercase tracking-wider block text-[11px] text-tea-forest">
+                  Location & Route
+                </span>
+                <div className="space-y-1 text-tea-dark">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <MapPin className="w-3.5 h-3.5 text-tea-leaf shrink-0" />
+                    <span>{viewingCustomer.city || "Direct Route"}</span>
+                    {viewingCustomer.district && <span className="font-normal text-tea-muted">, {viewingCustomer.district}</span>}
+                  </div>
+                  <p className="text-tea-muted text-[11px] leading-relaxed">
+                    {viewingCustomer.address || "Direct store address not specified"}
+                  </p>
+                  {viewingCustomer.salesRepName && (
+                    <div className="pt-1.5 border-t border-tea-border/50 text-[11px]">
+                      <span className="text-tea-muted">Assigned Rep:</span>{" "}
+                      <strong className="text-amber-900">{viewingCustomer.salesRepName}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Financial KPI Card */}
+              <div className="p-4 rounded-2xl bg-tea-surface/60 border border-tea-border/80 space-y-2">
+                <span className="font-bold text-tea-dark uppercase tracking-wider block text-[11px] text-tea-forest">
+                  Customer Value
+                </span>
+                <div className="space-y-1">
+                  <div className="text-xl font-serif font-bold text-tea-forest">
+                    Rs. {viewingCustomer.totalSpent.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-tea-muted">
+                    Total: <strong>{viewingCustomer.orderCount} order{viewingCustomer.orderCount === 1 ? "" : "s"}</strong>
+                  </div>
+                  <div className="text-[10px] text-tea-muted pt-1">
+                    First Order: {new Date(viewingCustomer.firstOrderDate).toLocaleDateString()}<br />
+                    Latest: {new Date(viewingCustomer.lastOrderDate).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rep / Owner Notes if available */}
+            {viewingCustomer.notes && (
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs">
+                <span className="font-bold text-amber-950 uppercase tracking-wider block text-[10px] mb-0.5">
+                  Customer & Route Notes:
+                </span>
+                <p className="text-amber-900 italic">"{viewingCustomer.notes}"</p>
+              </div>
+            )}
+
+            {/* Itemized Order History Table */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="font-serif text-sm font-bold text-tea-dark">
+                  All Orders Placed by {viewingCustomer.name} ({viewingCustomer.ordersList?.length || viewingCustomer.orderCount})
+                </h4>
+                <span className="text-[11px] text-tea-muted">
+                  Ground shop bills & online orders
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-tea-border overflow-hidden">
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-tea-surface border-b border-tea-border text-tea-muted sticky top-0 font-semibold">
+                      <tr>
+                        <th className="py-2.5 px-3">Order Number</th>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Channel / Rep</th>
+                        <th className="py-2.5 px-3">Total Amount</th>
+                        <th className="py-2.5 px-3">Payment</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3 text-right">View</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-tea-border/60">
+                      {(viewingCustomer.ordersList && viewingCustomer.ordersList.length > 0
+                        ? viewingCustomer.ordersList
+                        : viewingCustomer.allOrderNumbers.map((num, i) => ({
+                            id: viewingCustomer.allOrderIds[i] || num,
+                            orderNumber: num,
+                            createdAt: viewingCustomer.lastOrderDate,
+                            grandTotal: 0,
+                            paymentMethod: "CASH_ON_DELIVERY",
+                            paymentStatus: "PAID",
+                            orderStatus: viewingCustomer.channel === "SHOP" ? "DELIVERED" : "CONFIRMED",
+                            salesRepName: viewingCustomer.salesRepName,
+                            itemsCount: 1,
+                            itemsSummary: "Ceylon Tea Order",
+                          }))
+                      ).map((ord) => (
+                        <tr key={ord.id} className="hover:bg-tea-surface/40 transition">
+                          <td className="py-2.5 px-3 font-mono font-bold text-tea-dark">
+                            #{ord.orderNumber}
+                          </td>
+                          <td className="py-2.5 px-3 text-tea-muted text-[11px]">
+                            {new Date(ord.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            {ord.orderNumber.startsWith("SHOP-") ? (
+                              <div className="space-y-0.5">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  🏬 Rep Bill
+                                </span>
+                                {ord.salesRepName && (
+                                  <div className="text-[10px] text-tea-dark font-medium">
+                                    {ord.salesRepName}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                📱 Online
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 font-serif font-bold text-tea-forest">
+                            {ord.grandTotal > 0 ? `Rs. ${ord.grandTotal.toLocaleString()}` : "—"}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                ord.paymentStatus === "PAID"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : ord.paymentStatus === "PARTIAL"
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                  : "bg-rose-100 text-rose-800"
+                              }`}
+                            >
+                              {ord.paymentStatus}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-bold text-[11px] text-tea-dark">
+                            {ord.orderStatus}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <Link
+                              href={`/admin/orders/${ord.id}`}
+                              className="inline-flex items-center gap-1 text-[11px] text-tea-leaf font-bold hover:underline"
+                            >
+                              <span>Details</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-tea-border/60">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewingCustomer;
+                  setViewingCustomer(null);
+                  openEditModal(target);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tea-surface hover:bg-tea-bg text-tea-forest border border-tea-border font-semibold text-xs transition"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-tea-leaf" />
+                <span>Edit Details & Sync Orders</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewingCustomer(null)}
+                className="px-5 py-2 rounded-xl bg-tea-dark hover:bg-tea-dark/90 text-white font-semibold text-xs transition"
+              >
+                Close Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. EDIT CUSTOMER DETAILS & SYNCHRONIZE PAST ORDERS MODAL */}
       {editingCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 border border-tea-border shadow-2xl space-y-5 animate-scale-up my-8">

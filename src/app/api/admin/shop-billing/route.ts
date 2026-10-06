@@ -43,6 +43,16 @@ function parseCombinedPaymentDetails(notes?: string | null) {
   };
 }
 
+// Helper to extract sales rep name from delivery notes
+function extractSalesRepName(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:SALES_REP|SALES REP|REP):\s*([^|]+)/i);
+  if (match) return match[1].trim();
+  const byMatch = notes.match(/by\s+([A-Za-z0-9._ -]+)\s*\((?:SALES_REP|ADMIN|MANAGER)\)/i);
+  if (byMatch) return byMatch[1].trim();
+  return null;
+}
+
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
@@ -104,6 +114,7 @@ export async function GET() {
       shop.totalBillsCount += 1;
       const { paidAmount, dueAmount, isPartial } = parsePaymentDetails(o);
       const combinedDetails = parseCombinedPaymentDetails(o.deliveryNotes);
+      const salesRepName = extractSalesRepName(o.deliveryNotes);
 
       shop.allBills.push({
         id: o.id,
@@ -114,6 +125,7 @@ export async function GET() {
         dueAmount,
         isPartial,
         combinedDetails,
+        salesRepName,
         paymentStatus: o.paymentStatus,
         paymentMethod: o.paymentMethod,
         orderStatus: o.orderStatus,
@@ -135,6 +147,7 @@ export async function GET() {
             dueAmount,
             isPartial,
             combinedDetails,
+            salesRepName,
             paymentMethod: o.paymentMethod,
             paymentStatus: o.paymentStatus,
             deliveryNotes: o.deliveryNotes,
@@ -154,6 +167,7 @@ export async function GET() {
         paidAmount,
         dueAmount,
         isPartial,
+        salesRepName: extractSalesRepName(o.deliveryNotes),
         combinedDetails: parseCombinedPaymentDetails(o.deliveryNotes),
       };
     });
@@ -357,8 +371,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Save in Order model with shop metadata
-    const shopMetadata = `SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${combinedTag ? `${combinedTag} | ` : ""}${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
+    const repDisplayName = body.salesRepName || admin.name || "Sales Rep";
+    // Save in Order model with shop metadata including Sales Rep attribution
+    const shopMetadata = `SALES_REP: ${repDisplayName} | REP_ROLE: ${admin.role} | SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${combinedTag ? `${combinedTag} | ` : ""}${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
 
     const order = await prisma.order.create({
       data: {
@@ -377,7 +392,7 @@ export async function POST(req: NextRequest) {
         grandTotal: finalGrandTotal,
         paymentMethod: actualPaymentStatus === "PAID" && paymentMethod === "CREDIT_SHOP" ? "CASH_ON_DELIVERY" : paymentMethod,
         paymentStatus: actualPaymentStatus,
-        orderStatus: "CONFIRMED", // Ground shop orders are immediately confirmed
+        orderStatus: "DELIVERED", // Ground shop orders are delivered directly on-site by sales reps (No online confirmation/packing/dispatch needed)
         items: {
           create: orderItemsData,
         },
