@@ -4,6 +4,28 @@ import { getCurrentAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// Helper to calculate paid, due, and partial status
+function parsePaymentDetails(o: any) {
+  const grandTotal = Number(o.grandTotal) || 0;
+  if (o.paymentStatus === "PAID") {
+    return { paidAmount: grandTotal, dueAmount: 0, isPartial: false };
+  }
+  if (o.paymentStatus === "PARTIAL") {
+    let paid = 0;
+    let due = grandTotal;
+    if (o.deliveryNotes) {
+      const paidMatch = o.deliveryNotes.match(/paid=([0-9.]+)/i);
+      const dueMatch = o.deliveryNotes.match(/due=([0-9.]+)/i);
+      if (paidMatch) paid = parseFloat(paidMatch[1]) || 0;
+      if (dueMatch) due = parseFloat(dueMatch[1]) || Math.max(0, grandTotal - paid);
+      else due = Math.max(0, grandTotal - paid);
+    }
+    return { paidAmount: Math.min(grandTotal, paid), dueAmount: Math.max(0, due), isPartial: true };
+  }
+  // PENDING, CREDIT_SHOP, etc.
+  return { paidAmount: 0, dueAmount: grandTotal, isPartial: false };
+}
+
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
@@ -63,29 +85,39 @@ export async function GET() {
 
       const shop = uniqueShopsMap.get(key);
       shop.totalBillsCount += 1;
+      const { paidAmount, dueAmount, isPartial } = parsePaymentDetails(o);
+
       shop.allBills.push({
         id: o.id,
         orderNumber: o.orderNumber,
         createdAt: o.createdAt,
         grandTotal: o.grandTotal,
+        paidAmount,
+        dueAmount,
+        isPartial,
         paymentStatus: o.paymentStatus,
         paymentMethod: o.paymentMethod,
         orderStatus: o.orderStatus,
+        deliveryNotes: o.deliveryNotes,
         itemsCount: o.items?.length || 0,
       });
 
       if (o.orderStatus !== "CANCELLED") {
         shop.totalSalesAmount += o.grandTotal;
-        if (o.paymentStatus === "PENDING") {
-          shop.pendingBalance += o.grandTotal;
+        if (dueAmount > 0) {
+          shop.pendingBalance += dueAmount;
           shop.pendingBillsCount += 1;
           shop.pendingBills.push({
             id: o.id,
             orderNumber: o.orderNumber,
             createdAt: o.createdAt,
             grandTotal: o.grandTotal,
+            paidAmount,
+            dueAmount,
+            isPartial,
             paymentMethod: o.paymentMethod,
             paymentStatus: o.paymentStatus,
+            deliveryNotes: o.deliveryNotes,
           });
         }
       }
@@ -95,10 +127,20 @@ export async function GET() {
       (a, b) => b.totalBillsCount - a.totalBillsCount
     );
 
+    const enrichedShopOrders = allShopOrders.map((o) => {
+      const { paidAmount, dueAmount, isPartial } = parsePaymentDetails(o);
+      return {
+        ...o,
+        paidAmount,
+        dueAmount,
+        isPartial,
+      };
+    });
+
     return NextResponse.json({
       success: true,
       products,
-      recentShopOrders: allShopOrders,
+      recentShopOrders: enrichedShopOrders,
       knownShops,
     });
   } catch (err: any) {
@@ -131,6 +173,7 @@ export async function POST(req: NextRequest) {
       grandTotal,
       paymentMethod = "CASH_ON_DELIVERY",
       paymentStatus = "PAID",
+      paidAmount = 0,
       notes,
     } = body;
 
@@ -181,8 +224,20 @@ export async function POST(req: NextRequest) {
       computedSubtotal - Number(discount || 0) + Number(deliveryCharge || 0)
     );
 
+    // Compute payment metadata tag
+    let paymentTag = "";
+    if (paymentStatus === "PARTIAL") {
+      const numPaid = Math.min(finalGrandTotal, Math.max(0, Number(paidAmount || 0)));
+      const numDue = Math.max(0, finalGrandTotal - numPaid);
+      paymentTag = `[PARTIAL_PAYMENT: paid=${numPaid}, due=${numDue}]`;
+    } else if (paymentStatus === "PAID") {
+      paymentTag = `[FULL_PAYMENT_SETTLED: paid=${finalGrandTotal}, due=0]`;
+    } else {
+      paymentTag = `[CREDIT_MARKED_PENDING: paid=0, due=${finalGrandTotal}]`;
+    }
+
     // Save in Order model with shop metadata
-    const shopMetadata = `SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"}${notes ? ` | NOTE: ${notes}` : ""}`;
+    const shopMetadata = `SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
 
     const order = await prisma.order.create({
       data: {
@@ -263,7 +318,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { action, orderId, paymentStatus, paymentMethod, paymentNote, cancelReason } = body;
+    const { action, orderId, paymentStatus, paymentMethod, paidAmount, paymentNote, cancelReason } = body;
 
     if (!orderId) {
       return NextResponse.json(
@@ -286,38 +341,64 @@ export async function PATCH(req: NextRequest) {
 
     // 1. UPDATE PAYMENT STATUS & METHOD
     if (action === "UPDATE_PAYMENT") {
-      if (!paymentStatus && !paymentMethod) {
+      if (!paymentStatus && !paymentMethod && paidAmount === undefined) {
         return NextResponse.json(
-          { error: "Please specify payment status or method to update." },
+          { error: "Please specify payment status, method, or paid amount to update." },
           { status: 400 }
         );
       }
 
       const timestamp = new Date().toLocaleString("en-GB");
-      let updatedNotes = order.deliveryNotes || "";
+      const updatedStatus = paymentStatus || order.paymentStatus;
+      const updatedMethod = paymentMethod || order.paymentMethod;
+
+      let paymentTag = "";
+      if (updatedStatus === "PARTIAL") {
+        const numPaid = Math.min(order.grandTotal, Math.max(0, Number(paidAmount ?? 0)));
+        const numDue = Math.max(0, order.grandTotal - numPaid);
+        paymentTag = `[PARTIAL_PAYMENT: paid=${numPaid}, due=${numDue}]`;
+      } else if (updatedStatus === "PAID") {
+        paymentTag = `[FULL_PAYMENT_SETTLED: paid=${order.grandTotal}, due=0]`;
+      } else if (updatedStatus === "PENDING") {
+        paymentTag = `[CREDIT_MARKED_PENDING: paid=0, due=${order.grandTotal}]`;
+      }
+
+      // Clean previous payment tags to keep notes tidy
+      let baseNotes = (order.deliveryNotes || "")
+        .replace(/\[PARTIAL_PAYMENT:.*?\]/g, "")
+        .replace(/\[FULL_PAYMENT_SETTLED:.*?\]/g, "")
+        .replace(/\[CREDIT_MARKED_PENDING:.*?\]/g, "")
+        .trim();
+
+      let updatedNotes = `${baseNotes}${paymentTag ? ` | ${paymentTag}` : ""}`;
       if (paymentNote && paymentNote.trim()) {
-        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name} (${admin.role})]: Status=${paymentStatus || order.paymentStatus}, Method=${paymentMethod || order.paymentMethod} - Note: ${paymentNote.trim()}`;
+        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name} (${admin.role})]: Status=${updatedStatus}, Method=${updatedMethod} - Note: ${paymentNote.trim()}`;
       } else {
-        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name}]: Status=${paymentStatus || order.paymentStatus}, Method=${paymentMethod || order.paymentMethod}`;
+        updatedNotes += ` | [Payment Update ${timestamp} by ${admin.name}]: Status=${updatedStatus}, Method=${updatedMethod}`;
       }
 
       const updatedOrder = await prisma.order.update({
         where: { id: orderId },
         data: {
-          paymentStatus: paymentStatus || order.paymentStatus,
-          paymentMethod: paymentMethod || order.paymentMethod,
+          paymentStatus: updatedStatus,
+          paymentMethod: updatedMethod,
           deliveryNotes: updatedNotes,
         },
         include: { items: true },
       });
 
       // Log activity
+      const activityDetail =
+        updatedStatus === "PARTIAL"
+          ? `Updated Payment for Bill #${order.orderNumber} (${order.customerName}): Status=PARTIAL (${paymentTag}), Method=${updatedMethod}${paymentNote ? ` - Note: ${paymentNote.trim()}` : ""}`
+          : `Updated Payment for Bill #${order.orderNumber} (${order.customerName}): Status=${updatedStatus}, Method=${updatedMethod}${paymentNote ? ` - Note: ${paymentNote.trim()}` : ""}`;
+
       await prisma.adminActivityLog.create({
         data: {
           adminId: admin.id,
           adminName: admin.name,
           action: "UPDATE_SHOP_BILL_PAYMENT",
-          details: `Updated Payment for Bill #${order.orderNumber} (${order.customerName}): Status=${updatedOrder.paymentStatus}, Method=${updatedOrder.paymentMethod}${paymentNote ? ` - Note: ${paymentNote.trim()}` : ""}`,
+          details: activityDetail,
           entityType: "Order",
           entityId: order.id,
         },

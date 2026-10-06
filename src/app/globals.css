@@ -84,3 +84,54 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #143424;
 }
+
+/* Print Optimization for Official Invoices and POS Thermal Receipts */
+@media print {
+  @page {
+    margin: 2mm;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide navigation, top bars, and screen-only controls during print */
+  nav, header, footer, aside, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset layout constraints during print */
+  html, body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Thermal Receipt Specific Styling (80mm Continuous Roll) */
+  #printable-receipt {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Standard A4 Invoice Specific Styling */
+  #printable-invoice {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 6mm !important;
+    color: #143424 !important;
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

@@ -8,6 +8,7 @@ import {
   Plus,
   Trash2,
   Printer,
+  Receipt,
   MessageSquare,
   Search,
   CheckCircle2,
@@ -84,8 +85,11 @@ interface KnownShop {
     orderNumber: string;
     createdAt: string;
     grandTotal: number;
+    paidAmount?: number;
+    dueAmount?: number;
     paymentMethod: string;
     paymentStatus: string;
+    deliveryNotes?: string;
   }>;
   allBills?: Array<any>;
 }
@@ -126,10 +130,12 @@ export default function ShopBillingPage() {
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH_ON_DELIVERY");
   const [paymentStatus, setPaymentStatus] = useState<string>("PAID");
+  const [paidNowAmount, setPaidNowAmount] = useState<number>(0);
 
   // Invoicing & Print Modal State
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printFormat, setPrintFormat] = useState<"terminal" | "standard">("terminal");
 
   // Shop Bills Ledger Search & Filters
   const [searchLedger, setSearchLedger] = useState("");
@@ -140,6 +146,7 @@ export default function ShopBillingPage() {
   const [paymentModalOrder, setPaymentModalOrder] = useState<any | null>(null);
   const [paymentModalStatus, setPaymentModalStatus] = useState("PAID");
   const [paymentModalMethod, setPaymentModalMethod] = useState("CASH_ON_DELIVERY");
+  const [paymentModalPaidAmount, setPaymentModalPaidAmount] = useState<number>(0);
   const [paymentModalNote, setPaymentModalNote] = useState("");
   const [paymentModalSubmitting, setPaymentModalSubmitting] = useState(false);
 
@@ -196,11 +203,66 @@ export default function ShopBillingPage() {
   }, []);
 
   // Quick Action Handlers for Sales Reps
-  const handleOpenPaymentModal = (order: any) => {
+  const handleOpenPaymentModal = (order: any, defaultStatus?: string) => {
     setPaymentModalOrder(order);
-    setPaymentModalStatus(order.paymentStatus || "PAID");
+    const initialStatus = defaultStatus || order.paymentStatus || "PAID";
+    setPaymentModalStatus(initialStatus);
     setPaymentModalMethod(order.paymentMethod || "CASH_ON_DELIVERY");
     setPaymentModalNote("");
+
+    const grandTotal = Number(order.grandTotal) || 0;
+    if (order.paidAmount !== undefined && order.paidAmount > 0 && initialStatus === "PARTIAL") {
+      setPaymentModalPaidAmount(order.paidAmount);
+    } else if (initialStatus === "PARTIAL") {
+      setPaymentModalPaidAmount(Math.round(grandTotal / 2));
+    } else if (initialStatus === "PAID") {
+      setPaymentModalPaidAmount(grandTotal);
+    } else {
+      setPaymentModalPaidAmount(0);
+    }
+  };
+
+  // Instant settlement of old bills during new bill creation
+  const handleQuickSettleBill = async (order: any, type: "FULL" | "HALF") => {
+    try {
+      const isFull = type === "FULL";
+      const grandTotal = Number(order.grandTotal) || 0;
+      const targetPaid = isFull ? grandTotal : Math.round(grandTotal / 2);
+      const targetStatus = isFull ? "PAID" : "PARTIAL";
+
+      setNotice(`Updating payment for Old Bill #${order.orderNumber}...`);
+      const res = await fetch("/api/admin/shop-billing", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_PAYMENT",
+          orderId: order.id,
+          paymentStatus: targetStatus,
+          paymentMethod: "CASH_ON_DELIVERY",
+          paidAmount: targetPaid,
+          paymentNote: isFull
+            ? "Settled in full during new bill collection"
+            : `Half payment of Rs. ${targetPaid.toLocaleString()} collected during new bill collection`,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.error || "Failed to update old bill payment.");
+        return;
+      }
+
+      setNotice(
+        isFull
+          ? `✓ Old Bill #${order.orderNumber} settled in full! Balance cleared.`
+          : `✓ Half payment of Rs. ${targetPaid.toLocaleString()} recorded for Old Bill #${order.orderNumber}!`
+      );
+      setTimeout(() => setNotice(null), 4000);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      alert("Network error updating old bill payment.");
+    }
   };
 
   const handleSavePaymentUpdate = async (e: React.FormEvent) => {
@@ -216,6 +278,12 @@ export default function ShopBillingPage() {
           orderId: paymentModalOrder.id,
           paymentStatus: paymentModalStatus,
           paymentMethod: paymentModalMethod,
+          paidAmount:
+            paymentModalStatus === "PARTIAL"
+              ? paymentModalPaidAmount
+              : paymentModalStatus === "PAID"
+              ? paymentModalOrder.grandTotal
+              : 0,
           paymentNote: paymentModalNote,
         }),
       });
@@ -227,9 +295,11 @@ export default function ShopBillingPage() {
       }
 
       setNotice(
-        `Payment for Bill #${paymentModalOrder.orderNumber} updated to ${paymentModalStatus} (${paymentModalMethod})!`
+        paymentModalStatus === "PARTIAL"
+          ? `✓ Payment for Bill #${paymentModalOrder.orderNumber} updated to PARTIAL (Paid: Rs. ${paymentModalPaidAmount.toLocaleString()} | Due: Rs. ${(paymentModalOrder.grandTotal - paymentModalPaidAmount).toLocaleString()})!`
+          : `✓ Payment for Bill #${paymentModalOrder.orderNumber} updated to ${paymentModalStatus} (${paymentModalMethod})!`
       );
-      setTimeout(() => setNotice(null), 3500);
+      setTimeout(() => setNotice(null), 4000);
       setPaymentModalOrder(null);
       loadData();
     } catch (err) {
@@ -309,14 +379,31 @@ export default function ShopBillingPage() {
   const ledgerStats = useMemo(() => {
     const nonCancelled = recentOrders.filter((o) => o.orderStatus !== "CANCELLED");
     const totalRevenue = nonCancelled.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
-    const totalPaid = nonCancelled
-      .filter((o) => o.paymentStatus === "PAID")
-      .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
-    const totalCredit = nonCancelled
-      .filter((o) => o.paymentStatus !== "PAID")
-      .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+    const totalPaid = nonCancelled.reduce(
+      (sum, o) =>
+        sum +
+        (o.paidAmount !== undefined
+          ? o.paidAmount
+          : o.paymentStatus === "PAID"
+          ? o.grandTotal
+          : 0),
+      0
+    );
+    const totalCredit = nonCancelled.reduce(
+      (sum, o) =>
+        sum +
+        (o.dueAmount !== undefined
+          ? o.dueAmount
+          : o.paymentStatus === "PAID"
+          ? 0
+          : o.grandTotal),
+      0
+    );
     const paidCount = nonCancelled.filter((o) => o.paymentStatus === "PAID").length;
-    const creditCount = nonCancelled.filter((o) => o.paymentStatus !== "PAID").length;
+    const partialCount = nonCancelled.filter((o) => o.paymentStatus === "PARTIAL").length;
+    const creditCount = nonCancelled.filter(
+      (o) => o.paymentStatus === "PENDING" || o.paymentMethod === "CREDIT_SHOP"
+    ).length;
     const cancelledCount = recentOrders.filter((o) => o.orderStatus === "CANCELLED").length;
 
     return {
@@ -325,6 +412,7 @@ export default function ShopBillingPage() {
       totalPaid,
       totalCredit,
       paidCount,
+      partialCount,
       creditCount,
       cancelledCount,
     };
@@ -546,6 +634,12 @@ export default function ShopBillingPage() {
           grandTotal: billGrandTotal,
           paymentMethod,
           paymentStatus,
+          paidAmount:
+            paymentStatus === "PARTIAL"
+              ? paidNowAmount
+              : paymentStatus === "PAID"
+              ? billGrandTotal
+              : 0,
           notes,
         }),
       });
@@ -581,6 +675,7 @@ export default function ShopBillingPage() {
     setDeliveryCharge(0);
     setPaymentMethod("CASH_ON_DELIVERY");
     setPaymentStatus("PAID");
+    setPaidNowAmount(0);
     setCompletedOrder(null);
   };
 
@@ -942,41 +1037,87 @@ export default function ShopBillingPage() {
                           View In Ledger →
                         </Link>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {selectedKnownShop.pendingBills.map((pb) => (
-                          <div
-                            key={pb.id}
-                            className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-amber-200/90 text-xs shadow-xs"
-                          >
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-mono font-bold text-tea-dark">
-                                  #{pb.orderNumber}
-                                </span>
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold">
-                                  {pb.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Pending"}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-tea-muted block mt-0.5">
-                                Date: {new Date(pb.createdAt).toLocaleDateString("en-GB")}
-                              </span>
-                            </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {selectedKnownShop.pendingBills.map((pb) => {
+                          const isPartial = pb.paymentStatus === "PARTIAL";
+                          const due = pb.dueAmount !== undefined ? pb.dueAmount : pb.grandTotal;
+                          const paid = pb.paidAmount || 0;
 
-                            <div className="text-right flex items-center gap-2">
-                              <span className="font-mono font-bold text-xs text-rose-700 block">
-                                Rs. {pb.grandTotal.toLocaleString()}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenPaymentModal(pb)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs"
-                                title="Collect & update payment for this old bill"
-                              >
-                                Settle
-                              </button>
+                          return (
+                            <div
+                              key={pb.id}
+                              className="p-3 rounded-2xl bg-white border border-amber-200/90 text-xs shadow-xs space-y-2"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-bold text-tea-dark">
+                                      #{pb.orderNumber}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                        isPartial
+                                          ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                          : "bg-rose-50 text-rose-800 border border-rose-200"
+                                      }`}
+                                    >
+                                      {isPartial ? "PARTIAL" : "UNPAID"}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-tea-muted block mt-0.5">
+                                    Date: {new Date(pb.createdAt).toLocaleDateString("en-GB")}
+                                  </span>
+                                </div>
+
+                                <div className="text-right">
+                                  <span className="text-[10px] text-tea-muted uppercase font-bold block">
+                                    {isPartial ? "Remaining Due" : "Total Due"}
+                                  </span>
+                                  <span className="font-mono font-bold text-sm text-rose-700 block">
+                                    Rs. {due.toLocaleString()}
+                                  </span>
+                                  {isPartial && (
+                                    <span className="text-[10px] text-emerald-700 font-mono block">
+                                      Paid: Rs. {paid.toLocaleString()}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Quick Collect Action Buttons during new bill creation */}
+                              <div className="flex items-center gap-1.5 pt-1 border-t border-amber-100">
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickSettleBill(pb, "FULL")}
+                                  className="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs flex items-center justify-center gap-1"
+                                  title="Mark old bill as 100% paid without leaving this page"
+                                >
+                                  <Check className="w-3 h-3 text-tea-gold" />
+                                  <span>Settle Full</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuickSettleBill(pb, "HALF")}
+                                  className="flex-1 py-1.5 px-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs flex items-center justify-center gap-1"
+                                  title="Collect 50% half payment on spot"
+                                >
+                                  <DollarSign className="w-3 h-3 text-white" />
+                                  <span>Pay Half</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPaymentModal(pb, "PARTIAL")}
+                                  className="py-1.5 px-2.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark font-bold text-[10px] transition"
+                                  title="Enter custom partial amount or edit notes"
+                                >
+                                  <span>Custom...</span>
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1314,18 +1455,89 @@ export default function ShopBillingPage() {
                   <label className="block font-bold text-tea-dark mb-1">Payment Status</label>
                   <select
                     value={paymentStatus}
-                    onChange={(e) => setPaymentStatus(e.target.value)}
+                    onChange={(e) => {
+                      const newStatus = e.target.value;
+                      setPaymentStatus(newStatus);
+                      if (newStatus === "PARTIAL" && paidNowAmount === 0) {
+                        setPaidNowAmount(Math.round(billGrandTotal / 2));
+                      }
+                    }}
                     className={`w-full px-3 py-2 rounded-xl border font-bold text-xs focus:outline-none ${
                       paymentStatus === "PAID"
                         ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                        : paymentStatus === "PARTIAL"
+                        ? "bg-amber-100 text-amber-900 border-amber-300"
                         : "bg-amber-50 text-amber-800 border-amber-300"
                     }`}
                   >
                     <option value="PAID">PAID IN FULL</option>
-                    <option value="PENDING">DUE / CREDIT</option>
+                    <option value="PARTIAL">HALF / PARTIAL PAYMENT</option>
+                    <option value="PENDING">DUE / CREDIT (PAY LATER)</option>
                   </select>
                 </div>
               </div>
+
+              {/* Partial Payment Amount Input */}
+              {paymentStatus === "PARTIAL" && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-2.5 text-xs animate-fade-in">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-amber-700" />
+                      <span>Advance Amount Paid Today</span>
+                    </span>
+                    <span className="text-[10px] text-amber-800 font-medium">
+                      Enter partial cash/bank amount
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-tea-muted">Rs.</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max={billGrandTotal}
+                        step="50"
+                        value={paidNowAmount}
+                        onChange={(e) => setPaidNowAmount(Math.min(billGrandTotal, Math.max(0, Number(e.target.value))))}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-amber-300 bg-white font-mono font-bold text-sm text-tea-dark focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                    {/* Quick percentage shortcuts */}
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.25))}
+                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
+                      >
+                        25%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.5))}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-mono text-[10px] font-bold shadow-xs"
+                      >
+                        50% Half
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.75))}
+                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
+                      >
+                        75%
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Balance Due Breakdown */}
+                  <div className="pt-2 border-t border-amber-200/80 flex justify-between items-center">
+                    <span className="text-amber-900 font-medium">Remaining Credit to Record:</span>
+                    <span className="font-mono font-extrabold text-sm text-rose-700">
+                      Rs. {Math.max(0, billGrandTotal - paidNowAmount).toLocaleString()} DUE
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               <div>
@@ -1765,10 +1977,21 @@ export default function ShopBillingPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => setFilterPaymentStatus("PARTIAL")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                      filterPaymentStatus === "PARTIAL"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "text-tea-muted hover:text-tea-dark"
+                    }`}
+                  >
+                    Partial ({ledgerStats.partialCount})
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setFilterPaymentStatus("PENDING")}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
                       filterPaymentStatus === "PENDING"
-                        ? "bg-amber-600 text-white shadow-xs"
+                        ? "bg-rose-700 text-white shadow-xs"
                         : "text-tea-muted hover:text-tea-dark"
                     }`}
                   >
@@ -1888,6 +2111,9 @@ export default function ShopBillingPage() {
                     {filteredLedgerOrders.map((o) => {
                       const isCancelled = o.orderStatus === "CANCELLED";
                       const isPaid = o.paymentStatus === "PAID";
+                      const isPartial = o.paymentStatus === "PARTIAL";
+                      const paid = o.paidAmount !== undefined ? o.paidAmount : isPaid ? o.grandTotal : 0;
+                      const due = o.dueAmount !== undefined ? o.dueAmount : isPaid ? 0 : o.grandTotal;
 
                       return (
                         <tr
@@ -1955,20 +2181,22 @@ export default function ShopBillingPage() {
                           {/* Payment Status & Method */}
                           <td className="py-3 px-4 whitespace-nowrap">
                             <div className="space-y-1">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  isPaid
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : "bg-amber-100 text-amber-800"
-                                }`}
-                              >
-                                {isPaid ? (
+                              {isPaid ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                   <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                                ) : (
-                                  <Clock className="w-3 h-3 text-amber-700" />
-                                )}
-                                <span>{isPaid ? "PAID" : "DUE / CREDIT"}</span>
-                              </span>
+                                  <span>PAID IN FULL</span>
+                                </span>
+                              ) : isPartial ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
+                                  <DollarSign className="w-3 h-3 text-amber-700" />
+                                  <span>PARTIAL (Paid: Rs. {paid.toLocaleString()} | Due: Rs. {due.toLocaleString()})</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                                  <Clock className="w-3 h-3 text-rose-700" />
+                                  <span>DUE / CREDIT</span>
+                                </span>
+                              )}
                               <div className="text-[10px] text-tea-muted capitalize">
                                 {o.paymentMethod === "CREDIT_SHOP"
                                   ? "Credit"
@@ -2097,190 +2325,459 @@ export default function ShopBillingPage() {
       )}
 
 
-      {/* Printable Official Invoice Modal */}
-      {printModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-tea-dark/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-10 border border-tea-border shadow-2xl space-y-6 my-8 animate-scale-up">
-            <div className="flex items-center justify-between pb-4 border-b border-tea-border print:hidden">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-tea-forest" />
-                <h3 className="font-serif text-lg font-bold text-tea-dark">
-                  Official Shop Sales Invoice & Bill
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Now</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrintModalOpen(false)}
-                  className="p-2 text-tea-muted hover:text-tea-dark rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+      {/* Printable Official Invoice / POS Thermal Terminal Modal */}
+      {printModalOpen && (() => {
+        const targetOrder = completedOrder || {
+          orderNumber: `SHOP-DRAFT-${Date.now().toString().slice(-4)}`,
+          customerName: shopName || "Valued Retail Shop",
+          customerPhone: shopPhone || "071 777 4717",
+          city: routeTown || "Kekirawa / Central",
+          shippingAddress: address || "Direct Store Delivery",
+          subtotal: billSubtotal,
+          discount: discountAmount,
+          deliveryCharge,
+          grandTotal: billGrandTotal,
+          paymentMethod,
+          paymentStatus,
+          deliveryNotes: notes,
+          createdAt: new Date().toISOString(),
+          items: billItems,
+        };
 
-            {/* Printable Invoice Container */}
-            <div id="printable-invoice" className="space-y-6 text-tea-dark text-xs p-2">
-              {/* Header with Logo & Brand Details */}
-              <div className="flex justify-between items-start pb-6 border-b-2 border-tea-dark">
-                <div>
-                  <h2 className="font-serif text-2xl font-bold tracking-wider text-tea-dark">
-                    LEENA CEYLON (PVT) LTD
-                  </h2>
-                  <p className="text-[11px] text-tea-muted font-medium uppercase tracking-widest mt-0.5">
-                    PURE CEYLON TEA • THE TASTE OF CEYLON
-                  </p>
-                  <p className="text-[11px] text-tea-muted mt-1">
-                    A/Bandarapothana, Pubbogama, Kekirawa, Sri Lanka<br />
-                    Direct Hotline / WhatsApp: +94 71 777 4717<br />
-                    Email: info@leenaceylon.com
-                  </p>
-                </div>
+        const isPartial = targetOrder.paymentStatus === "PARTIAL";
+        let targetPaid =
+          targetOrder.paidAmount !== undefined
+            ? targetOrder.paidAmount
+            : targetOrder.paymentStatus === "PAID"
+            ? targetOrder.grandTotal
+            : isPartial
+            ? paidNowAmount
+            : 0;
 
-                <div className="text-right space-y-1">
-                  <span className="inline-block px-3 py-1 bg-tea-dark text-white font-mono text-xs font-bold uppercase rounded">
-                    SALES INVOICE
-                  </span>
-                  <p className="font-mono font-bold text-sm text-tea-dark pt-1">
-                    #{completedOrder ? completedOrder.orderNumber : "INVOICE-DRAFT"}
-                  </p>
-                  <p className="text-tea-muted text-[11px]">
-                    Date: {new Date().toLocaleDateString("en-GB")}
-                  </p>
-                </div>
-              </div>
+        let targetDue =
+          targetOrder.dueAmount !== undefined
+            ? targetOrder.dueAmount
+            : isPartial
+            ? Math.max(0, targetOrder.grandTotal - targetPaid)
+            : targetOrder.paymentStatus === "PAID"
+            ? 0
+            : targetOrder.grandTotal;
 
-              {/* Billed To (Shop Details) */}
-              <div className="grid grid-cols-2 gap-4 bg-tea-surface/40 p-4 rounded-xl border border-tea-border">
-                <div>
-                  <span className="text-[10px] font-bold text-tea-muted uppercase tracking-wider block">
-                    Billed To (Customer / Shop):
-                  </span>
-                  <h4 className="font-bold text-sm text-tea-dark mt-0.5">
-                    {completedOrder ? completedOrder.customerName : shopName || "Shop Partner"}
-                  </h4>
-                  <p className="text-tea-muted mt-0.5">
-                    {completedOrder
-                      ? completedOrder.shippingAddress
-                      : address || "Direct Store Delivery"}
-                  </p>
-                  <p className="text-tea-muted">
-                    Route / Area:{" "}
-                    <strong>{completedOrder ? completedOrder.city : routeTown || "Local Route"}</strong>
-                  </p>
-                </div>
+        if (targetOrder.deliveryNotes && isPartial && targetPaid === 0) {
+          const pMatch = targetOrder.deliveryNotes.match(/paid=([0-9.]+)/i);
+          const dMatch = targetOrder.deliveryNotes.match(/due=([0-9.]+)/i);
+          if (pMatch) targetPaid = parseFloat(pMatch[1]) || 0;
+          if (dMatch) targetDue = parseFloat(dMatch[1]) || Math.max(0, targetOrder.grandTotal - targetPaid);
+        }
 
-                <div className="text-right space-y-1">
-                  <span className="text-[10px] font-bold text-tea-muted uppercase tracking-wider block">
-                    Payment Terms:
-                  </span>
-                  <p className="font-bold text-tea-dark">
-                    {paymentMethod === "CREDIT_SHOP" ? "Credit / On Account" : "Cash on Delivery"}
-                  </p>
-                  <span
-                    className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-bold ${
-                      paymentStatus === "PAID"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    STATUS: {paymentStatus}
-                  </span>
-                </div>
-              </div>
+        const prevPendingBalance = selectedKnownShop?.pendingBalance || 0;
+        const totalStoreBalance = prevPendingBalance + targetDue;
 
-              {/* Itemized Table */}
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-tea-dark text-tea-dark font-bold text-[11px] uppercase">
-                    <th className="py-2">#</th>
-                    <th className="py-2">Item Description</th>
-                    <th className="py-2">Pack Size</th>
-                    <th className="py-2 text-right">Unit Price</th>
-                    <th className="py-2 text-center">Qty</th>
-                    <th className="py-2 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-tea-border">
-                  {(completedOrder ? completedOrder.items : billItems).map(
-                    (it: any, idx: number) => (
-                      <tr key={idx}>
-                        <td className="py-2 text-tea-muted">{idx + 1}</td>
-                        <td className="py-2 font-bold text-tea-dark">{it.productName}</td>
-                        <td className="py-2 text-tea-muted">{it.size}</td>
-                        <td className="py-2 text-right font-mono">
-                          Rs. {it.unitPrice.toLocaleString()}
-                        </td>
-                        <td className="py-2 text-center font-bold font-mono">{it.quantity}</td>
-                        <td className="py-2 text-right font-bold font-mono text-tea-dark">
-                          Rs. {it.subtotal.toLocaleString()}
-                        </td>
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-
-              {/* Financial Totals */}
-              <div className="flex justify-end pt-2">
-                <div className="w-64 space-y-1.5 text-xs">
-                  <div className="flex justify-between text-tea-muted">
-                    <span>Subtotal:</span>
-                    <span className="font-bold text-tea-dark font-mono">
-                      Rs. {(completedOrder ? completedOrder.subtotal : billSubtotal).toLocaleString()}
-                    </span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-tea-dark/75 backdrop-blur-xs overflow-y-auto">
+            <div
+              className={`bg-white rounded-3xl w-full p-4 sm:p-8 border border-tea-border shadow-2xl space-y-6 my-6 animate-scale-up ${
+                printFormat === "terminal" ? "max-w-md" : "max-w-3xl"
+              }`}
+            >
+              {/* Modal Top Control Bar (Hidden when printing) */}
+              <div className="pb-4 border-b border-tea-border space-y-3 print:hidden">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Printer className="w-5 h-5 text-tea-forest" />
+                    <div>
+                      <h3 className="font-serif text-base sm:text-lg font-bold text-tea-dark">
+                        Print Bill / Invoice
+                      </h3>
+                      <p className="text-[11px] font-mono text-tea-muted">
+                        #{targetOrder.orderNumber}
+                      </p>
+                    </div>
                   </div>
-                  {Number(completedOrder ? completedOrder.discount : discountAmount) > 0 && (
-                    <div className="flex justify-between text-emerald-700">
-                      <span>Discount:</span>
-                      <span className="font-bold font-mono">
-                        -Rs. {Number(completedOrder ? completedOrder.discount : discountAmount).toLocaleString()}
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      className="px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-tea-gold" />
+                      <span>Print Now</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrintModalOpen(false)}
+                      className="p-2 text-tea-muted hover:text-tea-dark hover:bg-tea-surface rounded-lg transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Print Format Selector Switcher */}
+                <div className="flex items-center justify-between gap-2 p-1.5 rounded-2xl bg-tea-surface/80 border border-tea-border/60">
+                  <span className="text-[11px] font-bold text-tea-muted pl-2">
+                    Paper Print Size:
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPrintFormat("terminal")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                        printFormat === "terminal"
+                          ? "bg-tea-dark text-tea-gold shadow-xs"
+                          : "text-tea-muted hover:text-tea-dark"
+                      }`}
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>POS Thermal (80mm)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPrintFormat("standard")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                        printFormat === "standard"
+                          ? "bg-tea-dark text-white shadow-xs"
+                          : "text-tea-muted hover:text-tea-dark"
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Standard A4</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1. POS THERMAL TERMINAL (80mm) RECEIPT LAYOUT */}
+              {printFormat === "terminal" ? (
+                <div
+                  id="printable-receipt"
+                  className="mx-auto w-full max-w-[340px] bg-white p-3 sm:p-4 font-mono text-[11px] sm:text-[12px] leading-tight text-black border border-dashed border-gray-300 rounded-xl space-y-2 select-text shadow-xs print:border-none print:shadow-none print:p-0 print:max-w-none print:w-[76mm]"
+                >
+                  {/* Brand Header */}
+                  <div className="text-center space-y-0.5 pb-2 border-b border-dashed border-black">
+                    <h2 className="font-bold text-sm tracking-wider uppercase">
+                      LEENA CEYLON (PVT) LTD
+                    </h2>
+                    <p className="text-[10px] tracking-wide uppercase">
+                      PURE CEYLON TEA • THE TASTE OF CEYLON
+                    </p>
+                    <p className="text-[10px]">
+                      Pubbogama, Kekirawa, Sri Lanka
+                    </p>
+                    <p className="text-[10px] font-bold">
+                      HOTLINE / WHATSAPP: +94 71 777 4717
+                    </p>
+                  </div>
+
+                  {/* Metadata */}
+                  <div className="space-y-0.5 py-1 text-[11px] border-b border-dashed border-black">
+                    <div className="flex justify-between">
+                      <span className="font-bold">BILL NO:</span>
+                      <span className="font-bold">#{targetOrder.orderNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DATE/TIME:</span>
+                      <span>
+                        {new Date(targetOrder.createdAt || Date.now()).toLocaleDateString("en-GB")}{" "}
+                        {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-tea-muted">
-                    <span>Transport / Delivery:</span>
-                    <span className="font-bold text-tea-dark font-mono">
-                      {Number(completedOrder ? completedOrder.deliveryCharge : deliveryCharge) === 0
-                        ? "FREE"
-                        : `Rs. ${Number(completedOrder ? completedOrder.deliveryCharge : deliveryCharge).toLocaleString()}`}
-                    </span>
+                    <div className="flex justify-between">
+                      <span>CUSTOMER:</span>
+                      <span className="font-bold uppercase truncate max-w-[190px]">
+                        {targetOrder.customerName}
+                      </span>
+                    </div>
+                    {targetOrder.customerPhone && (
+                      <div className="flex justify-between">
+                        <span>PHONE:</span>
+                        <span>{targetOrder.customerPhone}</span>
+                      </div>
+                    )}
+                    {targetOrder.city && (
+                      <div className="flex justify-between">
+                        <span>ROUTE/TOWN:</span>
+                        <span className="truncate max-w-[190px]">{targetOrder.city}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="border-t-2 border-tea-dark pt-1.5 flex justify-between items-baseline font-bold text-sm">
-                    <span>Grand Total:</span>
-                    <span className="text-base text-tea-forest font-mono">
-                      Rs. {(completedOrder ? completedOrder.grandTotal : billGrandTotal).toLocaleString()}
-                    </span>
+
+                  {/* Items Table */}
+                  <div className="py-1">
+                    <div className="flex justify-between font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
+                      <span className="flex-1">ITEM</span>
+                      <span className="w-10 text-center">QTY</span>
+                      <span className="w-16 text-right">PRICE</span>
+                      <span className="w-18 text-right">TOTAL</span>
+                    </div>
+                    <div className="space-y-1">
+                      {(targetOrder.items || []).map((it: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-start text-[11px]">
+                          <div className="flex-1 pr-1 leading-snug">
+                            <span className="font-semibold block">{it.productName}</span>
+                            <span className="text-[10px] opacity-75">{it.size}</span>
+                          </div>
+                          <span className="w-10 text-center font-bold">x{it.quantity}</span>
+                          <span className="w-16 text-right">
+                            {Number(it.unitPrice).toFixed(0)}
+                          </span>
+                          <span className="w-18 text-right font-bold">
+                            {Number(it.subtotal).toFixed(0)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Totals & Payments */}
+                  <div className="border-t border-dashed border-black pt-1.5 space-y-0.5 text-[11px]">
+                    <div className="flex justify-between">
+                      <span>SUBTOTAL:</span>
+                      <span>Rs. {Number(targetOrder.subtotal || 0).toLocaleString()}</span>
+                    </div>
+                    {Number(targetOrder.discount || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>DISCOUNT:</span>
+                        <span>-Rs. {Number(targetOrder.discount).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {Number(targetOrder.deliveryCharge || 0) > 0 && (
+                      <div className="flex justify-between">
+                        <span>TRANSPORT:</span>
+                        <span>Rs. {Number(targetOrder.deliveryCharge).toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    {/* Grand Total */}
+                    <div className="flex justify-between font-bold text-sm pt-1 border-t border-black">
+                      <span>TOTAL PAYABLE:</span>
+                      <span>Rs. {Number(targetOrder.grandTotal || 0).toLocaleString()}</span>
+                    </div>
+
+                    {/* Payment Status Breakdown */}
+                    <div className="pt-1.5 border-t border-dashed border-black space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>PAYMENT STATUS:</span>
+                        <span className="font-bold uppercase">
+                          {targetOrder.paymentStatus === "PAID"
+                            ? "PAID IN FULL"
+                            : targetOrder.paymentStatus === "PARTIAL"
+                            ? "PARTIAL PAYMENT"
+                            : "CREDIT / UNPAID"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>PAYMENT MODE:</span>
+                        <span className="capitalize">{targetOrder.paymentMethod}</span>
+                      </div>
+                      <div className="flex justify-between font-bold">
+                        <span>AMOUNT RECEIVED:</span>
+                        <span>Rs. {targetPaid.toLocaleString()}</span>
+                      </div>
+                      {targetDue > 0 && (
+                        <div className="flex justify-between font-bold text-rose-700">
+                          <span>BALANCE DUE (CREDIT):</span>
+                          <span>Rs. {targetDue.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {prevPendingBalance > 0 && (
+                        <>
+                          <div className="flex justify-between opacity-80 pt-0.5">
+                            <span>PREVIOUS OLD DUE:</span>
+                            <span>Rs. {prevPendingBalance.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between font-bold border-t border-dotted border-black pt-0.5">
+                            <span>TOTAL STORE BALANCE:</span>
+                            <span>Rs. {totalStoreBalance.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Thermal Receipt Footer */}
+                  <div className="pt-2 text-center text-[10px] space-y-0.5 border-t border-dashed border-black">
+                    <p className="font-bold">*** THANK YOU FOR YOUR BUSINESS! ***</p>
+                    <p>Good taste of Pure Ceylon Tea</p>
+                    <p>Leena Ceylon POS Terminal • Kekirawa</p>
                   </div>
                 </div>
-              </div>
+              ) : (
+                /* 2. STANDARD A4 INVOICE LAYOUT */
+                <div id="printable-invoice" className="space-y-6 text-tea-dark text-xs p-2">
+                  {/* Header with Logo & Brand Details */}
+                  <div className="flex justify-between items-start pb-6 border-b-2 border-tea-dark">
+                    <div>
+                      <h2 className="font-serif text-2xl font-bold tracking-wider text-tea-dark">
+                        LEENA CEYLON (PVT) LTD
+                      </h2>
+                      <p className="text-[11px] text-tea-muted font-medium uppercase tracking-widest mt-0.5">
+                        PURE CEYLON TEA • THE TASTE OF CEYLON
+                      </p>
+                      <p className="text-[11px] text-tea-muted mt-1">
+                        A/Bandarapothana, Pubbogama, Kekirawa, Sri Lanka<br />
+                        Direct Hotline / WhatsApp: +94 71 777 4717<br />
+                        Email: info@leenaceylon.com
+                      </p>
+                    </div>
 
-              {/* Signatures & Declarations */}
-              <div className="pt-12 grid grid-cols-2 gap-10 text-[11px] text-tea-muted border-t border-tea-border">
-                <div className="text-center space-y-1">
-                  <div className="border-b border-tea-dark/60 pb-8" />
-                  <p className="font-bold text-tea-dark pt-1">Authorized Sales Representative</p>
-                  <p>LEENA CEYLON (PVT) LTD</p>
-                </div>
+                    <div className="text-right space-y-1">
+                      <span className="inline-block px-3 py-1 bg-tea-dark text-white font-mono text-xs font-bold uppercase rounded">
+                        SALES INVOICE
+                      </span>
+                      <p className="font-mono font-bold text-sm text-tea-dark pt-1">
+                        #{targetOrder.orderNumber}
+                      </p>
+                      <p className="text-tea-muted text-[11px]">
+                        Date: {new Date(targetOrder.createdAt || Date.now()).toLocaleDateString("en-GB")}
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="text-center space-y-1">
-                  <div className="border-b border-tea-dark/60 pb-8" />
-                  <p className="font-bold text-tea-dark pt-1">Received in Good Order (Shop Seal/Sign)</p>
-                  <p>Customer Acceptance</p>
+                  {/* Billed To (Shop Details) */}
+                  <div className="grid grid-cols-2 gap-4 bg-tea-surface/40 p-4 rounded-xl border border-tea-border">
+                    <div>
+                      <span className="text-[10px] font-bold text-tea-muted uppercase tracking-wider block">
+                        Billed To (Customer / Shop):
+                      </span>
+                      <h4 className="font-bold text-sm text-tea-dark mt-0.5">
+                        {targetOrder.customerName}
+                      </h4>
+                      <p className="text-tea-muted mt-0.5">
+                        {targetOrder.shippingAddress || "Direct Store Delivery"}
+                      </p>
+                      <p className="text-tea-muted">
+                        Route / Area: <strong>{targetOrder.city || "Local Route"}</strong>
+                      </p>
+                      <p className="text-tea-muted font-mono">
+                        Tel: {targetOrder.customerPhone}
+                      </p>
+                    </div>
+
+                    <div className="text-right space-y-1">
+                      <span className="text-[10px] font-bold text-tea-muted uppercase tracking-wider block">
+                        Payment Terms & Settlement:
+                      </span>
+                      <p className="font-bold text-tea-dark">
+                        {targetOrder.paymentMethod === "CREDIT_SHOP" ? "Credit / On Account" : "Cash on Delivery"}
+                      </p>
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-bold ${
+                          targetOrder.paymentStatus === "PAID"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : targetOrder.paymentStatus === "PARTIAL"
+                            ? "bg-amber-100 text-amber-900 border border-amber-300"
+                            : "bg-rose-50 text-rose-800 border border-rose-200"
+                        }`}
+                      >
+                        STATUS: {targetOrder.paymentStatus}
+                      </span>
+                      {targetOrder.paymentStatus === "PARTIAL" && (
+                        <p className="text-[11px] text-tea-muted font-mono">
+                          Paid: Rs. {targetPaid.toLocaleString()} | Due: Rs. {targetDue.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Itemized Table */}
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-tea-dark text-tea-dark font-bold text-[11px] uppercase">
+                        <th className="py-2">#</th>
+                        <th className="py-2">Item Description</th>
+                        <th className="py-2">Pack Size</th>
+                        <th className="py-2 text-right">Unit Price</th>
+                        <th className="py-2 text-center">Qty</th>
+                        <th className="py-2 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-tea-border">
+                      {(targetOrder.items || []).map((it: any, idx: number) => (
+                        <tr key={idx}>
+                          <td className="py-2 text-tea-muted">{idx + 1}</td>
+                          <td className="py-2 font-bold text-tea-dark">{it.productName}</td>
+                          <td className="py-2 text-tea-muted">{it.size}</td>
+                          <td className="py-2 text-right font-mono">
+                            Rs. {Number(it.unitPrice).toLocaleString()}
+                          </td>
+                          <td className="py-2 text-center font-bold font-mono">{it.quantity}</td>
+                          <td className="py-2 text-right font-bold font-mono text-tea-dark">
+                            Rs. {Number(it.subtotal).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Financial Totals */}
+                  <div className="flex justify-end pt-2">
+                    <div className="w-64 space-y-1.5 text-xs">
+                      <div className="flex justify-between text-tea-muted">
+                        <span>Subtotal:</span>
+                        <span className="font-bold text-tea-dark font-mono">
+                          Rs. {Number(targetOrder.subtotal || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      {Number(targetOrder.discount || 0) > 0 && (
+                        <div className="flex justify-between text-emerald-700">
+                          <span>Discount:</span>
+                          <span className="font-bold font-mono">
+                            -Rs. {Number(targetOrder.discount).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-tea-muted">
+                        <span>Transport / Delivery:</span>
+                        <span className="font-bold text-tea-dark font-mono">
+                          {Number(targetOrder.deliveryCharge || 0) === 0
+                            ? "FREE"
+                            : `Rs. ${Number(targetOrder.deliveryCharge).toLocaleString()}`}
+                        </span>
+                      </div>
+                      <div className="border-t-2 border-tea-dark pt-1.5 flex justify-between items-baseline font-bold text-sm">
+                        <span>Grand Total:</span>
+                        <span className="text-base text-tea-forest font-mono">
+                          Rs. {Number(targetOrder.grandTotal || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      {targetOrder.paymentStatus === "PARTIAL" && (
+                        <>
+                          <div className="flex justify-between text-emerald-700 font-mono text-xs pt-1 border-t border-tea-border">
+                            <span>Amount Paid:</span>
+                            <span>Rs. {targetPaid.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-rose-700 font-mono font-bold text-xs">
+                            <span>Balance Due:</span>
+                            <span>Rs. {targetDue.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Signatures & Declarations */}
+                  <div className="pt-12 grid grid-cols-2 gap-10 text-[11px] text-tea-muted border-t border-tea-border">
+                    <div className="text-center space-y-1">
+                      <div className="border-b border-tea-dark/60 pb-8" />
+                      <p className="font-bold text-tea-dark pt-1">Authorized Sales Representative</p>
+                      <p>LEENA CEYLON (PVT) LTD</p>
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <div className="border-b border-tea-dark/60 pb-8" />
+                      <p className="font-bold text-tea-dark pt-1">Received in Good Order (Shop Seal/Sign)</p>
+                      <p>Customer Acceptance</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 1. Payment Update Modal */}
       {paymentModalOrder && (
@@ -2334,34 +2831,129 @@ export default function ShopBillingPage() {
                 <label className="block font-bold text-tea-dark mb-1.5">
                   Payment Collection Status *
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setPaymentModalStatus("PAID")}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                    onClick={() => {
+                      setPaymentModalStatus("PAID");
+                      setPaymentModalPaidAmount(paymentModalOrder.grandTotal);
+                    }}
+                    className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition ${
                       paymentModalStatus === "PAID"
                         ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                         : "bg-tea-surface text-tea-muted border-tea-border hover:bg-tea-bg"
                     }`}
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>PAID IN FULL</span>
+                    <span>PAID FULL</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setPaymentModalStatus("PENDING")}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-                      paymentModalStatus === "PENDING"
+                    onClick={() => {
+                      setPaymentModalStatus("PARTIAL");
+                      if (paymentModalPaidAmount === 0 || paymentModalPaidAmount === paymentModalOrder.grandTotal) {
+                        setPaymentModalPaidAmount(Math.round(paymentModalOrder.grandTotal / 2));
+                      }
+                    }}
+                    className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition ${
+                      paymentModalStatus === "PARTIAL"
                         ? "bg-amber-600 text-white border-amber-600 shadow-xs"
                         : "bg-tea-surface text-tea-muted border-tea-border hover:bg-tea-bg"
                     }`}
                   >
+                    <DollarSign className="w-4 h-4" />
+                    <span>HALF / PARTIAL</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentModalStatus("PENDING");
+                      setPaymentModalPaidAmount(0);
+                    }}
+                    className={`py-2 px-2 rounded-xl border text-[11px] font-bold flex flex-col items-center justify-center gap-1 transition ${
+                      paymentModalStatus === "PENDING"
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-tea-surface text-tea-muted border-tea-border hover:bg-tea-bg"
+                    }`}
+                  >
                     <Clock className="w-4 h-4" />
-                    <span>CREDIT / DUE</span>
+                    <span>CREDIT DUE</span>
                   </button>
                 </div>
               </div>
+
+              {/* Partial Payment Amount Fields (Visible when PARTIAL is selected) */}
+              {paymentModalStatus === "PARTIAL" && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-2.5 text-xs animate-fade-in">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-amber-950">Amount Paid Today (Rs.) *</span>
+                    <span className="text-[10px] text-amber-800">Collected Advance / Half</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-tea-muted">Rs.</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={paymentModalOrder.grandTotal}
+                        step="50"
+                        required
+                        value={paymentModalPaidAmount}
+                        onChange={(e) =>
+                          setPaymentModalPaidAmount(
+                            Math.min(
+                              paymentModalOrder.grandTotal,
+                              Math.max(0, Number(e.target.value))
+                            )
+                          )
+                        }
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-amber-300 bg-white font-mono font-bold text-sm text-tea-dark focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentModalPaidAmount(Math.round(paymentModalOrder.grandTotal * 0.25))
+                        }
+                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
+                      >
+                        25%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentModalPaidAmount(Math.round(paymentModalOrder.grandTotal * 0.5))
+                        }
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-mono text-[10px] font-bold shadow-xs"
+                      >
+                        50%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPaymentModalPaidAmount(Math.round(paymentModalOrder.grandTotal * 0.75))
+                        }
+                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
+                      >
+                        75%
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calculated Balance Due */}
+                  <div className="pt-2 border-t border-amber-200/80 flex justify-between items-center">
+                    <span className="text-amber-900 font-medium">Remaining Credit to Keep Due:</span>
+                    <span className="font-mono font-extrabold text-sm text-rose-700">
+                      Rs. {Math.max(0, paymentModalOrder.grandTotal - paymentModalPaidAmount).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Payment Method Selector */}
               <div>

@@ -106,8 +106,27 @@ export default async function AdminDashboardPage() {
 
       if (o.orderStatus !== "CANCELLED") {
         s.totalSpent += o.grandTotal;
-        if (o.paymentStatus === "PENDING") {
-          s.pendingBalance += o.grandTotal;
+        const grandTotal = Number(o.grandTotal) || 0;
+        let dueAmount = 0;
+        if (o.paymentStatus === "PAID") {
+          dueAmount = 0;
+        } else if (o.paymentStatus === "PARTIAL") {
+          let paid = 0;
+          let due = grandTotal;
+          if (o.deliveryNotes) {
+            const paidMatch = o.deliveryNotes.match(/paid=([0-9.]+)/i);
+            const dueMatch = o.deliveryNotes.match(/due=([0-9.]+)/i);
+            if (paidMatch) paid = parseFloat(paidMatch[1]) || 0;
+            if (dueMatch) due = parseFloat(dueMatch[1]) || Math.max(0, grandTotal - paid);
+            else due = Math.max(0, grandTotal - paid);
+          }
+          dueAmount = Math.max(0, due);
+        } else {
+          dueAmount = grandTotal;
+        }
+
+        if (dueAmount > 0) {
+          s.pendingBalance += dueAmount;
           s.pendingBillsCount += 1;
         }
       }
@@ -544,6 +563,15 @@ export default async function AdminDashboardPage() {
                           {shop.orders.map((b: any) => {
                             const isCancelled = b.orderStatus === "CANCELLED";
                             const isPaid = b.paymentStatus === "PAID";
+                            const isPartial = b.paymentStatus === "PARTIAL";
+                            let partialPaid = 0;
+                            let partialDue = b.grandTotal;
+                            if (isPartial && b.deliveryNotes) {
+                              const pMatch = b.deliveryNotes.match(/paid=([0-9.]+)/i);
+                              const dMatch = b.deliveryNotes.match(/due=([0-9.]+)/i);
+                              if (pMatch) partialPaid = parseFloat(pMatch[1]) || 0;
+                              if (dMatch) partialDue = parseFloat(dMatch[1]) || Math.max(0, b.grandTotal - partialPaid);
+                            }
 
                             return (
                               <tr key={b.id} className="hover:bg-tea-surface/40 transition">
@@ -562,15 +590,19 @@ export default async function AdminDashboardPage() {
                                   </span>
                                 </td>
                                 <td className="py-2.5 whitespace-nowrap">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      isPaid
-                                        ? "bg-emerald-100 text-emerald-800"
-                                        : "bg-amber-100 text-amber-800"
-                                    }`}
-                                  >
-                                    {b.paymentStatus} ({b.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Cash"})
-                                  </span>
+                                  {isPaid ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                      PAID ({b.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Cash"})
+                                    </span>
+                                  ) : isPartial ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-950 border border-amber-300">
+                                      PARTIAL (Paid: Rs. {partialPaid.toLocaleString()} | Due: Rs. {partialDue.toLocaleString()})
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                                      CREDIT DUE (Rs. {b.grandTotal.toLocaleString()})
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-2.5 whitespace-nowrap">
                                   {isCancelled ? (
