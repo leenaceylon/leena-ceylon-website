@@ -428,3 +428,98 @@ export function compileOrderShippedWhatsAppMessage(
   return lines.join("\n").trim();
 }
 
+export interface ShopInvoiceData {
+  orderNumber: string;
+  shopName: string;
+  ownerName?: string;
+  shopPhone?: string;
+  routeTown?: string;
+  address?: string;
+  items: Array<{
+    productName: string;
+    size: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+  }>;
+  subtotal: number;
+  discount?: number;
+  deliveryCharge?: number;
+  grandTotal: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  notes?: string;
+  brandName?: string;
+}
+
+export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string {
+  const brand = data.brandName || "LEENA CEYLON (PVT) LTD";
+  const dateStr = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  const lines: string[] = [
+    `🧾 *OFFICIAL SHOP INVOICE & BILL — ${brand.toUpperCase()}* 🧾`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `🏬 *Shop / Store:* *${data.shopName}*`,
+    ...(data.ownerName ? [`👤 *Contact Person:* ${data.ownerName}`] : []),
+    ...(data.routeTown ? [`📍 *Route / Area:* ${data.routeTown}`] : []),
+    `📌 *Invoice / Bill #:* *${data.orderNumber}*`,
+    `📅 *Date:* ${dateStr}`,
+    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+    `📦 *ITEMIZED TEA SUPPLY:*`,
+  ];
+
+  data.items.forEach((it, idx) => {
+    lines.push(
+      `${idx + 1}. *${it.productName}* (${it.size})\n   ↳ ${it.quantity} packs × Rs. ${it.unitPrice.toLocaleString("en-US")} = *Rs. ${it.subtotal.toLocaleString("en-US")}*`
+    );
+  });
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`💰 *Items Subtotal:* Rs. ${data.subtotal.toLocaleString("en-US")}`);
+
+  if (data.discount && data.discount > 0) {
+    lines.push(`🏷️ *Shop Discount:* -Rs. ${data.discount.toLocaleString("en-US")}`);
+  }
+
+  if (data.deliveryCharge !== undefined) {
+    lines.push(
+      `🚚 *Transport / Delivery:* ${
+        data.deliveryCharge === 0 ? "FREE" : `Rs. ${data.deliveryCharge.toLocaleString("en-US")}`
+      }`
+    );
+  }
+
+  lines.push(`⭐ *NET PAYABLE AMOUNT:* *Rs. ${data.grandTotal.toLocaleString("en-US")}*`);
+
+  const paymentText =
+    data.paymentMethod === "CREDIT_SHOP"
+      ? "Credit / On Account (Payment Due)"
+      : data.paymentMethod === "CHEQUE"
+      ? "Cheque Payment"
+      : data.paymentMethod === "BANK_TRANSFER"
+      ? "Direct Bank Transfer"
+      : "Cash on Delivery / On Spot";
+
+  lines.push(`💳 *Payment Terms:* ${paymentText}`);
+  lines.push(
+    `📋 *Payment Status:* *${data.paymentStatus === "PAID" ? "✅ PAID IN FULL" : "⏳ DUE / PENDING"}*`
+  );
+
+  if (data.notes) {
+    lines.push(`📝 *Note:* "${data.notes}"`);
+  }
+
+  lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  lines.push(`Thank you for your business and partnership with pure Ceylon single-origin tea!`);
+  lines.push(`For re-orders, wholesale inquiry or dispatch: 📞 *071 777 4717*`);
+  lines.push(``);
+  lines.push(`🌿 *${brand}*`);
+  lines.push(`📍 A/Bandarapothana, Pubbogama, Kekirawa, Sri Lanka`);
+
+  return lines.join("\n").trim();
+}
+

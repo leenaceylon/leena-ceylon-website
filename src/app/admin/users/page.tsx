@@ -91,7 +91,7 @@ export default function AdminUsersPage() {
       )}
 
       {/* Role Definitions Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="p-4 bg-white rounded-xl border border-tea-border shadow-subtle space-y-1">
           <span className="px-2 py-0.5 rounded bg-tea-dark text-white font-mono text-[10px] font-bold">
             SUPER_ADMIN
@@ -129,6 +129,16 @@ export default function AdminUsersPage() {
           <h4 className="font-bold text-xs text-tea-dark pt-1">Order & Dispatch</h4>
           <p className="text-[11px] text-tea-muted leading-relaxed">
             Fulfillment operations, courier progress updates, and customer delivery communications.
+          </p>
+        </div>
+
+        <div className="p-4 bg-white rounded-xl border border-tea-border shadow-subtle space-y-1">
+          <span className="px-2 py-0.5 rounded bg-emerald-700 text-white font-mono text-[10px] font-bold">
+            SHOP_ORDER_REP
+          </span>
+          <h4 className="font-bold text-xs text-tea-dark pt-1">Shop Order Taker</h4>
+          <p className="text-[11px] text-tea-muted leading-relaxed">
+            Ground shop-by-shop order taking, item-by-item selection, and instant invoice billing.
           </p>
         </div>
       </div>
@@ -243,6 +253,7 @@ export default function AdminUsersPage() {
                   <option value="MANAGER">Manager (Products, Orders, Customers, Reports)</option>
                   <option value="PRODUCT_MANAGER">Product Manager (Catalog & Media)</option>
                   <option value="ORDER_MANAGER">Order Manager (Fulfillment)</option>
+                  <option value="SHOP_ORDER_REP">Shop Order Taker & Billing Rep (Ground Sales)</option>
                 </select>
               </div>
             </div>
