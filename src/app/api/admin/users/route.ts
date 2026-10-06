@@ -160,20 +160,23 @@ export async function PUT(req: NextRequest) {
     }
 
     // Don't allow Super Admin to deactivate their own account or remove Super Admin role from themselves
-    if (existing.id === current.id) {
+    if (existing.id === current.id || existing.email === "admin@leenaceylon.com") {
       if (isActive === false) {
-        return NextResponse.json({ error: "You cannot deactivate your own Super Admin account" }, { status: 400 });
+        return NextResponse.json({ error: "You cannot deactivate the primary Super Admin account" }, { status: 400 });
       }
       if (roleName && roleName !== "SUPER_ADMIN") {
-        return NextResponse.json({ error: "You cannot demote your own Super Admin role" }, { status: 400 });
+        return NextResponse.json(
+          { error: "admin@leenaceylon.com is the permanent Super Administrator and cannot be demoted to Manager or any other role" },
+          { status: 400 }
+        );
       }
     }
 
     const updateData: any = {
       name: name.trim(),
       email: cleanEmail,
-      roleName: roleName || existing.roleName,
-      isActive: typeof isActive === "boolean" ? isActive : existing.isActive,
+      roleName: existing.email === "admin@leenaceylon.com" ? "SUPER_ADMIN" : roleName || existing.roleName,
+      isActive: existing.email === "admin@leenaceylon.com" ? true : typeof isActive === "boolean" ? isActive : existing.isActive,
     };
 
     if (password && password.trim().length >= 6) {
