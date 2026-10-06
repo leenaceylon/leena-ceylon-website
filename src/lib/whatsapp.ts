@@ -448,8 +448,18 @@ export interface ShopInvoiceData {
   grandTotal: number;
   paymentMethod: string;
   paymentStatus: string;
+  paidAmount?: number;
+  dueAmount?: number;
   notes?: string;
   brandName?: string;
+  combinedPayment?: {
+    isCombined: boolean;
+    oldBalance: number;
+    newBillTotal: number;
+    totalCombined: number;
+    totalReceived: number;
+    afterBalance: number;
+  };
 }
 
 export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string {
@@ -479,7 +489,7 @@ export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string
   });
 
   lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  lines.push(`💰 *Items Subtotal:* Rs. ${data.subtotal.toLocaleString("en-US")}`);
+  lines.push(`💰 *Today's Items Subtotal:* Rs. ${data.subtotal.toLocaleString("en-US")}`);
 
   if (data.discount && data.discount > 0) {
     lines.push(`🏷️ *Shop Discount:* -Rs. ${data.discount.toLocaleString("en-US")}`);
@@ -493,7 +503,7 @@ export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string
     );
   }
 
-  lines.push(`⭐ *NET PAYABLE AMOUNT:* *Rs. ${data.grandTotal.toLocaleString("en-US")}*`);
+  lines.push(`⭐ *NEW INVOICE TOTAL:* *Rs. ${data.grandTotal.toLocaleString("en-US")}*`);
 
   const paymentText =
     data.paymentMethod === "CREDIT_SHOP"
@@ -506,10 +516,35 @@ export function compileShopInvoiceWhatsAppMessage(data: ShopInvoiceData): string
 
   lines.push(`💳 *Payment Terms:* ${paymentText}`);
   lines.push(
-    `📋 *Payment Status:* *${data.paymentStatus === "PAID" ? "✅ PAID IN FULL" : "⏳ DUE / PENDING"}*`
+    `📋 *Payment Status:* *${
+      data.paymentStatus === "PAID"
+        ? "✅ PAID IN FULL"
+        : data.paymentStatus === "PARTIAL"
+        ? `⏳ PARTIAL PAYMENT (Paid: Rs. ${(data.paidAmount || 0).toLocaleString()} | Due: Rs. ${(data.dueAmount || 0).toLocaleString()})`
+        : "⏳ DUE / PENDING CREDIT"
+    }*`
   );
 
+  // 2-Bill Combined Statement Section
+  if (data.combinedPayment && data.combinedPayment.isCombined && data.combinedPayment.oldBalance > 0) {
+    const cp = data.combinedPayment;
+    lines.push(``);
+    lines.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    lines.push(`📋 *2-BILL COMBINED STATEMENT & PAYMENT:*`);
+    lines.push(`• Today's New Bill: Rs. ${cp.newBillTotal.toLocaleString("en-US")}`);
+    lines.push(`• Previous Old Bill(s): Rs. ${cp.oldBalance.toLocaleString("en-US")}`);
+    lines.push(`• *Total Combined Balance (2 Bills):* *Rs. ${cp.totalCombined.toLocaleString("en-US")}*`);
+    lines.push(`• *Amount Paid Today:* *Rs. ${cp.totalReceived.toLocaleString("en-US")}*`);
+    lines.push(`• *AFTER-PAYMENT BALANCE DUE (AFTER BAL):* *Rs. ${cp.afterBalance.toLocaleString("en-US")}*`);
+    if (cp.afterBalance === 0) {
+      lines.push(`✅ *ALL BILLS SETTLED IN FULL! ACCOUNT CLEAR.*`);
+    } else {
+      lines.push(`⏳ *REMAINING STORE DEBT TO PAY: Rs. ${cp.afterBalance.toLocaleString("en-US")} DUE*`);
+    }
+  }
+
   if (data.notes) {
+    lines.push(``);
     lines.push(`📝 *Note:* "${data.notes}"`);
   }
 

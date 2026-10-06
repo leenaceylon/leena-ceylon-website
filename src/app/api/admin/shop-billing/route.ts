@@ -26,6 +26,23 @@ function parsePaymentDetails(o: any) {
   return { paidAmount: 0, dueAmount: grandTotal, isPartial: false };
 }
 
+// Helper to extract 2-bill combined payment metadata
+function parseCombinedPaymentDetails(notes?: string | null) {
+  if (!notes) return null;
+  const match = notes.match(
+    /\[COMBINED_PAYMENT:\s*oldDebt=([0-9.]+),\s*newBill=([0-9.]+),\s*totalCombined=([0-9.]+),\s*totalReceived=([0-9.]+),\s*afterBalance=([0-9.]+)\]/i
+  );
+  if (!match) return null;
+  return {
+    isCombined: true,
+    oldBalance: parseFloat(match[1]) || 0,
+    newBillTotal: parseFloat(match[2]) || 0,
+    totalCombined: parseFloat(match[3]) || 0,
+    totalReceived: parseFloat(match[4]) || 0,
+    afterBalance: parseFloat(match[5]) || 0,
+  };
+}
+
 export async function GET() {
   try {
     const admin = await getCurrentAdmin();
@@ -86,6 +103,7 @@ export async function GET() {
       const shop = uniqueShopsMap.get(key);
       shop.totalBillsCount += 1;
       const { paidAmount, dueAmount, isPartial } = parsePaymentDetails(o);
+      const combinedDetails = parseCombinedPaymentDetails(o.deliveryNotes);
 
       shop.allBills.push({
         id: o.id,
@@ -95,6 +113,7 @@ export async function GET() {
         paidAmount,
         dueAmount,
         isPartial,
+        combinedDetails,
         paymentStatus: o.paymentStatus,
         paymentMethod: o.paymentMethod,
         orderStatus: o.orderStatus,
@@ -115,6 +134,7 @@ export async function GET() {
             paidAmount,
             dueAmount,
             isPartial,
+            combinedDetails,
             paymentMethod: o.paymentMethod,
             paymentStatus: o.paymentStatus,
             deliveryNotes: o.deliveryNotes,
@@ -134,6 +154,7 @@ export async function GET() {
         paidAmount,
         dueAmount,
         isPartial,
+        combinedDetails: parseCombinedPaymentDetails(o.deliveryNotes),
       };
     });
 
@@ -175,6 +196,7 @@ export async function POST(req: NextRequest) {
       paymentStatus = "PAID",
       paidAmount = 0,
       notes,
+      combinedPayment, // { isCombined: boolean, oldBalance: number, totalReceived: number, afterBalance: number }
     } = body;
 
     if (!shopName || !shopName.trim()) {
@@ -224,20 +246,119 @@ export async function POST(req: NextRequest) {
       computedSubtotal - Number(discount || 0) + Number(deliveryCharge || 0)
     );
 
-    // Compute payment metadata tag
+    // COMBINED 2-BILL PAYMENT ALLOCATION vs STANDARD BILL PAYMENT
+    const isCombinedActive = Boolean(combinedPayment?.isCombined && Number(combinedPayment?.oldBalance) > 0);
+    let actualPaymentStatus = paymentStatus;
+    let actualPaidAmount = 0;
+    let actualDueAmount = finalGrandTotal;
     let paymentTag = "";
-    if (paymentStatus === "PARTIAL") {
-      const numPaid = Math.min(finalGrandTotal, Math.max(0, Number(paidAmount || 0)));
-      const numDue = Math.max(0, finalGrandTotal - numPaid);
-      paymentTag = `[PARTIAL_PAYMENT: paid=${numPaid}, due=${numDue}]`;
-    } else if (paymentStatus === "PAID") {
-      paymentTag = `[FULL_PAYMENT_SETTLED: paid=${finalGrandTotal}, due=0]`;
+    let combinedTag = "";
+
+    if (isCombinedActive) {
+      const oldDebt = Math.max(0, Number(combinedPayment.oldBalance) || 0);
+      const totalReceived = Math.max(0, Number(combinedPayment.totalReceived) || 0);
+      const totalCombined = oldDebt + finalGrandTotal;
+      const computedAfterBal = Math.max(0, totalCombined - totalReceived);
+
+      // 1. Fetch old unpaid/partial bills for this shop in FIFO order
+      const oldPendingOrders = await prisma.order.findMany({
+        where: {
+          customerName: shopName.trim(),
+          orderStatus: { not: "CANCELLED" },
+          paymentStatus: { in: ["PENDING", "PARTIAL"] },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      let remainingToAllocate = totalReceived;
+      const timestamp = new Date().toLocaleString("en-GB");
+
+      // 2. FIFO Waterfall: Clear oldest bills first
+      for (const oldOrder of oldPendingOrders) {
+        if (remainingToAllocate <= 0) break;
+        const { paidAmount: currPaid, dueAmount: currDue } = parsePaymentDetails(oldOrder);
+        if (currDue <= 0) continue;
+
+        const payToThis = Math.min(currDue, remainingToAllocate);
+        const newPaidTotal = currPaid + payToThis;
+        const newDueTotal = Math.max(0, currDue - payToThis);
+        remainingToAllocate -= payToThis;
+
+        const newOldStatus = newDueTotal === 0 ? "PAID" : "PARTIAL";
+        const oldTag = newOldStatus === "PAID"
+          ? `[FULL_PAYMENT_SETTLED: paid=${oldOrder.grandTotal}, due=0]`
+          : `[PARTIAL_PAYMENT: paid=${newPaidTotal}, due=${newDueTotal}]`;
+
+        let cleanedOldNotes = (oldOrder.deliveryNotes || "")
+          .replace(/\[PARTIAL_PAYMENT:.*?\]/g, "")
+          .replace(/\[FULL_PAYMENT_SETTLED:.*?\]/g, "")
+          .replace(/\[CREDIT_MARKED_PENDING:.*?\]/g, "")
+          .trim();
+
+        const updatedOldNotes = `${cleanedOldNotes} | ${oldTag} | [Combined 2-Bill Settle ${timestamp} by ${admin.name} (${admin.role}) during New Bill #${orderNumber}: Allocated Rs. ${payToThis.toLocaleString()}]`;
+
+        await prisma.order.update({
+          where: { id: oldOrder.id },
+          data: {
+            paymentStatus: newOldStatus,
+            deliveryNotes: updatedOldNotes,
+          },
+        });
+
+        await prisma.adminActivityLog.create({
+          data: {
+            adminId: admin.id,
+            adminName: admin.name,
+            action: "COMBINED_BILL_PAYMENT_ALLOCATION",
+            details: `Combined 2-Bill Settlement: Allocated Rs. ${payToThis.toLocaleString()} to Old Bill #${oldOrder.orderNumber} for "${shopName.trim()}". Status is now ${newOldStatus} (Paid: Rs. ${newPaidTotal.toLocaleString()}, Due: Rs. ${newDueTotal.toLocaleString()}).`,
+            entityType: "Order",
+            entityId: oldOrder.id,
+          },
+        });
+      }
+
+      // 3. Apply any remaining received cash to the new bill
+      const newBillPaid = Math.min(finalGrandTotal, remainingToAllocate);
+      const newBillDue = Math.max(0, finalGrandTotal - newBillPaid);
+      actualPaidAmount = newBillPaid;
+      actualDueAmount = newBillDue;
+
+      if (newBillDue === 0) {
+        actualPaymentStatus = "PAID";
+        paymentTag = `[FULL_PAYMENT_SETTLED: paid=${finalGrandTotal}, due=0]`;
+      } else if (newBillPaid > 0) {
+        actualPaymentStatus = "PARTIAL";
+        paymentTag = `[PARTIAL_PAYMENT: paid=${newBillPaid}, due=${newBillDue}]`;
+      } else {
+        actualPaymentStatus = paymentMethod === "CREDIT_SHOP" ? "PENDING" : "PENDING";
+        paymentTag = `[CREDIT_MARKED_PENDING: paid=0, due=${finalGrandTotal}]`;
+      }
+
+      combinedTag = `[COMBINED_PAYMENT: oldDebt=${oldDebt}, newBill=${finalGrandTotal}, totalCombined=${totalCombined}, totalReceived=${totalReceived}, afterBalance=${computedAfterBal}]`;
     } else {
-      paymentTag = `[CREDIT_MARKED_PENDING: paid=0, due=${finalGrandTotal}]`;
+      // Standard Single Bill Calculation
+      if (paymentStatus === "PARTIAL") {
+        const numPaid = Math.min(finalGrandTotal, Math.max(0, Number(paidAmount || 0)));
+        const numDue = Math.max(0, finalGrandTotal - numPaid);
+        actualPaidAmount = numPaid;
+        actualDueAmount = numDue;
+        actualPaymentStatus = "PARTIAL";
+        paymentTag = `[PARTIAL_PAYMENT: paid=${numPaid}, due=${numDue}]`;
+      } else if (paymentStatus === "PAID") {
+        actualPaidAmount = finalGrandTotal;
+        actualDueAmount = 0;
+        actualPaymentStatus = "PAID";
+        paymentTag = `[FULL_PAYMENT_SETTLED: paid=${finalGrandTotal}, due=0]`;
+      } else {
+        actualPaidAmount = 0;
+        actualDueAmount = finalGrandTotal;
+        actualPaymentStatus = "PENDING";
+        paymentTag = `[CREDIT_MARKED_PENDING: paid=0, due=${finalGrandTotal}]`;
+      }
     }
 
     // Save in Order model with shop metadata
-    const shopMetadata = `SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
+    const shopMetadata = `SHOP: ${shopName.trim()} | OWNER: ${ownerName || "Shop Manager"} | ROUTE: ${routeTown || "Kekirawa / Central"} | ${combinedTag ? `${combinedTag} | ` : ""}${paymentTag}${notes ? ` | NOTE: ${notes}` : ""}`;
 
     const order = await prisma.order.create({
       data: {
@@ -254,8 +375,8 @@ export async function POST(req: NextRequest) {
         deliveryCharge: Number(deliveryCharge) || 0,
         discount: Number(discount) || 0,
         grandTotal: finalGrandTotal,
-        paymentMethod,
-        paymentStatus,
+        paymentMethod: actualPaymentStatus === "PAID" && paymentMethod === "CREDIT_SHOP" ? "CASH_ON_DELIVERY" : paymentMethod,
+        paymentStatus: actualPaymentStatus,
         orderStatus: "CONFIRMED", // Ground shop orders are immediately confirmed
         items: {
           create: orderItemsData,
@@ -285,12 +406,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Log admin activity
+    const activityDetails = isCombinedActive
+      ? `Took Shop Order #${order.orderNumber} for "${shopName}" with 2-Bill Combined Payment: Total Combined Rs. ${(Number(combinedPayment.oldBalance) + finalGrandTotal).toLocaleString()}, Received Today Rs. ${(Number(combinedPayment.totalReceived) || 0).toLocaleString()}, After Balance Due Rs. ${Math.max(0, (Number(combinedPayment.oldBalance) + finalGrandTotal) - (Number(combinedPayment.totalReceived) || 0)).toLocaleString()}`
+      : `Took Shop Order #${order.orderNumber} for "${shopName}" (${routeTown || "Direct Route"}) - Total: Rs. ${order.grandTotal.toLocaleString()} (${order.paymentMethod})`;
+
     await prisma.adminActivityLog.create({
       data: {
         adminId: admin.id,
         adminName: admin.name,
         action: "SHOP_BILLING_ORDER",
-        details: `Took Shop Order #${order.orderNumber} for "${shopName}" (${routeTown || "Direct Route"}) - Total: Rs. ${order.grandTotal.toLocaleString()} (${paymentMethod})`,
+        details: activityDetails,
         entityType: "Order",
         entityId: order.id,
       },
@@ -298,8 +423,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      order,
-      message: `Shop bill #${order.orderNumber} recorded successfully!`,
+      order: {
+        ...order,
+        paidAmount: actualPaidAmount,
+        dueAmount: actualDueAmount,
+        combinedDetails: parseCombinedPaymentDetails(order.deliveryNotes),
+      },
+      message: isCombinedActive
+        ? `Shop bill #${order.orderNumber} recorded! 2-Bill Combined Payment applied: Received Rs. ${(Number(combinedPayment.totalReceived) || 0).toLocaleString()} • After Bal: Rs. ${Math.max(0, (Number(combinedPayment.oldBalance) + finalGrandTotal) - (Number(combinedPayment.totalReceived) || 0)).toLocaleString()}`
+        : `Shop bill #${order.orderNumber} recorded successfully!`,
     });
   } catch (err: any) {
     console.error("Shop billing POST error:", err);
