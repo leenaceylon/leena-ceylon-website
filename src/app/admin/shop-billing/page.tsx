@@ -142,16 +142,12 @@ export default function ShopBillingPage() {
   // Bill Cart Line Items
   const [billItems, setBillItems] = useState<BillItem[]>([]);
 
-  // Financial Calculations
+  // Financial Calculations & Settlement (Single Enter Box Settlement)
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [deliveryCharge, setDeliveryCharge] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<string>("CASH_ON_DELIVERY");
-  const [paymentStatus, setPaymentStatus] = useState<string>("PAID");
-  const [paidNowAmount, setPaidNowAmount] = useState<number>(0);
-
-  // 2-Bill Combined Payment State
-  const [isCombinedMode, setIsCombinedMode] = useState<boolean>(true);
-  const [combinedPaidToday, setCombinedPaidToday] = useState<number>(0);
+  const [paidAmount, setPaidAmount] = useState<number | "">("");
+  const [isManualPaid, setIsManualPaid] = useState<boolean>(false);
 
   // Invoicing & Print Modal State
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
@@ -607,11 +603,20 @@ export default function ShopBillingPage() {
 
   // Financial Subtotals
   const billSubtotal = useMemo(() => {
-    return billItems.reduce((acc, it) => acc + it.subtotal, 0);
+    return billItems.reduce(
+      (acc, it) =>
+        acc +
+        (Number(it.subtotal) ||
+          Number(it.unitPrice || 0) * Number(it.quantity || 1)),
+      0
+    );
   }, [billItems]);
 
   const billGrandTotal = useMemo(() => {
-    return Math.max(0, billSubtotal - Number(discountAmount || 0) + Number(deliveryCharge || 0));
+    return Math.max(
+      0,
+      billSubtotal - Number(discountAmount || 0) + Number(deliveryCharge || 0)
+    );
   }, [billSubtotal, discountAmount, deliveryCharge]);
 
   // 2-Bill Combined Arithmetic & Waterfall Logic
@@ -621,21 +626,29 @@ export default function ShopBillingPage() {
 
   const hasOldDebt = Boolean(selectedKnownShop && oldShopDebt > 0);
   const totalCombinedBalance = billGrandTotal + (hasOldDebt ? oldShopDebt : 0);
+  const totalAmountDue = totalCombinedBalance;
 
-  // Auto-sync combinedPaidToday when totalCombinedBalance or billGrandTotal or shop changes
+  // Auto-sync default payment to total due unless the sales rep manually enters a custom amount
   useEffect(() => {
-    if (hasOldDebt && combinedPaidToday === 0 && billGrandTotal > 0) {
-      setCombinedPaidToday(billGrandTotal);
+    if (!isManualPaid && totalAmountDue > 0) {
+      setPaidAmount(totalAmountDue);
     }
-  }, [hasOldDebt, billGrandTotal]);
+  }, [totalAmountDue, isManualPaid]);
 
-  const combinedAfterBalance = useMemo(() => {
-    return Math.max(0, totalCombinedBalance - combinedPaidToday);
-  }, [totalCombinedBalance, combinedPaidToday]);
+  const numericPaid = paidAmount === "" ? 0 : Number(paidAmount) || 0;
+  const afterBalance = Math.max(0, totalAmountDue - numericPaid);
+
+  const computedPaymentStatus = useMemo(() => {
+    if (totalAmountDue === 0) return "PAID";
+    if (afterBalance === 0) return "PAID";
+    if (numericPaid > 0) return "PARTIAL";
+    return "PENDING";
+  }, [totalAmountDue, afterBalance, numericPaid]);
 
   const combinedAllocation = useMemo(() => {
-    const toOld = Math.min(oldShopDebt, combinedPaidToday);
-    const toNew = Math.min(billGrandTotal, Math.max(0, combinedPaidToday - oldShopDebt));
+    const toOld = Math.min(oldShopDebt, numericPaid);
+    const remainingForNew = Math.max(0, numericPaid - oldShopDebt);
+    const toNew = Math.min(billGrandTotal, remainingForNew);
     return {
       allocatedToOld: toOld,
       allocatedToNew: toNew,
@@ -643,7 +656,7 @@ export default function ShopBillingPage() {
       newSettled: toNew >= billGrandTotal,
       newPartial: toNew > 0 && toNew < billGrandTotal,
     };
-  }, [oldShopDebt, billGrandTotal, combinedPaidToday]);
+  }, [oldShopDebt, billGrandTotal, numericPaid]);
 
   // Autocomplete shop from known shops list
   const handleSelectKnownShop = (shop: KnownShop) => {
@@ -670,7 +683,7 @@ export default function ShopBillingPage() {
 
     try {
       setSubmitting(true);
-      const isCombined = isCombinedMode && hasOldDebt;
+      const isCombined = hasOldDebt;
       const res = await fetch("/api/admin/shop-billing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -682,24 +695,19 @@ export default function ShopBillingPage() {
           address,
           items: billItems,
           subtotal: billSubtotal,
-          discount: Number(discountAmount),
-          deliveryCharge: Number(deliveryCharge),
+          discount: Number(discountAmount || 0),
+          deliveryCharge: Number(deliveryCharge || 0),
           grandTotal: billGrandTotal,
           paymentMethod,
-          paymentStatus,
-          paidAmount:
-            paymentStatus === "PARTIAL"
-              ? paidNowAmount
-              : paymentStatus === "PAID"
-              ? billGrandTotal
-              : 0,
+          paymentStatus: computedPaymentStatus,
+          paidAmount: isCombined ? combinedAllocation.allocatedToNew : numericPaid,
           notes,
           combinedPayment: isCombined
             ? {
                 isCombined: true,
                 oldBalance: oldShopDebt,
-                totalReceived: combinedPaidToday,
-                afterBalance: combinedAfterBalance,
+                totalReceived: numericPaid,
+                afterBalance,
               }
             : undefined,
         }),
@@ -715,7 +723,7 @@ export default function ShopBillingPage() {
       setCompletedOrder(data.order);
       setNotice(
         isCombined
-          ? `Shop Order #${data.order.orderNumber} saved! 2-Bill Payment recorded (Paid Today: Rs. ${combinedPaidToday.toLocaleString()} • After Bal: Rs. ${combinedAfterBalance.toLocaleString()})!`
+          ? `Shop Order #${data.order.orderNumber} saved! Settlement recorded (Paid: Rs. ${numericPaid.toLocaleString()} • After Bal: Rs. ${afterBalance.toLocaleString()})!`
           : `Shop Order #${data.order.orderNumber} successfully finalized!`
       );
       setTimeout(() => setNotice(null), 4000);
@@ -739,10 +747,8 @@ export default function ShopBillingPage() {
     setDiscountAmount(0);
     setDeliveryCharge(0);
     setPaymentMethod("CASH_ON_DELIVERY");
-    setPaymentStatus("PAID");
-    setPaidNowAmount(0);
-    setCombinedPaidToday(0);
-    setIsCombinedMode(true);
+    setPaidAmount("");
+    setIsManualPaid(false);
     setCompletedOrder(null);
   };
 
@@ -765,13 +771,15 @@ export default function ShopBillingPage() {
       deliveryCharge,
       grandTotal: billGrandTotal,
       paymentMethod,
-      paymentStatus,
-      paidAmount: paymentStatus === "PARTIAL" ? paidNowAmount : paymentStatus === "PAID" ? billGrandTotal : 0,
-      dueAmount: paymentStatus === "PARTIAL" ? Math.max(0, billGrandTotal - paidNowAmount) : paymentStatus === "PAID" ? 0 : billGrandTotal,
+      paymentStatus: computedPaymentStatus,
+      paidAmount: hasOldDebt ? combinedAllocation.allocatedToNew : numericPaid,
+      dueAmount: hasOldDebt
+        ? Math.max(0, billGrandTotal - combinedAllocation.allocatedToNew)
+        : afterBalance,
       items: billItems,
     };
 
-    const isCombinedActive = isCombinedMode && hasOldDebt;
+    const isCombinedActive = hasOldDebt;
     const combinedPaymentData = completedOrder?.combinedDetails
       ? completedOrder.combinedDetails
       : isCombinedActive
@@ -780,8 +788,8 @@ export default function ShopBillingPage() {
           oldBalance: oldShopDebt,
           newBillTotal: billGrandTotal,
           totalCombined: totalCombinedBalance,
-          totalReceived: combinedPaidToday,
-          afterBalance: combinedAfterBalance,
+          totalReceived: numericPaid,
+          afterBalance,
         }
       : undefined;
 
@@ -1180,35 +1188,18 @@ export default function ShopBillingPage() {
                                 </div>
                               </div>
 
-                              {/* Quick Collect Action Buttons during new bill creation */}
-                              <div className="flex items-center gap-1.5 pt-1 border-t border-amber-100">
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickSettleBill(pb, "FULL")}
-                                  className="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs flex items-center justify-center gap-1"
-                                  title="Mark old bill as 100% paid without leaving this page"
-                                >
-                                  <Check className="w-3 h-3 text-tea-gold" />
-                                  <span>Settle Full</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickSettleBill(pb, "HALF")}
-                                  className="flex-1 py-1.5 px-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs flex items-center justify-center gap-1"
-                                  title="Collect 50% half payment on spot"
-                                >
-                                  <DollarSign className="w-3 h-3 text-white" />
-                                  <span>Pay Half</span>
-                                </button>
-
+                              {/* Auto-included in Step 3 settlement note */}
+                              <div className="flex items-center justify-between pt-2 border-t border-amber-100 text-[11px]">
+                                <span className="text-amber-900 font-medium">
+                                  ↳ Auto-included in Step 3 settlement
+                                </span>
                                 <button
                                   type="button"
                                   onClick={() => handleOpenPaymentModal(pb, "PARTIAL")}
-                                  className="py-1.5 px-2.5 rounded-lg border border-tea-border hover:bg-tea-surface text-tea-dark font-bold text-[10px] transition"
-                                  title="Enter custom partial amount or edit notes"
+                                  className="py-1 px-2.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold text-[10px] transition"
+                                  title="Enter custom partial amount or edit notes in ledger"
                                 >
-                                  <span>Custom...</span>
+                                  <span>Update in Ledger...</span>
                                 </button>
                               </div>
                             </div>
@@ -1327,8 +1318,12 @@ export default function ShopBillingPage() {
                         type="number"
                         min="0"
                         step="10"
-                        value={itemUnitPrice}
-                        onChange={(e) => setItemUnitPrice(Number(e.target.value))}
+                        value={itemUnitPrice === 0 ? "" : itemUnitPrice}
+                        onChange={(e) =>
+                          setItemUnitPrice(
+                            e.target.value === "" ? 0 : Math.max(0, Number(e.target.value))
+                          )
+                        }
                         className="w-full px-3 py-2 text-xs font-bold text-tea-forest rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono"
                       />
                     </div>
@@ -1350,7 +1345,11 @@ export default function ShopBillingPage() {
                           type="number"
                           min="1"
                           value={itemQuantity}
-                          onChange={(e) => setItemQuantity(Math.max(1, Number(e.target.value)))}
+                          onChange={(e) =>
+                            setItemQuantity(
+                              e.target.value === "" ? 1 : Math.max(1, Number(e.target.value))
+                            )
+                          }
                           className="w-full py-2 text-center text-xs font-bold text-tea-dark border-y border-tea-border bg-white focus:outline-none font-mono"
                         />
                         <button
@@ -1372,6 +1371,23 @@ export default function ShopBillingPage() {
                         <Plus className="w-4 h-4" />
                         <span>Add Item</span>
                       </button>
+                    </div>
+
+                    {/* Real-time Line Total Calculation Preview */}
+                    <div className="col-span-2 sm:col-span-4 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between text-xs">
+                      <span className="text-emerald-950 font-semibold flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>
+                          Line Total ({itemQuantity} pkts × Rs.{" "}
+                          {Number(itemUnitPrice || 0).toLocaleString()}):
+                        </span>
+                      </span>
+                      <span className="font-mono font-extrabold text-emerald-900 text-sm">
+                        Rs.{" "}
+                        {(
+                          Number(itemUnitPrice || 0) * Number(itemQuantity || 1)
+                        ).toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 </form>
@@ -1506,227 +1522,153 @@ export default function ShopBillingPage() {
                   </span>
                 </div>
 
-                {/* 2-BILL COMBINED PAYMENT & SETTLEMENT OPTION */}
+                {/* 2-BILL COMBINED STATEMENT BREAKDOWN (When shop has old pending debt) */}
                 {hasOldDebt && (
                   <div className="p-4 rounded-3xl bg-amber-50/95 border-2 border-amber-300 shadow-sm space-y-3.5 text-xs animate-fade-in mt-2">
-                    {/* Header & Mode Switcher */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200">
-                      <div>
-                        <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
-                          <Receipt className="w-4 h-4 text-amber-700" />
-                          <span>2-Bill Combined Payment Option</span>
-                          <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase">
-                            Old + New Bills
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-amber-800 mt-0.5">
-                          Combine previous credit debt with today's bill and calculate after-payment balance (<strong>after bal</strong>) on spot.
-                        </p>
+                    <div className="pb-2 border-b border-amber-200">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
+                        <Receipt className="w-4 h-4 text-amber-700" />
+                        <span>2-Bill Combined Statement</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase">
+                          Old + New Bills
+                        </span>
                       </div>
+                      <p className="text-[11px] text-amber-800 mt-0.5">
+                        Shop has an unpaid old balance. Today's bill is combined with previous debt. Enter amount received in the box below to calculate after-payment balance.
+                      </p>
+                    </div>
 
-                      {/* Toggle: 2-Bill Combined vs Single Bill */}
-                      <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-amber-300 self-start sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setIsCombinedMode(true)}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] uppercase transition ${
-                            isCombinedMode
-                              ? "bg-amber-600 text-white shadow-xs"
-                              : "text-amber-800 hover:bg-amber-50"
+                    {/* 2-Bill Formula Breakdown Box (Example: New 2000 + Old 3000 = Total 5000) */}
+                    <div className="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-2xl border border-amber-200 shadow-2xs font-mono">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] text-tea-muted uppercase font-sans font-semibold block">
+                          Today's New Bill
+                        </span>
+                        <span className="font-bold text-sm text-tea-dark block">
+                          Rs. {billGrandTotal.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 border-x border-amber-100">
+                        <span className="text-[10px] text-rose-700 uppercase font-sans font-semibold block">
+                          Old Pending Debt
+                        </span>
+                        <span className="font-bold text-sm text-rose-700 block">
+                          +Rs. {oldShopDebt.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 bg-amber-50/80 rounded-xl py-1">
+                        <span className="text-[10px] text-amber-900 uppercase font-sans font-bold block">
+                          Total Due (2 Bills)
+                        </span>
+                        <span className="font-extrabold text-base text-amber-950 block">
+                          Rs. {totalCombinedBalance.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SINGLE AMOUNT ENTER BOX FOR SETTLEMENT */}
+                <div className="p-4 rounded-3xl bg-tea-surface/70 border-2 border-tea-border space-y-3 mt-2 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="font-bold text-tea-dark flex items-center gap-1.5 text-xs">
+                      <DollarSign className="w-4 h-4 text-emerald-700" />
+                      <span>Amount Received / Paid Today (Rs.):</span>
+                    </label>
+                    <span className="text-[10px] text-tea-muted">
+                      Type cash / bank transfer amount received
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-2.5 text-sm font-mono font-bold text-tea-forest">Rs.</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="50"
+                      value={paidAmount}
+                      onChange={(e) => {
+                        setIsManualPaid(true);
+                        setPaidAmount(e.target.value === "" ? "" : Math.max(0, Number(e.target.value)));
+                      }}
+                      placeholder={`Enter amount (e.g. ${totalAmountDue})`}
+                      className="w-full pl-11 pr-3 py-2.5 rounded-xl border-2 border-tea-forest/60 bg-white font-mono font-extrabold text-base text-tea-dark focus:outline-none focus:ring-2 focus:ring-tea-forest shadow-xs"
+                    />
+                  </div>
+
+                  {/* AFTER-PAYMENT BALANCE DUE (AFTER BAL) CARD */}
+                  <div
+                    className={`p-3.5 rounded-2xl border-2 transition-all font-mono ${
+                      afterBalance === 0
+                        ? "bg-emerald-50 border-emerald-400 text-emerald-950"
+                        : "bg-rose-50 border-rose-300 text-rose-950"
+                    }`}
+                  >
+                    <div className="flex justify-between items-baseline">
+                      <div className="space-y-0.5">
+                        <span className="font-sans font-bold text-xs uppercase tracking-wide block">
+                          After-Payment Balance Due (After Bal):
+                        </span>
+                        <span className="font-sans text-[11px] text-tea-muted block">
+                          {hasOldDebt
+                            ? `Total Due Rs. ${totalCombinedBalance.toLocaleString()} − Paid Rs. ${numericPaid.toLocaleString()}`
+                            : `Net Payable Rs. ${billGrandTotal.toLocaleString()} − Paid Rs. ${numericPaid.toLocaleString()}`}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xl sm:text-2xl font-black block">
+                          Rs. {afterBalance.toLocaleString()}
+                        </span>
+                        <span
+                          className={`text-[10px] font-sans font-bold uppercase ${
+                            afterBalance === 0 ? "text-emerald-700" : "text-rose-700"
                           }`}
                         >
-                          ✓ 2-Bill Combined
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsCombinedMode(false)}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] uppercase transition ${
-                            !isCombinedMode
-                              ? "bg-tea-dark text-white shadow-xs"
-                              : "text-amber-800 hover:bg-amber-50"
-                          }`}
-                        >
-                          New Bill Only
-                        </button>
+                          {afterBalance === 0
+                            ? hasOldDebt
+                              ? "ALL 2 BILLS SETTLED (CLEAR) ✅"
+                              : "PAID IN FULL (CLEAR) ✅"
+                            : "REMAINING STORE BALANCE DUE ⏳"}
+                        </span>
                       </div>
                     </div>
 
-                    {isCombinedMode ? (
-                      <div className="space-y-3">
-                        {/* 2-Bill Formula Breakdown Box (Example: New 2000 + Old 3000 = Total 5000) */}
-                        <div className="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-2xl border border-amber-200 shadow-2xs font-mono">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-tea-muted uppercase font-sans font-semibold block">
-                              Today's New Bill
-                            </span>
-                            <span className="font-bold text-sm text-tea-dark block">
-                              Rs. {billGrandTotal.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="space-y-0.5 border-x border-amber-100">
-                            <span className="text-[10px] text-rose-700 uppercase font-sans font-semibold block">
-                              Old Pending Debt
-                            </span>
-                            <span className="font-bold text-sm text-rose-700 block">
-                              +Rs. {oldShopDebt.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="space-y-0.5 bg-amber-50/80 rounded-xl py-1">
-                            <span className="text-[10px] text-amber-900 uppercase font-sans font-bold block">
-                              Total (2 Bills)
-                            </span>
-                            <span className="font-extrabold text-base text-amber-950 block">
-                              Rs. {totalCombinedBalance.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Amount Paid Today Input */}
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-center">
-                            <label className="font-bold text-amber-950 flex items-center gap-1.5">
-                              <DollarSign className="w-4 h-4 text-emerald-700" />
-                              <span>Total Amount Paid by Shopkeeper Today:</span>
-                            </label>
-                            <span className="text-[10px] text-amber-800 font-medium">Cash / Transfer received</span>
-                          </div>
-
-                          <div className="relative">
-                            <span className="absolute left-3.5 top-2.5 text-xs font-mono font-bold text-amber-900">Rs.</span>
-                            <input
-                              type="number"
-                              min="0"
-                              max={totalCombinedBalance}
-                              step="50"
-                              value={combinedPaidToday}
-                              onChange={(e) => setCombinedPaidToday(Math.max(0, Number(e.target.value)))}
-                              placeholder="e.g. 3000"
-                              className="w-full pl-10 pr-3 py-2.5 rounded-xl border-2 border-amber-400 bg-white font-mono font-extrabold text-base text-tea-dark focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-xs"
-                            />
-                          </div>
-
-                          {/* Quick Shortcut Buttons */}
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            <button
-                              type="button"
-                              onClick={() => setCombinedPaidToday(totalCombinedBalance)}
-                              className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-[10px] font-bold shadow-xs transition"
-                            >
-                              Pay All 2 Bills (Rs. {totalCombinedBalance.toLocaleString()})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCombinedPaidToday(oldShopDebt)}
-                              className="px-2.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-mono text-[10px] font-bold shadow-xs transition"
-                            >
-                              Pay Old Bill (Rs. {oldShopDebt.toLocaleString()})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCombinedPaidToday(billGrandTotal)}
-                              className="px-2.5 py-1.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-mono text-[10px] font-bold shadow-xs transition"
-                            >
-                              Pay New Bill (Rs. {billGrandTotal.toLocaleString()})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCombinedPaidToday(Math.round(totalCombinedBalance / 2))}
-                              className="px-2 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold transition"
-                            >
-                              50% Half (Rs. {Math.round(totalCombinedBalance / 2).toLocaleString()})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setCombinedPaidToday(0)}
-                              className="px-2 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 font-mono text-[10px] font-bold transition"
-                            >
-                              Credit / 0 (Rs. 0)
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* AFTER-PAYMENT BALANCE DUE (AFTER BAL) DISPLAY */}
-                        <div
-                          className={`p-3.5 rounded-2xl border-2 transition-all font-mono ${
-                            combinedAfterBalance === 0
-                              ? "bg-emerald-50 border-emerald-400 text-emerald-950"
-                              : "bg-rose-50 border-rose-300 text-rose-950"
-                          }`}
-                        >
-                          <div className="flex justify-between items-baseline">
-                            <div className="space-y-0.5">
-                              <span className="font-sans font-bold text-xs uppercase tracking-wide block">
-                                After-Payment Balance Due (After Bal):
-                              </span>
-                              <span className="font-sans text-[11px] text-tea-muted block">
-                                Total 2 Bills Rs. {totalCombinedBalance.toLocaleString()} − Paid Rs. {combinedPaidToday.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xl sm:text-2xl font-black block">
-                                Rs. {combinedAfterBalance.toLocaleString()}
-                              </span>
-                              <span
-                                className={`text-[10px] font-sans font-bold uppercase ${
-                                  combinedAfterBalance === 0 ? "text-emerald-700" : "text-rose-700"
-                                }`}
-                              >
-                                {combinedAfterBalance === 0
-                                  ? "ALL 2 BILLS SETTLED (CLEAR)"
-                                  : "REMAINING STORE BALANCE DUE"}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Live Settlement Breakdown */}
-                          <div className="mt-2.5 pt-2 border-t border-dashed border-current/30 text-[11px] font-sans flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-tea-dark font-medium">
-                            <span className="flex items-center gap-1">
-                              <span>↳ Old Bill (Rs. {oldShopDebt.toLocaleString()}):</span>
-                              <strong
-                                className={
-                                  combinedAllocation.oldSettled
-                                    ? "text-emerald-700 font-bold"
-                                    : "text-amber-800 font-bold"
-                                }
-                              >
-                                {combinedAllocation.oldSettled
-                                  ? "Settled Full (PAID) ✅"
-                                  : `Partial (Rs. ${combinedAllocation.allocatedToOld.toLocaleString()} paid) ⏳`}
-                              </strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span>↳ New Bill (Rs. {billGrandTotal.toLocaleString()}):</span>
-                              <strong
-                                className={
-                                  combinedAllocation.newSettled
-                                    ? "text-emerald-700 font-bold"
-                                    : combinedAllocation.newPartial
-                                    ? "text-amber-800 font-bold"
-                                    : "text-rose-700 font-bold"
-                                }
-                              >
-                                {combinedAllocation.newSettled
-                                  ? "Paid in Full ✅"
-                                  : combinedAllocation.newPartial
-                                  ? `Partial (Rs. ${combinedAllocation.allocatedToNew.toLocaleString()} paid, Rs. ${(billGrandTotal - combinedAllocation.allocatedToNew).toLocaleString()} due) ⏳`
-                                  : `Rs. ${billGrandTotal.toLocaleString()} Credit Due ⏳`}
-                              </strong>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-amber-900 bg-white/70 p-2.5 rounded-xl border border-amber-200">
-                        Single bill mode active. Today's bill will be recorded without touching the shop's Rs. {oldShopDebt.toLocaleString()} previous balance.
+                    {/* Waterfall breakdown when 2 bills are combined */}
+                    {hasOldDebt && (
+                      <div className="mt-2.5 pt-2 border-t border-dashed border-current/30 text-[11px] font-sans flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-tea-dark font-medium">
+                        <span className="flex items-center gap-1">
+                          <span>↳ Old Bill (Rs. {oldShopDebt.toLocaleString()}):</span>
+                          <strong className={combinedAllocation.oldSettled ? "text-emerald-700 font-bold" : "text-amber-800 font-bold"}>
+                            {combinedAllocation.oldSettled
+                              ? "Settled Full (PAID) ✅"
+                              : `Partial (Rs. ${combinedAllocation.allocatedToOld.toLocaleString()} paid) ⏳`}
+                          </strong>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span>↳ New Bill (Rs. {billGrandTotal.toLocaleString()}):</span>
+                          <strong
+                            className={
+                              combinedAllocation.newSettled
+                                ? "text-emerald-700 font-bold"
+                                : combinedAllocation.newPartial
+                                ? "text-amber-800 font-bold"
+                                : "text-rose-700 font-bold"
+                            }
+                          >
+                            {combinedAllocation.newSettled
+                              ? "Paid in Full ✅"
+                              : combinedAllocation.newPartial
+                              ? `Partial (Rs. ${combinedAllocation.allocatedToNew.toLocaleString()} paid, Rs. ${(billGrandTotal - combinedAllocation.allocatedToNew).toLocaleString()} due) ⏳`
+                              : `Rs. ${billGrandTotal.toLocaleString()} Credit Due ⏳`}
+                          </strong>
+                        </span>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Payment Mode & Status (Single Bill Mode or Standard Mode) */}
-              <div className={`grid ${isCombinedMode && hasOldDebt ? "grid-cols-1" : "grid-cols-2"} gap-3 pt-2 text-xs`}>
-                <div>
+                {/* Payment Method Selector */}
+                <div className="pt-2 text-xs">
                   <label className="block font-bold text-tea-dark mb-1">Payment Method</label>
                   <select
                     value={paymentMethod}
@@ -1740,138 +1682,49 @@ export default function ShopBillingPage() {
                   </select>
                 </div>
 
-                {/* Show standard payment status dropdown only when NOT in combined mode */}
-                {(!isCombinedMode || !hasOldDebt) && (
-                  <div>
-                    <label className="block font-bold text-tea-dark mb-1">Payment Status</label>
-                    <select
-                      value={paymentStatus}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setPaymentStatus(newStatus);
-                        if (newStatus === "PARTIAL" && paidNowAmount === 0) {
-                          setPaidNowAmount(Math.round(billGrandTotal / 2));
-                        }
-                      }}
-                      className={`w-full px-3 py-2 rounded-xl border font-bold text-xs focus:outline-none ${
-                        paymentStatus === "PAID"
-                          ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                          : paymentStatus === "PARTIAL"
-                          ? "bg-amber-100 text-amber-900 border-amber-300"
-                          : "bg-amber-50 text-amber-800 border-amber-300"
-                      }`}
-                    >
-                      <option value="PAID">PAID IN FULL</option>
-                      <option value="PARTIAL">HALF / PARTIAL PAYMENT</option>
-                      <option value="PENDING">DUE / CREDIT (PAY LATER)</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* Partial Payment Amount Input (When Single Bill mode & Partial) */}
-              {(!isCombinedMode || !hasOldDebt) && paymentStatus === "PARTIAL" && (
-                <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-2.5 text-xs animate-fade-in">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-amber-950 flex items-center gap-1.5">
-                      <DollarSign className="w-4 h-4 text-amber-700" />
-                      <span>Advance Amount Paid Today</span>
-                    </span>
-                    <span className="text-[10px] text-amber-800 font-medium">
-                      Enter partial cash/bank amount
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <span className="absolute left-3 top-2.5 text-xs font-mono font-bold text-tea-muted">Rs.</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max={billGrandTotal}
-                        step="50"
-                        value={paidNowAmount}
-                        onChange={(e) => setPaidNowAmount(Math.min(billGrandTotal, Math.max(0, Number(e.target.value))))}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-amber-300 bg-white font-mono font-bold text-sm text-tea-dark focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                    {/* Quick percentage shortcuts */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.25))}
-                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
-                      >
-                        25%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.5))}
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-mono text-[10px] font-bold shadow-xs"
-                      >
-                        50% Half
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaidNowAmount(Math.round(billGrandTotal * 0.75))}
-                        className="px-2 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-mono text-[10px] font-bold"
-                      >
-                        75%
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Balance Due Breakdown */}
-                  <div className="pt-2 border-t border-amber-200/80 flex justify-between items-center">
-                    <span className="text-amber-900 font-medium">Remaining Credit to Record:</span>
-                    <span className="font-mono font-extrabold text-sm text-rose-700">
-                      Rs. {Math.max(0, billGrandTotal - paidNowAmount).toLocaleString()} DUE
-                    </span>
-                  </div>
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-semibold text-tea-dark mb-1">
+                    Shop Delivery Notes / Credit Terms
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Credit payable in 14 days, Delivered by Van 01"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface"
+                  />
                 </div>
-              )}
 
-              {/* Notes */}
-              <div>
-                <label className="block text-xs font-semibold text-tea-dark mb-1">
-                  Shop Delivery Notes / Credit Terms
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Credit payable in 14 days, Delivered by Van 01"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface"
-                />
-              </div>
-
-              {/* Complete & Bill Actions */}
-              <div className="space-y-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={handleSaveOrder}
-                  disabled={submitting || billItems.length === 0}
-                  className="w-full py-3.5 px-4 rounded-xl bg-tea-dark hover:bg-tea-forest active:bg-tea-dark text-white font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-tea-gold" />
-                      <span>Recording Bill...</span>
-                    </>
-                  ) : isCombinedMode && hasOldDebt ? (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-tea-gold" />
-                      <span>
-                        Finalize Combined Bill • Pay Rs. {combinedPaidToday.toLocaleString()} • After Bal: Rs. {combinedAfterBalance.toLocaleString()}
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="w-4 h-4 text-tea-gold" />
-                      <span>Finalize Shop Bill (Rs. {billGrandTotal.toLocaleString()})</span>
-                    </>
-                  )}
-                </button>
+                {/* Complete & Bill Actions */}
+                <div className="space-y-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveOrder}
+                    disabled={submitting || billItems.length === 0}
+                    className="w-full py-3.5 px-4 rounded-xl bg-tea-dark hover:bg-tea-forest active:bg-tea-dark text-white font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-tea-gold" />
+                        <span>Recording Bill...</span>
+                      </>
+                    ) : hasOldDebt ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-tea-gold" />
+                        <span>
+                          Finalize Combined Settlement • Paid Rs. {numericPaid.toLocaleString()} • After Bal: Rs. {afterBalance.toLocaleString()}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-tea-gold" />
+                        <span>
+                          Finalize Bill • Paid Rs. {numericPaid.toLocaleString()} • After Bal: Rs. {afterBalance.toLocaleString()}
+                        </span>
+                      </>
+                    )}
+                  </button>
 
                 <div className="grid grid-cols-2 gap-2">
                   <a
@@ -1903,6 +1756,7 @@ export default function ShopBillingPage() {
             </div>
           </div>
         </div>
+      </div>
       )}
 
       {/* Available Products & Stock Catalog (Shop Order Rep & Executive View) */}
@@ -2642,7 +2496,11 @@ export default function ShopBillingPage() {
           deliveryCharge,
           grandTotal: billGrandTotal,
           paymentMethod,
-          paymentStatus,
+          paymentStatus: computedPaymentStatus,
+          paidAmount: hasOldDebt ? combinedAllocation.allocatedToNew : numericPaid,
+          dueAmount: hasOldDebt
+            ? Math.max(0, billGrandTotal - combinedAllocation.allocatedToNew)
+            : afterBalance,
           deliveryNotes: notes,
           createdAt: new Date().toISOString(),
           items: billItems,
@@ -2655,7 +2513,7 @@ export default function ShopBillingPage() {
             : targetOrder.paymentStatus === "PAID"
             ? targetOrder.grandTotal
             : isPartial
-            ? paidNowAmount
+            ? numericPaid
             : 0;
 
         let targetDue =
@@ -2680,14 +2538,14 @@ export default function ShopBillingPage() {
         const targetCombined =
           targetOrder.combinedDetails ||
           parseCombinedPaymentDetails(targetOrder.deliveryNotes) ||
-          (isCombinedMode && hasOldDebt
+          (hasOldDebt
             ? {
                 isCombined: true,
                 oldBalance: oldShopDebt,
                 newBillTotal: billGrandTotal,
                 totalCombined: totalCombinedBalance,
-                totalReceived: combinedPaidToday,
-                afterBalance: combinedAfterBalance,
+                totalReceived: numericPaid,
+                afterBalance,
               }
             : null);
 
@@ -2824,28 +2682,47 @@ export default function ShopBillingPage() {
 
                   {/* Items Table */}
                   <div className="py-1">
-                    <div className="flex justify-between font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
-                      <span className="flex-1">ITEM</span>
-                      <span className="w-10 text-center">QTY</span>
-                      <span className="w-16 text-right">PRICE</span>
-                      <span className="w-18 text-right">TOTAL</span>
+                    <div className="grid grid-cols-12 gap-1 font-bold border-b border-dashed border-black pb-1 mb-1 text-[11px]">
+                      <span className="col-span-5 text-left">ITEM</span>
+                      <span className="col-span-2 text-center">QTY</span>
+                      <span className="col-span-2 text-right">RATE</span>
+                      <span className="col-span-3 text-right">TOTAL</span>
                     </div>
                     <div className="space-y-1">
-                      {(targetOrder.items || []).map((it: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-start text-[11px]">
-                          <div className="flex-1 pr-1 leading-snug">
-                            <span className="font-semibold block">{it.productName}</span>
-                            <span className="text-[10px] opacity-75">{it.size}</span>
+                      {(targetOrder.items || []).map((it: any, idx: number) => {
+                        const uPrice = Number(it.unitPrice || 0);
+                        const uQty = Number(it.quantity || 1);
+                        const lineTotal =
+                          Number(
+                            it.subtotal !== undefined && it.subtotal !== null
+                              ? it.subtotal
+                              : uPrice * uQty
+                          ) || 0;
+                        return (
+                          <div
+                            key={idx}
+                            className="grid grid-cols-12 gap-1 items-start text-[11px] leading-tight"
+                          >
+                            <div className="col-span-5 pr-1 leading-snug">
+                              <span className="font-semibold block truncate">
+                                {it.productName}
+                              </span>
+                              <span className="text-[10px] opacity-75 block">
+                                {it.size}
+                              </span>
+                            </div>
+                            <span className="col-span-2 text-center font-bold">
+                              x{uQty}
+                            </span>
+                            <span className="col-span-2 text-right font-mono">
+                              {uPrice.toLocaleString()}
+                            </span>
+                            <span className="col-span-3 text-right font-bold font-mono">
+                              {lineTotal.toLocaleString()}
+                            </span>
                           </div>
-                          <span className="w-10 text-center font-bold">x{it.quantity}</span>
-                          <span className="w-16 text-right">
-                            {Number(it.unitPrice).toFixed(0)}
-                          </span>
-                          <span className="w-18 text-right font-bold">
-                            {Number(it.subtotal).toFixed(0)}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -2853,7 +2730,19 @@ export default function ShopBillingPage() {
                   <div className="border-t border-dashed border-black pt-1.5 space-y-0.5 text-[11px]">
                     <div className="flex justify-between">
                       <span>SUBTOTAL:</span>
-                      <span>Rs. {Number(targetOrder.subtotal || 0).toLocaleString()}</span>
+                      <span className="font-mono font-bold">
+                        Rs. {(
+                          Number(targetOrder.subtotal) ||
+                          (targetOrder.items || []).reduce(
+                            (s: number, it: any) =>
+                              s +
+                              (Number(it.subtotal) ||
+                                Number(it.unitPrice || 0) *
+                                  Number(it.quantity || 1)),
+                            0
+                          )
+                        ).toLocaleString()}
+                      </span>
                     </div>
                     {Number(targetOrder.discount || 0) > 0 && (
                       <div className="flex justify-between">
@@ -3043,20 +2932,30 @@ export default function ShopBillingPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-tea-border">
-                      {(targetOrder.items || []).map((it: any, idx: number) => (
-                        <tr key={idx}>
-                          <td className="py-2 text-tea-muted">{idx + 1}</td>
-                          <td className="py-2 font-bold text-tea-dark">{it.productName}</td>
-                          <td className="py-2 text-tea-muted">{it.size}</td>
-                          <td className="py-2 text-right font-mono">
-                            Rs. {Number(it.unitPrice).toLocaleString()}
-                          </td>
-                          <td className="py-2 text-center font-bold font-mono">{it.quantity}</td>
-                          <td className="py-2 text-right font-bold font-mono text-tea-dark">
-                            Rs. {Number(it.subtotal).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
+                      {(targetOrder.items || []).map((it: any, idx: number) => {
+                        const uPrice = Number(it.unitPrice || 0);
+                        const uQty = Number(it.quantity || 1);
+                        const sub =
+                          Number(
+                            it.subtotal !== undefined && it.subtotal !== null
+                              ? it.subtotal
+                              : uPrice * uQty
+                          ) || 0;
+                        return (
+                          <tr key={idx}>
+                            <td className="py-2 text-tea-muted">{idx + 1}</td>
+                            <td className="py-2 font-bold text-tea-dark">{it.productName}</td>
+                            <td className="py-2 text-tea-muted">{it.size}</td>
+                            <td className="py-2 text-right font-mono">
+                              Rs. {uPrice.toLocaleString()}
+                            </td>
+                            <td className="py-2 text-center font-bold font-mono">{uQty}</td>
+                            <td className="py-2 text-right font-bold font-mono text-tea-dark">
+                              Rs. {sub.toLocaleString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
 
@@ -3066,7 +2965,17 @@ export default function ShopBillingPage() {
                       <div className="flex justify-between text-tea-muted">
                         <span>Subtotal:</span>
                         <span className="font-bold text-tea-dark font-mono">
-                          Rs. {Number(targetOrder.subtotal || 0).toLocaleString()}
+                          Rs. {(
+                            Number(targetOrder.subtotal) ||
+                            (targetOrder.items || []).reduce(
+                              (s: number, it: any) =>
+                                s +
+                                (Number(it.subtotal) ||
+                                  Number(it.unitPrice || 0) *
+                                    Number(it.quantity || 1)),
+                              0
+                            )
+                          ).toLocaleString()}
                         </span>
                       </div>
                       {Number(targetOrder.discount || 0) > 0 && (
