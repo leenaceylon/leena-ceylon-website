@@ -24,6 +24,8 @@ import {
   Boxes,
   Printer,
   ChevronRight,
+  MapPin,
+  CheckCircle2,
 } from "lucide-react";
 
 export const revalidate = 0; // Always real-time database driven
@@ -67,7 +69,6 @@ export default async function AdminDashboardPage() {
           },
           include: { items: true },
           orderBy: { createdAt: "desc" },
-          take: 8,
         }),
       ]);
       repProducts = prods || [];
@@ -78,6 +79,52 @@ export default async function AdminDashboardPage() {
 
     const totalInStock = repProducts.filter((p) => p.stock > 0).length;
     const lowStockCount = repProducts.filter((p) => p.stock <= 15).length;
+
+    // Group all old bills by Shop Name (Customer Store History)
+    const repShopsMap = new Map<string, any>();
+    recentRepOrders.forEach((o) => {
+      const key = o.customerName ? o.customerName.toLowerCase().trim() : "";
+      if (!key) return;
+
+      if (!repShopsMap.has(key)) {
+        repShopsMap.set(key, {
+          shopName: o.customerName.trim(),
+          phone: o.customerPhone,
+          city: o.city || "Direct Route",
+          address: o.shippingAddress,
+          totalBills: 0,
+          totalSpent: 0,
+          pendingBalance: 0,
+          pendingBillsCount: 0,
+          orders: [],
+        });
+      }
+
+      const s = repShopsMap.get(key);
+      s.totalBills += 1;
+      s.orders.push(o);
+
+      if (o.orderStatus !== "CANCELLED") {
+        s.totalSpent += o.grandTotal;
+        if (o.paymentStatus === "PENDING") {
+          s.pendingBalance += o.grandTotal;
+          s.pendingBillsCount += 1;
+        }
+      }
+    });
+
+    const repShopsList = Array.from(repShopsMap.values()).sort(
+      (a, b) => b.totalSpent - a.totalSpent
+    );
+
+    const totalRepPendingCredit = repShopsList.reduce(
+      (sum, s) => sum + s.pendingBalance,
+      0
+    );
+    const totalRepSalesRevenue = repShopsList.reduce(
+      (sum, s) => sum + s.totalSpent,
+      0
+    );
 
     return (
       <div className="p-4 sm:p-8 space-y-8 max-w-7xl mx-auto">
@@ -108,57 +155,96 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        {/* 2 Primary Action Cards: Billing Option & Stock Count */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* 3 Primary Action Cards: Billing, Client Shops & Stock */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Card 1: Fast Billing Option */}
-          <div className="bg-gradient-to-br from-tea-dark to-tea-forest rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col justify-between space-y-4">
+          <div className="bg-gradient-to-br from-tea-dark to-tea-forest rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between space-y-4">
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-tea-gold">
-                <Store className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-2xl bg-white/10 flex items-center justify-center text-tea-gold">
+                <Store className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono tracking-widest uppercase text-tea-gold font-bold block pt-1">
+              <span className="text-[10px] font-mono tracking-widest uppercase text-tea-gold font-bold block pt-1">
                 Active Billing Option
               </span>
-              <h3 className="font-serif text-2xl font-bold text-white">
+              <h3 className="font-serif text-xl font-bold text-white leading-snug">
                 Shop Order Taking & Invoicing
               </h3>
               <p className="text-xs text-tea-pale/80 leading-relaxed">
-                Add tea items one-by-one, specify shop discounts, print instant PDF invoices, and send official WhatsApp receipts directly to shop owners.
+                Add tea items one-by-one, specify shop discounts, and print or WhatsApp instant invoices.
               </p>
             </div>
 
             <Link
               href="/admin/shop-billing"
-              className="inline-flex items-center justify-between w-full py-3 px-5 rounded-2xl bg-white hover:bg-tea-surface text-tea-dark font-bold text-xs uppercase tracking-wider transition shadow-sm"
+              className="inline-flex items-center justify-between w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-tea-surface text-tea-dark font-bold text-xs uppercase tracking-wider transition shadow-sm"
             >
-              <span>Take New Shop Order Now</span>
+              <span>Create New Bill</span>
               <ArrowRight className="w-4 h-4 text-tea-leaf" />
             </Link>
           </div>
 
-          {/* Card 2: Warehouse Stock Summary */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-tea-border shadow-card flex flex-col justify-between space-y-4">
+          {/* Card 2: Client Retail Stores & Pending Payments */}
+          <div className="bg-white rounded-3xl p-6 border border-tea-border shadow-card flex flex-col justify-between space-y-4">
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                <Boxes className="w-6 h-6" />
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${
+                totalRepPendingCredit > 0
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-emerald-50 text-emerald-700"
+              }`}>
+                <Building2 className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-mono tracking-widest uppercase text-tea-forest font-bold block pt-1">
-                Warehouse Catalog
+              <span className="text-[10px] font-mono tracking-widest uppercase text-tea-forest font-bold block pt-1">
+                Client Shops Directory
               </span>
-              <h3 className="font-serif text-2xl font-bold text-tea-dark">
-                {repProducts.length} Tea Products Available
+              <h3 className="font-serif text-xl font-bold text-tea-dark leading-snug">
+                {repShopsList.length} Retail Stores
               </h3>
               <p className="text-xs text-tea-muted leading-relaxed">
-                Live warehouse inventory status: <strong className="text-emerald-700">{totalInStock} items in stock</strong>,{" "}
-                <strong className="text-amber-700">{lowStockCount} items low stock</strong>. Browse full grades, pack sizes, and wholesale rates below.
+                Total Sales: <strong className="text-tea-dark">Rs. {totalRepSalesRevenue.toLocaleString()}</strong>.{" "}
+                {totalRepPendingCredit > 0 ? (
+                  <span className="text-amber-800 font-semibold block mt-0.5">
+                    ⚠️ Rs. {totalRepPendingCredit.toLocaleString()} pending credit to collect on route.
+                  </span>
+                ) : (
+                  <span className="text-emerald-700 font-semibold block mt-0.5">
+                    ✅ All registered shops have settled payments in full.
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <a
+              href="#shop-directory"
+              className="inline-flex items-center justify-between w-full py-2.5 px-4 rounded-2xl bg-tea-surface hover:bg-tea-bg border border-tea-border text-tea-dark font-bold text-xs uppercase tracking-wider transition"
+            >
+              <span>View Shops & Old Bills</span>
+              <ChevronRight className="w-4 h-4 text-tea-muted" />
+            </a>
+          </div>
+
+          {/* Card 3: Warehouse Stock Summary */}
+          <div className="bg-white rounded-3xl p-6 border border-tea-border shadow-card flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                <Boxes className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono tracking-widest uppercase text-tea-forest font-bold block pt-1">
+                Warehouse Catalog
+              </span>
+              <h3 className="font-serif text-xl font-bold text-tea-dark leading-snug">
+                {repProducts.length} Teas Available
+              </h3>
+              <p className="text-xs text-tea-muted leading-relaxed">
+                Live warehouse inventory status: <strong className="text-emerald-700">{totalInStock} in stock</strong>,{" "}
+                <strong className="text-amber-700">{lowStockCount} low stock</strong>. Browse pack sizes and rates below.
               </p>
             </div>
 
             <a
               href="#available-products"
-              className="inline-flex items-center justify-between w-full py-3 px-5 rounded-2xl bg-tea-surface hover:bg-tea-bg border border-tea-border text-tea-dark font-bold text-xs uppercase tracking-wider transition"
+              className="inline-flex items-center justify-between w-full py-2.5 px-4 rounded-2xl bg-tea-surface hover:bg-tea-bg border border-tea-border text-tea-dark font-bold text-xs uppercase tracking-wider transition"
             >
-              <span>View Available Products Below</span>
+              <span>Browse Warehouse Teas</span>
               <ChevronRight className="w-4 h-4 text-tea-muted" />
             </a>
           </div>
@@ -287,6 +373,235 @@ export default async function AdminDashboardPage() {
               );
             })}
           </div>
+        </div>
+
+        {/* SHOP-BY-SHOP SALES & OLD BILLS DIRECTORY */}
+        <div id="shop-directory" className="bg-white rounded-3xl border border-tea-border p-6 sm:p-8 shadow-card space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-tea-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-tea-forest" />
+                <h3 className="font-serif text-xl font-bold text-tea-dark">
+                  Sales & Old Bills by Retail Shop ({repShopsList.length} Stores)
+                </h3>
+              </div>
+              <p className="text-xs text-tea-muted mt-0.5">
+                Client store directory: Track past sales, pending credit to collect on route, and expand to view every old invoice.
+              </p>
+            </div>
+
+            <Link
+              href="/admin/shop-billing"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-sm self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5 text-tea-gold" />
+              <span>+ New Shop Bill</span>
+            </Link>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-2xl bg-tea-surface/60 border border-tea-border/60">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                Active Client Stores
+              </span>
+              <span className="font-mono font-bold text-lg text-tea-dark block mt-0.5">
+                {repShopsList.length} Retail Outlets
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-tea-surface/60 border border-tea-border/60">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                Total Lifetime Purchases
+              </span>
+              <span className="font-mono font-bold text-lg text-tea-forest block mt-0.5">
+                Rs. {totalRepSalesRevenue.toLocaleString()}
+              </span>
+            </div>
+
+            <div className={`p-3.5 rounded-2xl border ${
+              totalRepPendingCredit > 0
+                ? "bg-amber-50/80 border-amber-200 text-amber-900"
+                : "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+            }`}>
+              <span className="text-[10px] font-bold uppercase tracking-wider block">
+                {totalRepPendingCredit > 0 ? "Outstanding Credit to Collect" : "Credit Status"}
+              </span>
+              <span className="font-mono font-bold text-lg block mt-0.5">
+                {totalRepPendingCredit > 0
+                  ? `Rs. ${totalRepPendingCredit.toLocaleString()}`
+                  : "All Accounts Clear (Rs. 0)"}
+              </span>
+            </div>
+          </div>
+
+          {/* Stores Directory List */}
+          {repShopsList.length === 0 ? (
+            <div className="py-12 text-center text-tea-muted text-xs">
+              No shops registered yet. Record your first shop order in the billing counter to start tracking sales by shop.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {repShopsList.map((shop, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl border border-tea-border bg-tea-surface/30 overflow-hidden shadow-subtle hover:border-tea-border/80 transition"
+                >
+                  {/* Shop Summary Header Strip */}
+                  <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-tea-border/50 bg-white">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-serif font-bold text-base text-tea-dark">
+                          {shop.shopName}
+                        </h4>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-tea-muted font-medium px-2 py-0.5 rounded-md bg-tea-surface border border-tea-border/60">
+                          <MapPin className="w-3 h-3 text-tea-leaf" />
+                          <span>{shop.city}</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-tea-muted">
+                          {shop.phone}
+                        </span>
+                      </div>
+                      {shop.address && (
+                        <p className="text-[11px] text-tea-muted">
+                          {shop.address}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Financial Metrics & Actions for this Shop */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="text-right px-3 py-1.5 rounded-xl bg-tea-surface border border-tea-border/60">
+                        <span className="text-[10px] text-tea-muted uppercase font-bold block">
+                          Lifetime Sales ({shop.totalBills} bills)
+                        </span>
+                        <span className="font-mono font-bold text-xs text-tea-dark">
+                          Rs. {shop.totalSpent.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className={`text-right px-3 py-1.5 rounded-xl border ${
+                        shop.pendingBalance > 0
+                          ? "bg-amber-50 border-amber-300 text-amber-900"
+                          : "bg-emerald-50 border-emerald-300 text-emerald-900"
+                      }`}>
+                        <span className="text-[10px] uppercase font-bold block">
+                          {shop.pendingBalance > 0 ? "Pending Credit Due" : "Payment Status"}
+                        </span>
+                        <span className="font-mono font-bold text-xs block">
+                          {shop.pendingBalance > 0
+                            ? `Rs. ${shop.pendingBalance.toLocaleString()} (${shop.pendingBillsCount} unpaid)`
+                            : "Fully Paid (Rs. 0)"}
+                        </span>
+                      </div>
+
+                      <Link
+                        href={`/admin/shop-billing?shop=${encodeURIComponent(shop.shopName)}`}
+                        className="px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-xs flex items-center gap-1"
+                        title="Start a new bill pre-filled with this shop"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>+ New Bill</span>
+                      </Link>
+
+                      <Link
+                        href={`/admin/shop-billing?tab=history&search=${encodeURIComponent(shop.shopName)}`}
+                        className="px-3 py-2 rounded-xl bg-tea-dark hover:bg-tea-forest text-white font-bold text-xs uppercase tracking-wider transition shadow-xs flex items-center gap-1"
+                        title="View all bills for this shop in ledger"
+                      >
+                        <span>Ledger</span>
+                        <ArrowRight className="w-3.5 h-3.5 text-tea-gold" />
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Expandable Old Bills List for This Shop */}
+                  <details className="group">
+                    <summary className="px-4 py-2.5 text-xs font-semibold text-tea-forest hover:text-tea-dark cursor-pointer flex items-center justify-between select-none bg-tea-surface/60 transition">
+                      <span className="flex items-center gap-1.5">
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        <span>View Past Bills & Invoice History for {shop.shopName} ({shop.orders.length} bills)</span>
+                      </span>
+                      <span className="text-[11px] text-tea-muted group-open:rotate-180 transition transform">
+                        ▼
+                      </span>
+                    </summary>
+
+                    <div className="p-4 bg-white border-t border-tea-border/40 overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-tea-border/60 text-tea-muted font-semibold text-[11px]">
+                            <th className="pb-2">Invoice #</th>
+                            <th className="pb-2">Date</th>
+                            <th className="pb-2">Items</th>
+                            <th className="pb-2">Total Amount</th>
+                            <th className="pb-2">Payment Status</th>
+                            <th className="pb-2">Bill Status</th>
+                            <th className="pb-2 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-tea-border/30">
+                          {shop.orders.map((b: any) => {
+                            const isCancelled = b.orderStatus === "CANCELLED";
+                            const isPaid = b.paymentStatus === "PAID";
+
+                            return (
+                              <tr key={b.id} className="hover:bg-tea-surface/40 transition">
+                                <td className="py-2.5 font-mono font-bold text-tea-dark whitespace-nowrap">
+                                  #{b.orderNumber}
+                                </td>
+                                <td className="py-2.5 text-tea-muted whitespace-nowrap">
+                                  {new Date(b.createdAt).toLocaleDateString("en-GB")}
+                                </td>
+                                <td className="py-2.5 text-tea-muted whitespace-nowrap">
+                                  {b.items?.length || 0} line(s)
+                                </td>
+                                <td className="py-2.5 font-mono font-bold text-tea-forest whitespace-nowrap">
+                                  <span className={isCancelled ? "line-through text-tea-muted" : ""}>
+                                    Rs. {b.grandTotal.toLocaleString()}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 whitespace-nowrap">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      isPaid
+                                        ? "bg-emerald-100 text-emerald-800"
+                                        : "bg-amber-100 text-amber-800"
+                                    }`}
+                                  >
+                                    {b.paymentStatus} ({b.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Cash"})
+                                  </span>
+                                </td>
+                                <td className="py-2.5 whitespace-nowrap">
+                                  {isCancelled ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                      Cancelled
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Active
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 text-right whitespace-nowrap">
+                                  <Link
+                                    href={`/admin/shop-billing?tab=history&search=${b.orderNumber}`}
+                                    className="px-2 py-1 rounded-lg bg-tea-surface hover:bg-tea-bg border border-tea-border text-[11px] font-semibold text-tea-forest"
+                                  >
+                                    Manage / Collect
+                                  </Link>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Shop Bills Taken by Field Reps */}

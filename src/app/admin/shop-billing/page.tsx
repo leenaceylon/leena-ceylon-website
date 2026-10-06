@@ -75,6 +75,19 @@ interface KnownShop {
   routeTown: string;
   address: string;
   district?: string;
+  totalBillsCount?: number;
+  totalSalesAmount?: number;
+  pendingBalance?: number;
+  pendingBillsCount?: number;
+  pendingBills?: Array<{
+    id: string;
+    orderNumber: string;
+    createdAt: string;
+    grandTotal: number;
+    paymentMethod: string;
+    paymentStatus: string;
+  }>;
+  allBills?: Array<any>;
 }
 
 export default function ShopBillingPage() {
@@ -147,6 +160,21 @@ export default function ShopBillingPage() {
 
       if (data.products && data.products.length > 0 && !selectedProductId) {
         initProductSelection(data.products[0]);
+      }
+
+      // Check if URL has ?shop= to preselect shop
+      if (typeof window !== "undefined") {
+        const pShop = new URLSearchParams(window.location.search).get("shop");
+        if (pShop && data.knownShops) {
+          const match = data.knownShops.find(
+            (sh: KnownShop) => sh.shopName.toLowerCase().trim() === pShop.toLowerCase().trim()
+          );
+          if (match) {
+            handleSelectKnownShop(match);
+          } else {
+            setShopName(pShop);
+          }
+        }
       }
     } catch (e) {
       console.error("Failed to load inventory:", e);
@@ -301,6 +329,13 @@ export default function ShopBillingPage() {
       cancelledCount,
     };
   }, [recentOrders]);
+
+  // Automatically detect selected known shop and calculate its pending credit balance
+  const selectedKnownShop = useMemo(() => {
+    if (!shopName.trim()) return null;
+    const clean = shopName.trim().toLowerCase();
+    return knownShops.find((s) => s.shopName.trim().toLowerCase() === clean) || null;
+  }, [shopName, knownShops]);
 
   const handleSelectProductForBill = (prod: Product, preferredSize?: string) => {
     setSelectedProductId(prod.id);
@@ -741,11 +776,14 @@ export default function ShopBillingPage() {
                       className="text-[11px] font-semibold text-tea-forest bg-tea-surface border border-tea-border rounded-lg px-2.5 py-1 focus:outline-none"
                     >
                       <option value="">Quick Pick Known Shop ({knownShops.length})...</option>
-                      {knownShops.map((sh, idx) => (
-                        <option key={idx} value={sh.shopName}>
-                          {sh.shopName} ({sh.routeTown || "Route"})
-                        </option>
-                      ))}
+                      {knownShops.map((sh, idx) => {
+                        const hasDue = sh.pendingBalance && sh.pendingBalance > 0;
+                        return (
+                          <option key={idx} value={sh.shopName}>
+                            {sh.shopName} ({sh.routeTown || "Route"}) {hasDue ? `• [DUE: Rs. ${sh.pendingBalance?.toLocaleString()}]` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}
@@ -815,6 +853,135 @@ export default function ShopBillingPage() {
                   />
                 </div>
               </div>
+
+              {/* AUTOMATIC OLD PENDING PAYMENT DISPLAY */}
+              {selectedKnownShop && (
+                <div
+                  className={`mt-4 p-4 rounded-2xl border transition-all animate-fade-in ${
+                    (selectedKnownShop.pendingBalance || 0) > 0
+                      ? "bg-amber-50/90 border-amber-300 text-amber-950 shadow-xs"
+                      : "bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-xs"
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          (selectedKnownShop.pendingBalance || 0) > 0
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {(selectedKnownShop.pendingBalance || 0) > 0 ? (
+                          <AlertTriangle className="w-5 h-5 text-amber-700" />
+                        ) : (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                        )}
+                      </div>
+                      <div className="space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-xs">
+                            {(selectedKnownShop.pendingBalance || 0) > 0
+                              ? `Outstanding Credit Due for "${selectedKnownShop.shopName}"`
+                              : `Customer Account Clean for "${selectedKnownShop.shopName}"`}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              (selectedKnownShop.pendingBalance || 0) > 0
+                                ? "bg-amber-200 text-amber-900"
+                                : "bg-emerald-200 text-emerald-900"
+                            }`}
+                          >
+                            {(selectedKnownShop.pendingBalance || 0) > 0
+                              ? `${selectedKnownShop.pendingBillsCount || 1} Unpaid Old Bill(s)`
+                              : "Rs. 0 Due"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-tea-muted">
+                          {(selectedKnownShop.pendingBalance || 0) > 0 ? (
+                            <>
+                              This shop still owes a previous credit balance of{" "}
+                              <strong className="text-rose-700 font-mono text-xs">
+                                Rs. {selectedKnownShop.pendingBalance?.toLocaleString()}
+                              </strong>
+                              . Please collect or clarify payment terms with the owner.
+                            </>
+                          ) : (
+                            <>
+                              All previous orders for this shop ({selectedKnownShop.totalBillsCount || 0} bills, Rs.{" "}
+                              {selectedKnownShop.totalSalesAmount?.toLocaleString() || 0}) have been fully settled.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    {(selectedKnownShop.pendingBalance || 0) > 0 && (
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] text-amber-800 uppercase font-bold block">
+                          Old Credit Due
+                        </span>
+                        <span className="font-mono font-extrabold text-base text-rose-700 block">
+                          Rs. {selectedKnownShop.pendingBalance?.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* List of Old Unpaid Bills for this Shop */}
+                  {selectedKnownShop.pendingBills && selectedKnownShop.pendingBills.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-amber-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 block">
+                          Unpaid Old Invoices Requiring Collection:
+                        </span>
+                        <Link
+                          href={`/admin/shop-billing?tab=history&search=${encodeURIComponent(selectedKnownShop.shopName)}`}
+                          className="text-[10px] font-bold text-tea-forest hover:underline"
+                        >
+                          View In Ledger →
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {selectedKnownShop.pendingBills.map((pb) => (
+                          <div
+                            key={pb.id}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-amber-200/90 text-xs shadow-xs"
+                          >
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-tea-dark">
+                                  #{pb.orderNumber}
+                                </span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-semibold">
+                                  {pb.paymentMethod === "CREDIT_SHOP" ? "Credit" : "Pending"}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-tea-muted block mt-0.5">
+                                Date: {new Date(pb.createdAt).toLocaleDateString("en-GB")}
+                              </span>
+                            </div>
+
+                            <div className="text-right flex items-center gap-2">
+                              <span className="font-mono font-bold text-xs text-rose-700 block">
+                                Rs. {pb.grandTotal.toLocaleString()}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPaymentModal(pb)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-wider transition shadow-xs"
+                                title="Collect & update payment for this old bill"
+                              >
+                                Settle
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* 2. Fast Item-by-Item Entry Counter */}
@@ -1101,6 +1268,30 @@ export default function ShopBillingPage() {
                     Rs. {billGrandTotal.toLocaleString()}
                   </span>
                 </div>
+
+                {/* Statement Total If Previous Credit Pending */}
+                {selectedKnownShop && (selectedKnownShop.pendingBalance || 0) > 0 && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-300 text-xs space-y-1.5 mt-2">
+                    <div className="flex justify-between text-amber-900">
+                      <span className="font-medium">Previous Pending Credit:</span>
+                      <span className="font-mono font-bold text-rose-700">
+                        +Rs. {selectedKnownShop.pendingBalance?.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-amber-900">
+                      <span className="font-medium">Today's New Invoice:</span>
+                      <span className="font-mono font-bold text-tea-dark">
+                        +Rs. {billGrandTotal.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="pt-1.5 border-t border-amber-300/80 flex justify-between items-baseline font-bold text-amber-950 font-mono">
+                      <span className="font-sans text-xs">Total Store Balance:</span>
+                      <span className="text-base text-amber-950">
+                        Rs. {((selectedKnownShop.pendingBalance || 0) + billGrandTotal).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Payment Mode & Status */}

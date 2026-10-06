@@ -24,8 +24,8 @@ export async function GET() {
       orderBy: { name: "asc" },
     });
 
-    // 2. Fetch recent shop orders (orders where orderNumber starts with SHOP- or paymentMethod is CREDIT_SHOP or marked as shop)
-    const recentShopOrders = await prisma.order.findMany({
+    // 2. Fetch all ground shop orders (orders starting with SHOP- or marked as shop billing)
+    const allShopOrders = await prisma.order.findMany({
       where: {
         OR: [
           { orderNumber: { startsWith: "SHOP-" } },
@@ -37,29 +37,68 @@ export async function GET() {
         items: true,
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
 
-    // 3. Extract distinct previously registered shops
+    // 3. Extract distinct shops with comprehensive credit ledger & pending payment balances
     const uniqueShopsMap = new Map<string, any>();
-    recentShopOrders.forEach((o) => {
-      if (o.customerName && !uniqueShopsMap.has(o.customerName.toLowerCase().trim())) {
-        uniqueShopsMap.set(o.customerName.toLowerCase().trim(), {
-          shopName: o.customerName,
+    allShopOrders.forEach((o) => {
+      const key = o.customerName ? o.customerName.toLowerCase().trim() : "";
+      if (!key) return;
+
+      if (!uniqueShopsMap.has(key)) {
+        uniqueShopsMap.set(key, {
+          shopName: o.customerName.trim(),
           phone: o.customerPhone,
           routeTown: o.city,
           address: o.shippingAddress,
           district: o.district,
+          totalBillsCount: 0,
+          totalSalesAmount: 0,
+          pendingBalance: 0,
+          pendingBillsCount: 0,
+          pendingBills: [],
+          allBills: [],
         });
+      }
+
+      const shop = uniqueShopsMap.get(key);
+      shop.totalBillsCount += 1;
+      shop.allBills.push({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt,
+        grandTotal: o.grandTotal,
+        paymentStatus: o.paymentStatus,
+        paymentMethod: o.paymentMethod,
+        orderStatus: o.orderStatus,
+        itemsCount: o.items?.length || 0,
+      });
+
+      if (o.orderStatus !== "CANCELLED") {
+        shop.totalSalesAmount += o.grandTotal;
+        if (o.paymentStatus === "PENDING") {
+          shop.pendingBalance += o.grandTotal;
+          shop.pendingBillsCount += 1;
+          shop.pendingBills.push({
+            id: o.id,
+            orderNumber: o.orderNumber,
+            createdAt: o.createdAt,
+            grandTotal: o.grandTotal,
+            paymentMethod: o.paymentMethod,
+            paymentStatus: o.paymentStatus,
+          });
+        }
       }
     });
 
-    const knownShops = Array.from(uniqueShopsMap.values());
+    const knownShops = Array.from(uniqueShopsMap.values()).sort(
+      (a, b) => b.totalBillsCount - a.totalBillsCount
+    );
 
     return NextResponse.json({
       success: true,
       products,
-      recentShopOrders,
+      recentShopOrders: allShopOrders,
       knownShops,
     });
   } catch (err: any) {
