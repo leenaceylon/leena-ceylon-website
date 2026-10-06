@@ -25,6 +25,10 @@ import {
   X,
   History,
   Layers,
+  Boxes,
+  Package,
+  Tag,
+  Filter,
 } from "lucide-react";
 import { getWhatsAppUrl, compileShopInvoiceWhatsAppMessage, ShopInvoiceData } from "@/lib/whatsapp";
 
@@ -69,7 +73,9 @@ interface KnownShop {
 }
 
 export default function ShopBillingPage() {
-  const [activeTab, setActiveTab] = useState<"billing" | "history">("billing");
+  const [activeTab, setActiveTab] = useState<"billing" | "products" | "history">("billing");
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -129,7 +135,29 @@ export default function ShopBillingPage() {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p === "products") setActiveTab("products");
+      else if (p === "history") setActiveTab("history");
+    }
   }, []);
+
+  const handleSelectProductForBill = (prod: Product, preferredSize?: string) => {
+    setSelectedProductId(prod.id);
+    if (prod.sizes && prod.sizes.length > 0) {
+      const match = preferredSize ? prod.sizes.find((s) => s.sizeName === preferredSize) : prod.sizes[0];
+      const targetSize = match || prod.sizes[0];
+      setSelectedSize(targetSize.sizeName);
+      setItemUnitPrice(targetSize.salePrice || targetSize.regularPrice);
+    } else {
+      setSelectedSize("Standard");
+      setItemUnitPrice(prod.regularPrice);
+    }
+    setItemQuantity(1);
+    setActiveTab("billing");
+    setNotice(`Selected "${prod.name}" (${preferredSize || "Standard"}). Specify quantity and tap Add Line to Bill.`);
+    setTimeout(() => setNotice(null), 3500);
+  };
 
   const initProductSelection = (prod: Product) => {
     setSelectedProductId(prod.id);
@@ -155,6 +183,31 @@ export default function ShopBillingPage() {
         p.category?.name.toLowerCase().includes(term)
     );
   }, [products, productSearch]);
+
+  const categoriesList = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => {
+      if (p.category?.name) set.add(p.category.name);
+    });
+    return Array.from(set);
+  }, [products]);
+
+  const filteredCatalogProducts = useMemo(() => {
+    return products.filter((p) => {
+      const q = catalogSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        p.name.toLowerCase().includes(q) ||
+        (p.teaGrade && p.teaGrade.toLowerCase().includes(q)) ||
+        (p.teaType && p.teaType.toLowerCase().includes(q)) ||
+        (p.category?.name && p.category.name.toLowerCase().includes(q));
+
+      const matchesCat =
+        catalogCategory === "ALL" || p.category?.name === catalogCategory;
+
+      return matchesSearch && matchesCat;
+    });
+  }, [products, catalogSearch, catalogCategory]);
 
   const currentSelectedProduct = useMemo(() => {
     return products.find((p) => p.id === selectedProductId) || null;
@@ -407,7 +460,7 @@ export default function ShopBillingPage() {
         </div>
 
         {/* Tab Toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setActiveTab("billing")}
@@ -419,6 +472,19 @@ export default function ShopBillingPage() {
           >
             <Plus className="w-4 h-4 text-tea-gold" />
             <span>Active Billing Counter</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("products")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+              activeTab === "products"
+                ? "bg-tea-dark text-white shadow-sm"
+                : "bg-white text-tea-muted hover:text-tea-dark border border-tea-border"
+            }`}
+          >
+            <Boxes className="w-4 h-4 text-emerald-400" />
+            <span>Available Products ({products.length})</span>
           </button>
 
           <button
@@ -493,7 +559,7 @@ export default function ShopBillingPage() {
         </div>
       )}
 
-      {activeTab === "billing" ? (
+      {activeTab === "billing" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Shop Details & Item-by-Item Entry */}
           <div className="lg:col-span-7 space-y-6">
@@ -975,8 +1041,244 @@ export default function ShopBillingPage() {
             </div>
           </div>
         </div>
-      ) : (
-        /* History & Ledger View */
+      )}
+
+      {/* Available Products & Stock Catalog (Shop Order Rep & Executive View) */}
+      {activeTab === "products" && (
+        <div className="space-y-6">
+          {/* Top Banner & Filters */}
+          <div className="bg-white rounded-3xl border border-tea-border p-6 shadow-card space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-tea-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                    Live Warehouse Stock
+                  </span>
+                  <span className="text-xs text-tea-muted">• Wholesale Pack Sizes & Rates</span>
+                </div>
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark mt-1">
+                  Available Products Catalog
+                </h3>
+                <p className="text-xs text-tea-muted mt-0.5">
+                  Browse products, real-time stock levels, and grades. Click "+ Add to Bill" to instantly load any tea into your active shop bill.
+                </p>
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative w-full md:w-72">
+                <input
+                  type="text"
+                  placeholder="Search tea name, grade (BOPF)..."
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf font-medium"
+                />
+                <Search className="w-4 h-4 text-tea-muted absolute left-3 top-3" />
+                {catalogSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCatalogSearch("")}
+                    className="p-1 text-tea-muted hover:text-tea-dark absolute right-2.5 top-2.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Category Filter Pills & Metrics */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setCatalogCategory("ALL")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    catalogCategory === "ALL"
+                      ? "bg-tea-dark text-white shadow-xs"
+                      : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
+                  }`}
+                >
+                  All Varieties ({products.length})
+                </button>
+                {categoriesList.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCatalogCategory(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                      catalogCategory === cat
+                        ? "bg-tea-dark text-white shadow-xs"
+                        : "bg-tea-surface text-tea-muted hover:text-tea-dark border border-tea-border/60"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-tea-muted">
+                <span className="bg-emerald-50 text-emerald-800 font-semibold px-2.5 py-1 rounded-lg border border-emerald-200 text-[11px]">
+                  {products.filter((p) => p.stock > 0).length} In Stock
+                </span>
+                {products.filter((p) => p.stock <= 15).length > 0 && (
+                  <span className="bg-rose-50 text-rose-800 font-semibold px-2.5 py-1 rounded-lg border border-rose-200 text-[11px]">
+                    {products.filter((p) => p.stock <= 15).length} Low Stock
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Products Catalog Grid */}
+          {filteredCatalogProducts.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-tea-border p-12 text-center text-xs text-tea-muted shadow-card space-y-2">
+              <Boxes className="w-8 h-8 text-tea-muted mx-auto opacity-50" />
+              <p className="font-semibold text-tea-dark">No products found matching your search.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCatalogSearch("");
+                  setCatalogCategory("ALL");
+                }}
+                className="text-tea-forest hover:underline font-bold text-xs"
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredCatalogProducts.map((p) => {
+                const isOutOfStock = p.stock === 0;
+                const isLowStock = p.stock > 0 && p.stock <= 15;
+
+                return (
+                  <div
+                    key={p.id}
+                    className="bg-white rounded-3xl border border-tea-border shadow-card hover:shadow-hover transition duration-200 overflow-hidden flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Product Image & Badges */}
+                      <div className="relative h-48 w-full bg-tea-surface p-4 flex items-center justify-center border-b border-tea-border">
+                        <div className="relative w-36 h-36">
+                          <Image
+                            src={p.mainImage || "/uploads/leena-tea-powder-200g.jpeg"}
+                            alt={p.name}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
+                        <div className="absolute top-3 left-3 flex flex-col gap-1">
+                          <span className="px-2.5 py-1 rounded-full bg-tea-dark text-tea-gold font-mono text-[10px] font-bold shadow-xs">
+                            {p.teaGrade || "Ceylon Tea"}
+                          </span>
+                          {p.category?.name && (
+                            <span className="px-2 py-0.5 rounded bg-white/90 text-tea-dark font-sans text-[10px] font-semibold border border-tea-border shadow-xs">
+                              {p.category.name}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="absolute top-3 right-3">
+                          {isOutOfStock ? (
+                            <span className="px-2.5 py-1 rounded-full bg-rose-600 text-white font-bold text-[10px] shadow-xs">
+                              Out of Stock
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="px-2.5 py-1 rounded-full bg-amber-500 text-white font-bold text-[10px] shadow-xs">
+                              Only {p.stock} pkts
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full bg-emerald-600 text-white font-bold text-[10px] shadow-xs">
+                              {p.stock} in stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Product Content */}
+                      <div className="p-5 space-y-3">
+                        <div>
+                          <h4 className="font-serif font-bold text-base text-tea-dark leading-snug">
+                            {p.name}
+                          </h4>
+                          <div className="text-[11px] text-tea-muted mt-0.5 flex items-center gap-2">
+                            <span>Type: {p.teaType || "Black Tea"}</span>
+                            <span>•</span>
+                            <span>Starting from Rs. {p.regularPrice.toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {/* Available Pack Sizes & Pricing Table */}
+                        <div className="space-y-1.5 pt-2 border-t border-tea-border/60">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-tea-muted block">
+                            Available Pack Sizes & Wholesale Rates
+                          </span>
+
+                          {p.sizes && p.sizes.length > 0 ? (
+                            <div className="space-y-1">
+                              {p.sizes.map((v) => (
+                                <div
+                                  key={v.id}
+                                  className="flex items-center justify-between p-2 rounded-xl bg-tea-surface hover:bg-tea-bg border border-tea-border/50 text-xs transition"
+                                >
+                                  <div>
+                                    <span className="font-bold text-tea-dark block">
+                                      {v.sizeName}
+                                    </span>
+                                    <span className="text-[10px] text-tea-muted">
+                                      Stock: {v.stock} pkts
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold font-mono text-tea-forest">
+                                      Rs. {(v.salePrice || v.regularPrice).toLocaleString()}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectProductForBill(p, v.sizeName)}
+                                      className="px-2 py-1 rounded-lg bg-tea-dark hover:bg-tea-forest text-white text-[10px] font-bold transition flex items-center gap-1"
+                                      title="Load this specific pack size into billing counter"
+                                    >
+                                      <Plus className="w-3 h-3" />
+                                      <span>Select</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between p-2 rounded-xl bg-tea-surface border border-tea-border/50 text-xs">
+                              <span className="font-bold text-tea-dark">Standard Pack</span>
+                              <span className="font-bold font-mono text-tea-forest">
+                                Rs. {p.regularPrice.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer: Add to Active Shop Bill Button */}
+                    <div className="p-5 pt-0">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectProductForBill(p)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4 text-emerald-200" />
+                        <span>Add to Shop Bill</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History & Ledger View */}
+      {activeTab === "history" && (
         <div className="bg-white rounded-3xl border border-tea-border shadow-card overflow-hidden">
           <div className="p-6 border-b border-tea-border flex items-center justify-between">
             <div>

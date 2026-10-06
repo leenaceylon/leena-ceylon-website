@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -22,9 +22,10 @@ import {
   ExternalLink,
   Menu,
   X,
+  Boxes,
 } from "lucide-react";
 
-const NAV_ITEMS = [
+const ADMIN_NAV_ITEMS = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Categories", href: "/admin/categories", icon: Layers },
@@ -41,6 +42,11 @@ const NAV_ITEMS = [
   { name: "Security & Audit", href: "/admin/security", icon: ShieldCheck },
 ];
 
+const SHOP_REP_NAV_ITEMS = [
+  { name: "Shop Billing (Take Order)", href: "/admin/shop-billing", icon: Store },
+  { name: "Available Products", href: "/admin/shop-billing?tab=products", icon: Boxes },
+];
+
 export default function AdminSidebar({
   adminUser,
 }: {
@@ -49,6 +55,18 @@ export default function AdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isShopRep = adminUser?.role === "SHOP_ORDER_REP";
+  const navItems = isShopRep ? SHOP_REP_NAV_ITEMS : ADMIN_NAV_ITEMS;
+
+  // Auto-redirect SHOP_ORDER_REP away from unauthorized executive pages
+  useEffect(() => {
+    if (isShopRep) {
+      if (!pathname.startsWith("/admin/shop-billing")) {
+        router.replace("/admin/shop-billing");
+      }
+    }
+  }, [isShopRep, pathname, router]);
 
   const handleLogout = async () => {
     try {
@@ -59,6 +77,8 @@ export default function AdminSidebar({
       console.error("Logout failed", e);
     }
   };
+
+  const homeHref = isShopRep ? "/admin/shop-billing" : "/admin/dashboard";
 
   return (
     <>
@@ -98,8 +118,8 @@ export default function AdminSidebar({
         <div className="p-5 flex-1 overflow-y-auto">
           {/* Official Brand Logo */}
           <div className="pb-5 border-b border-white/10">
-            <Link href="/admin/dashboard" className="block">
-              <div className="relative h-12 w-44 bg-white p-2 rounded-xl">
+            <Link href={homeHref} className="block">
+              <div className="relative h-12 w-44 bg-white p-2 rounded-xl shadow-xs">
                 <Image
                   src="/brand/logo.png"
                   alt="LEENA CEYLON"
@@ -111,22 +131,27 @@ export default function AdminSidebar({
             </Link>
             <div className="mt-2.5 flex items-center justify-between text-[11px] text-tea-pale/70">
               <span className="font-semibold text-tea-gold uppercase tracking-wider">
-                Admin Console
+                {isShopRep ? "Field Rep Console" : "Admin Console"}
               </span>
               <span className="px-2 py-0.5 rounded bg-tea-forest/60 text-emerald-300 font-mono text-[10px]">
                 {adminUser?.role || "SUPER_ADMIN"}
               </span>
             </div>
+            {isShopRep && (
+              <div className="mt-2 p-2 rounded-lg bg-emerald-900/40 border border-emerald-500/20 text-[10px] text-emerald-300">
+                Ground Order Taking & Invoicing Mode
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}
           <nav className="mt-4 space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive =
                 item.href === "/admin/dashboard"
                   ? pathname === "/admin/dashboard"
-                  : pathname.startsWith(item.href);
+                  : pathname === item.href || (item.href === "/admin/shop-billing" && pathname === "/admin/shop-billing");
 
               return (
                 <Link
@@ -149,16 +174,18 @@ export default function AdminSidebar({
 
         {/* Bottom Actions: View Store & Logout */}
         <div className="p-4 bg-black/20 border-t border-white/10 space-y-2">
-          <Link
-            href="/"
-            target="_blank"
-            className="flex items-center justify-between w-full px-3 py-2 text-xs text-tea-pale/80 hover:text-white hover:bg-white/5 rounded-xl transition"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-3.5 h-3.5 text-tea-gold" />
-              View Customer Store
-            </span>
-          </Link>
+          {!isShopRep && (
+            <Link
+              href="/"
+              target="_blank"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs text-tea-pale/80 hover:text-white hover:bg-white/5 rounded-xl transition"
+            >
+              <span className="flex items-center gap-2">
+                <ExternalLink className="w-3.5 h-3.5 text-tea-gold" />
+                View Customer Store
+              </span>
+            </Link>
+          )}
 
           <button
             onClick={handleLogout}

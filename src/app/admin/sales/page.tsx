@@ -21,6 +21,7 @@ export default async function AdminSalesPage({
 }) {
   const admin = await getCurrentAdmin();
   if (!admin) redirect("/admin/login");
+  if (admin.role === "SHOP_ORDER_REP") redirect("/admin/shop-billing");
 
   const period = searchParams?.period || "month";
   const now = new Date();
