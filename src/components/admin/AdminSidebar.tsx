@@ -22,7 +22,6 @@ import {
   ExternalLink,
   Menu,
   X,
-  Boxes,
 } from "lucide-react";
 
 const ADMIN_NAV_ITEMS = [
@@ -44,8 +43,7 @@ const ADMIN_NAV_ITEMS = [
 
 const SHOP_REP_NAV_ITEMS = [
   { name: "Rep Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-  { name: "Shop Billing (Take Order)", href: "/admin/shop-billing", icon: Store },
-  { name: "Available Products", href: "/admin/shop-billing?tab=products", icon: Boxes },
+  { name: "Shop Billing (Create Bill)", href: "/admin/shop-billing", icon: Store },
 ];
 
 export default function AdminSidebar({
