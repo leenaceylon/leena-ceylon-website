@@ -233,15 +233,6 @@ export default function Footer({
                 </a>
               </li>
             </ul>
-
-            <div className="pt-2">
-              <Link
-                href="/admin/login"
-                className="text-[11px] text-tea-pale/50 hover:text-tea-gold transition"
-              >
-                Admin Portal Login →
-              </Link>
-            </div>
           </div>
         </div>
 
