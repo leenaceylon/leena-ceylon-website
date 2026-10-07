@@ -79,6 +79,14 @@ export interface SiteSettingsMap {
   whatsappEnabled: boolean;
   seoTitle: string;
   seoDescription: string;
+  mapEmbedUrl?: string;
+  mapLocationName?: string;
+  mapAddressTitle?: string;
+  mapAddress?: string;
+  mapQuery?: string;
+  mapDirectionsUrl?: string;
+  mapPickupHours?: string;
+  mapPickupBenefit?: string;
 }
 
 export type AdminRole = "SUPER_ADMIN" | "MANAGER" | "PRODUCT_MANAGER" | "ORDER_MANAGER";

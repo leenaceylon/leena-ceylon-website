@@ -40,7 +40,38 @@ export const DEFAULT_SETTINGS: SiteSettingsMap = {
   seoTitle: "LEENA | Pure Ceylon Tea Sri Lanka - The Taste of Ceylon",
   seoDescription:
     "Official LEENA CEYLON store. Discover 100% Pure Ceylon Tea from Sri Lanka. Handpicked single-origin black tea, green tea, and flavoured teas directly from Ceylon.",
+  mapEmbedUrl:
+    "https://maps.google.com/maps?q=Kekirawa%2C%20North%20Central%20Province%2C%20Sri%20Lanka&t=&z=13&ie=UTF8&iwloc=&output=embed",
+  mapLocationName: "LEENA CEYLON (PVT) LTD",
+  mapAddressTitle: "Head Office & Pick-Up Center",
+  mapAddress:
+    "LEENA CEYLON (PVT) LTD\nA/Bandarapothana, Pubbogama,\nKekirawa, North Central Province,\nSri Lanka.",
+  mapQuery: "Pubbogama, Kekirawa, Sri Lanka",
+  mapDirectionsUrl: "https://www.google.com/maps/search/?api=1&query=Pubbogama+Kekirawa+Sri+Lanka",
+  mapPickupHours: "Monday – Saturday: 8:30 AM – 6:00 PM\nSunday: Prior WhatsApp notice recommended",
+  mapPickupBenefit: "✓ Rs. 0 Delivery Charge (Free Pick-Up)",
 };
+
+export function cleanMapEmbedUrl(input?: string, queryFallback?: string): string {
+  if (!input && !queryFallback) {
+    return DEFAULT_SETTINGS.mapEmbedUrl || "";
+  }
+  const str = (input || "").trim();
+  // If user pasted iframe HTML tag e.g. <iframe src="https://..."></iframe>
+  const iframeMatch = str.match(/src=["']([^"']+)["']/i);
+  if (iframeMatch) {
+    return iframeMatch[1];
+  }
+  if (str.startsWith("http://") || str.startsWith("https://")) {
+    return str;
+  }
+  // If it's a search string/query or city name
+  const query = (str || queryFallback || "").trim();
+  if (query) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+  }
+  return DEFAULT_SETTINGS.mapEmbedUrl || "";
+}
 
 export function parseBankDetails(text: string): Partial<SiteSettingsMap> {
   if (!text) return {};

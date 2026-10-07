@@ -13,6 +13,10 @@ import {
   Landmark,
   Eye,
   Copy,
+  MapPin,
+  Navigation,
+  ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { parseBankDetails } from "@/lib/settings";
 
@@ -666,6 +670,219 @@ export default function AdminSettingsPage() {
               onChange={(e) => handleChange("address", e.target.value)}
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Contact Page Location & Interactive Map Configuration */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-tea-border shadow-subtle space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-tea-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-serif text-base font-bold text-tea-dark">
+                Contact Page Interactive Map & Location Settings
+              </h3>
+              <p className="text-xs text-tea-muted">
+                Control the map location, embedded pin, directions link, and pick-up center details on the /contact page
+              </p>
+            </div>
+          </div>
+          <a
+            href="/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-tea-forest hover:underline flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>View Live /contact Page</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Location Search Query / City / GPS Coordinates
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="e.g. Pubbogama, Kekirawa, Sri Lanka"
+                value={settings.mapQuery || ""}
+                onChange={(e) => handleChange("mapQuery", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const query = settings.mapQuery || settings.address || "Kekirawa, Sri Lanka";
+                  const embed = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
+                  const dir = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+                  handleChange("mapEmbedUrl", embed);
+                  handleChange("mapDirectionsUrl", dir);
+                }}
+                className="px-3 py-2.5 text-[11px] font-bold bg-tea-surface hover:bg-tea-leaf/20 text-tea-dark rounded-xl border border-tea-border whitespace-nowrap transition flex items-center gap-1"
+                title="Generate map embed and directions link from this search query"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-tea-leaf" />
+                Auto-Generate
+              </button>
+            </div>
+            <span className="text-[10px] text-tea-muted block mt-1">
+              Enter city, area name, or GPS coordinates. Click Auto-Generate to update embed and directions links.
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Google Maps Directions Link (Navigation URL)
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="https://www.google.com/maps/search/?api=1&query=..."
+                value={settings.mapDirectionsUrl || ""}
+                onChange={(e) => handleChange("mapDirectionsUrl", e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono text-[11px]"
+              />
+              {settings.mapDirectionsUrl && (
+                <a
+                  href={settings.mapDirectionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2.5 text-[11px] font-bold bg-tea-dark text-white rounded-xl whitespace-nowrap hover:bg-tea-forest transition flex items-center gap-1 shrink-0"
+                >
+                  <Navigation className="w-3.5 h-3.5 text-tea-gold" />
+                  Test
+                </a>
+              )}
+            </div>
+            <span className="text-[10px] text-tea-muted block mt-1">
+              Opened when customers click "Get Directions" or "Open in Google Maps App".
+            </span>
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Google Maps Embed URL / Iframe Code
+            </label>
+            <input
+              type="text"
+              placeholder='https://maps.google.com/maps?q=... OR <iframe src="https://..."></iframe>'
+              value={settings.mapEmbedUrl || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                // If user pastes an iframe tag, automatically extract src
+                const match = val.match(/src=["']([^"']+)["']/i);
+                if (match) {
+                  handleChange("mapEmbedUrl", match[1]);
+                } else {
+                  handleChange("mapEmbedUrl", val);
+                }
+              }}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 font-mono text-[11px]"
+            />
+            <span className="text-[10px] text-tea-muted block mt-1">
+              You can paste the embed URL or directly paste the &lt;iframe&gt; code copied from Google Maps &gt; Share &gt; Embed a map.
+            </span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Location Section Title
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Visit Us in Kekirawa, Sri Lanka"
+              value={settings.mapLocationName || ""}
+              onChange={(e) => handleChange("mapLocationName", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Facility Badge Label
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Head Office & Pick-Up Center"
+              value={settings.mapAddressTitle || ""}
+              onChange={(e) => handleChange("mapAddressTitle", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Formatted Physical Address (Shown on Contact Card)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="LEENA CEYLON (PVT) LTD&#10;A/Bandarapothana, Pubbogama,&#10;Kekirawa, North Central Province,&#10;Sri Lanka."
+              value={settings.mapAddress || ""}
+              onChange={(e) => handleChange("mapAddress", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 leading-relaxed"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Pick-Up Hours & Schedule
+            </label>
+            <textarea
+              rows={2}
+              placeholder="Monday – Saturday: 8:30 AM – 6:00 PM&#10;Sunday: Prior WhatsApp notice recommended"
+              value={settings.mapPickupHours || ""}
+              onChange={(e) => handleChange("mapPickupHours", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-tea-dark mb-1">
+              Pick-Up Incentive Banner Text
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. ✓ Rs. 0 Delivery Charge (Free Pick-Up)"
+              value={settings.mapPickupBenefit || ""}
+              onChange={(e) => handleChange("mapPickupBenefit", e.target.value)}
+              className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30"
+            />
+          </div>
+        </div>
+
+        {/* Live Admin Interactive Map Preview */}
+        <div className="pt-2 border-t border-tea-border/60 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-tea-forest" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-tea-dark">
+                Live Interactive Map Preview (As displayed on /contact)
+              </h4>
+            </div>
+            <span className="text-[10px] text-tea-muted">Updates in real-time as you edit above</span>
+          </div>
+
+          <div className="rounded-2xl overflow-hidden border-2 border-tea-border shadow-inner bg-tea-surface relative min-h-[300px] h-[340px]">
+            {settings.mapEmbedUrl ? (
+              <iframe
+                title="Admin Map Preview"
+                src={settings.mapEmbedUrl}
+                className="w-full h-full border-0"
+                loading="lazy"
+                allowFullScreen
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-tea-muted text-xs">
+                <MapPin className="w-8 h-8 text-tea-leaf mb-2" />
+                <p>No map embed URL provided yet.</p>
+                <p className="text-[11px] mt-1">Enter a search query above and click "Auto-Generate" or paste an embed URL.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

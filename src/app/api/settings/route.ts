@@ -53,7 +53,12 @@ async function handleUpdate(req: NextRequest) {
       if (value === undefined || value === null) continue;
 
       let group = "GENERAL";
-      if (key.includes("phone") || key.includes("email") || key.includes("address")) {
+      if (
+        key.includes("phone") ||
+        key.includes("email") ||
+        key.includes("address") ||
+        key.toLowerCase().includes("map")
+      ) {
         group = "CONTACT";
       } else if (key.includes("Url") && !key.includes("logo") && !key.includes("favicon")) {
         group = "SOCIAL";
@@ -86,6 +91,7 @@ async function handleUpdate(req: NextRequest) {
     try {
       revalidatePath("/", "layout");
       revalidatePath("/");
+      revalidatePath("/contact");
       revalidatePath("/checkout");
       revalidatePath("/products");
     } catch (e) {
