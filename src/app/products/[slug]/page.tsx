@@ -10,6 +10,7 @@ import ProductCard from "@/components/ProductCard";
 import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 import { getSiteSettings } from "@/lib/settings";
+import { getCurrentCustomer } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -94,6 +95,7 @@ export default async function ProductDetailPage({
   let product: any = null;
   let relatedProducts: any[] = [];
   const settings = await getSiteSettings();
+  const currentCustomer = await getCurrentCustomer();
 
   try {
     product = await prisma.product.findUnique({
@@ -291,7 +293,15 @@ export default async function ProductDetailPage({
           )}
 
           {/* Customer Reviews Section */}
-          <ProductReviews productId={product.id} reviews={product.reviews} />
+          <ProductReviews
+            productId={product.id}
+            reviews={product.reviews}
+            customerUser={
+              currentCustomer
+                ? { name: currentCustomer.name, email: currentCustomer.email }
+                : null
+            }
+          />
         </div>
 
         {/* Sidebar Info Card: Heritage & Quality */}
