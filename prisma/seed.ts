@@ -378,21 +378,6 @@ async function main() {
   }
   console.log("Media catalog seeded successfully.");
 
-  // 6. Seed a sample real customer review to show approval workflow
-  const reviewCount = await prisma.review.count();
-  if (reviewCount === 0) {
-    await prisma.review.create({
-      data: {
-        productId: p2.id,
-        customerName: "Dinesh Perera",
-        email: "dinesh@example.com",
-        rating: 5,
-        comment: "Exceptional BOPF Ceylon tea. The aroma when opening the tin is intoxicating, and the colour in the cup is a rich deep amber. Proud of this Sri Lankan export!",
-        isApproved: true,
-      },
-    });
-    console.log("Sample approved review seeded.");
-  }
 
   console.log("Database seeding completed successfully!");
 }
