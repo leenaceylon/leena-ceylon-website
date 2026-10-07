@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   ChevronRight,
   Truck,
-  Award,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -96,11 +95,6 @@ export default function Navbar({
                 <span>{t("nav.trackOrder", "Track Order")}</span>
               </Link>
               <span className="text-white/20">|</span>
-              <span className="hidden md:inline-flex items-center gap-1 text-tea-gold font-medium">
-                <Award className="w-3.5 h-3.5" />
-                <span>{t("badge.registeredExporter", "Registered Ceylon Tea Exporter")}</span>
-              </span>
-              <span className="text-white/20 hidden md:inline">|</span>
               <span className="flex items-center gap-1 text-tea-gold">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>{t("banner.guarantee", "100% Pure Ceylon Guarantee")}</span>

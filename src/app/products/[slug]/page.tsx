@@ -7,7 +7,7 @@ import { FALLBACK_PRODUCTS } from "@/lib/fallback-data";
 import ProductDetailsClient from "@/components/ProductDetailsClient";
 import ProductReviews from "@/components/ProductReviews";
 import ProductCard from "@/components/ProductCard";
-import { ChevronRight, Coffee, Info, ShieldCheck, Heart, Award } from "lucide-react";
+import { ChevronRight, Coffee, Info, ShieldCheck, Heart } from "lucide-react";
 import { getBaseUrl, SEO_KEYWORDS } from "@/lib/seo";
 import { getSiteSettings } from "@/lib/settings";
 import { getCurrentCustomer } from "@/lib/auth";
@@ -325,10 +325,6 @@ export default async function ProductDetailPage({
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-tea-leaf" />
-                <strong>Exporter:</strong> Registered Ceylon Tea Exporter (Sri Lanka)
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-tea-leaf" />
                 <strong>Packaging:</strong> Multi-layer freshness seal
               </li>
               <li className="flex items-center gap-2">
@@ -336,12 +332,6 @@ export default async function ProductDetailPage({
                 <strong>Direct Delivery:</strong> Island-wide across Sri Lanka
               </li>
             </ul>
-            <div className="pt-2 border-t border-tea-border/60">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-900 border border-amber-300/60 text-xs font-semibold">
-                <Award className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                <span>Registered Ceylon Tea Exporter</span>
-              </span>
-            </div>
           </div>
         </div>
       </div>
