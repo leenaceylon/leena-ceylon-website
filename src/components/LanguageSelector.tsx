@@ -56,7 +56,7 @@ export default function LanguageSelector({
               >
                 <div className="flex items-center gap-2">
                   <span className="text-base leading-none">{item.flag}</span>
-                  <div className="text-left">
+                  <div className="text-start">
                     <span className="block font-semibold leading-tight">{item.nativeName}</span>
                     <span className={`text-[10px] block ${isSelected ? "text-tea-pale/80" : "text-tea-muted"}`}>
                       {item.label}
@@ -105,7 +105,7 @@ export default function LanguageSelector({
   // Default Nav Dropdown (Compact, perfect for Header/Top Bar)
   const isHeader = variant === "header";
   return (
-    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
+    <div className={`relative inline-block ${className}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -129,7 +129,11 @@ export default function LanguageSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1.5 w-44 rounded-xl bg-white shadow-xl border border-tea-border py-1.5 z-50 animate-fade-in text-tea-dark">
+        <div
+          className={`absolute ${
+            currentLangInfo.dir === "rtl" ? "left-0" : "right-0"
+          } mt-1.5 w-44 rounded-xl bg-white shadow-xl border border-tea-border py-1.5 z-50 animate-fade-in text-tea-dark`}
+        >
           <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-tea-muted border-b border-tea-border/50">
             Select Language
           </div>
@@ -143,7 +147,7 @@ export default function LanguageSelector({
                   setLang(item.code);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition text-left ${
+                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition ${
                   isSelected
                     ? "bg-tea-forest/10 text-tea-forest font-bold"
                     : "hover:bg-tea-surface text-tea-dark"
@@ -151,7 +155,7 @@ export default function LanguageSelector({
               >
                 <div className="flex items-center gap-2">
                   <span className="text-base leading-none">{item.flag}</span>
-                  <div>
+                  <div className="text-start">
                     <span className="block leading-tight font-medium">{item.nativeName}</span>
                     <span className="text-[10px] text-tea-muted leading-tight block">
                       {item.label}

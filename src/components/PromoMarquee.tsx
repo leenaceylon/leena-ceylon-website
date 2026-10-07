@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Sparkles, Truck, Tag, Phone, ShieldCheck, Leaf } from "lucide-react";
+import { Sparkles, Truck, Tag, Phone, ShieldCheck, Leaf, Award } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface PromoMarqueeProps {
@@ -35,6 +35,7 @@ export default function PromoMarquee({ activePromotion }: PromoMarqueeProps) {
 
   const items = [
     { icon: Leaf, text: t("marquee.pure", "100% Pure Ceylon Single-Origin Tea") },
+    { icon: Award, text: t("marquee.registeredExporter", "Registered Ceylon Tea Exporter • Direct from Sri Lanka") },
     { icon: Truck, text: t("marquee.freeDelivery", "Free Islandwide Delivery on Orders Over Rs. 3,500") },
     promoItem,
     { icon: ShieldCheck, text: t("marquee.teaGardenQuality", "Authentic Sri Lankan Tea Garden Quality") },

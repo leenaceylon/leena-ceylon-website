@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Phone, Mail, MapPin, MessageSquare, ShieldCheck, Heart } from "lucide-react";
+import { Phone, Mail, MapPin, MessageSquare, ShieldCheck, Heart, Award } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
 
@@ -59,11 +59,11 @@ export default function Footer({
 
           <div className="flex items-center gap-4 justify-center sm:justify-start">
             <div className="w-12 h-12 rounded-2xl bg-tea-forest/60 border border-tea-leaf/30 flex items-center justify-center shrink-0 text-tea-gold">
-              <Heart className="w-6 h-6" />
+              <Award className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-semibold text-sm text-white">Export Quality Standard</h4>
-              <p className="text-xs text-tea-pale/70">Master blended for aroma, taste & briskness</p>
+              <h4 className="font-semibold text-sm text-white">{t("footer.registeredTitle", "Registered Tea Exporter")}</h4>
+              <p className="text-xs text-tea-pale/70">{t("footer.registeredSub", "Official Sri Lanka Registered Exporter")}</p>
             </div>
           </div>
         </div>
@@ -85,13 +85,19 @@ export default function Footer({
               </div>
             </Link>
 
-            <div className="pt-2">
-              <p className="font-serif text-tea-gold text-sm tracking-widest uppercase font-semibold">
-                PURE CEYLON TEA
-              </p>
-              <p className="text-xs tracking-wider text-tea-pale/80 uppercase">
-                {t("footer.tagline", "THE TASTE OF CEYLON")}
-              </p>
+            <div className="pt-2 space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-tea-forest/60 border border-tea-leaf/40 text-tea-gold text-xs font-semibold">
+                <Award className="w-3.5 h-3.5 text-tea-gold shrink-0" />
+                <span>{t("badge.registeredExporterSriLanka", "Registered Ceylon Tea Exporter • Sri Lanka")}</span>
+              </div>
+              <div>
+                <p className="font-serif text-tea-gold text-sm tracking-widest uppercase font-semibold">
+                  PURE CEYLON TEA
+                </p>
+                <p className="text-xs tracking-wider text-tea-pale/80 uppercase">
+                  {t("footer.tagline", "THE TASTE OF CEYLON")}
+                </p>
+              </div>
             </div>
 
             <p className="text-xs text-tea-pale/70 leading-relaxed max-w-sm">
@@ -247,7 +253,7 @@ export default function Footer({
 
         {/* Bottom Legal bar */}
         <div className="mt-12 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-tea-pale/60">
-          <p>© {new Date().getFullYear()} LEENA CEYLON. {t("footer.allRights", "All rights reserved.")}</p>
+          <p>© {new Date().getFullYear()} LEENA CEYLON. {t("footer.allRights", "All rights reserved. Registered Ceylon Tea Exporter.")}</p>
           <div className="flex items-center space-x-6">
             <Link href="/privacy-policy" className="hover:text-white transition">
               Privacy Policy

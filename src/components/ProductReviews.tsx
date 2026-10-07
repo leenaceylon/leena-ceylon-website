@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Star, CheckCircle2, MessageSquarePlus, Clock, Edit3, ShieldCheck } from "lucide-react";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ReviewItem {
   id: string;
@@ -20,6 +21,7 @@ export default function ProductReviews({
   reviews?: ReviewItem[];
   customerUser?: { name?: string; email?: string } | null;
 }) {
+  const { t, isRTL, lang } = useLanguage();
   const [approvedReviews, setApprovedReviews] = useState<ReviewItem[]>(
     Array.isArray(reviews) ? reviews : []
   );
@@ -149,9 +151,11 @@ export default function ProductReviews({
       {/* Header & Stats */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h3 className="font-serif text-2xl font-bold text-tea-dark">Customer Reviews</h3>
+          <h3 className="font-serif text-2xl font-bold text-tea-dark">
+            {t("reviews.heading", "Customer Reviews")}
+          </h3>
           <p className="text-xs text-tea-muted mt-0.5">
-            Verified opinions from Ceylon tea enthusiasts
+            {t("reviews.subheading", "Verified opinions from Ceylon tea enthusiasts")}
           </p>
         </div>
 
@@ -163,7 +167,7 @@ export default function ProductReviews({
             </div>
             <span className="text-tea-muted">·</span>
             <span className="text-tea-muted font-medium">
-              {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
+              {totalReviews} {totalReviews === 1 ? t("reviews.countSingle", "review") : t("reviews.countMultiple", "reviews")}
             </span>
           </div>
         )}
@@ -175,13 +179,13 @@ export default function ProductReviews({
           <div className="flex items-center gap-2">
             <MessageSquarePlus className="w-5 h-5 text-tea-leaf" />
             <h4 className="font-serif font-bold text-base text-tea-dark">
-              {pendingReview ? "Update Your Review" : "Write a Review"}
+              {pendingReview ? t("reviews.updateReview", "Update Your Review") : t("reviews.writeReview", "Write a Review")}
             </h4>
           </div>
           {pendingReview && status === "idle" && (
             <span className="text-[11px] font-semibold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <Clock className="w-3 h-3 text-amber-700" />
-              Pending Moderation
+              {t("reviews.pendingModeration", "Pending Moderation")}
             </span>
           )}
         </div>
@@ -195,11 +199,14 @@ export default function ProductReviews({
                 <div>
                   <p className="font-bold text-amber-900">
                     {pendingReview.isUpdate
-                      ? "Review Updated & Awaiting Admin Approval"
-                      : "Review Submitted & Awaiting Admin Approval"}
+                      ? t("reviews.updatedTitle", "Review Updated & Awaiting Admin Approval")
+                      : t("reviews.submittedTitle", "Review Submitted & Awaiting Admin Approval")}
                   </p>
                   <p className="text-amber-800/90 text-[11px] mt-0.5">
-                    Your review is currently pending moderation. Once approved by our administrators in the admin panel, it will appear publicly below.
+                    {t(
+                      "reviews.pendingDesc",
+                      "Your review is currently pending moderation. Once approved by our administrators in the admin panel, it will appear publicly below."
+                    )}
                   </p>
                 </div>
               </div>
@@ -210,7 +217,7 @@ export default function ProductReviews({
                   className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-amber-200/80 hover:bg-amber-200 text-amber-900 transition flex items-center gap-1 shrink-0"
                 >
                   <Edit3 className="w-3 h-3" />
-                  Edit
+                  {t("reviews.edit", "Edit")}
                 </button>
               )}
             </div>
@@ -226,12 +233,12 @@ export default function ProductReviews({
                     }`}
                   />
                 ))}
-                <span className="text-[10px] text-tea-muted ml-1 font-semibold">
+                <span className="text-[10px] text-tea-muted ms-1 font-semibold">
                   ({pendingReview.rating} / 5)
                 </span>
               </div>
               <p className="text-tea-dark italic text-xs leading-relaxed">
-                "{pendingReview.comment}"
+                &ldquo;{pendingReview.comment}&rdquo;
               </p>
               <div className="text-[11px] font-semibold text-tea-forest">
                 — {pendingReview.customerName}
@@ -245,10 +252,13 @@ export default function ProductReviews({
             <div className="flex items-start gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">Thank you for sharing your feedback!</p>
+                <p className="font-bold">{t("reviews.thankYou", "Thank you for sharing your feedback!")}</p>
                 <p className="mt-0.5 text-emerald-700">
                   {statusMessage ||
-                    "Your review has been submitted for moderation and will appear publicly once approved by our team."}
+                    t(
+                      "reviews.thankYouDesc",
+                      "Your review has been submitted for moderation and will appear publicly once approved by our team."
+                    )}
                 </p>
               </div>
             </div>
@@ -260,7 +270,7 @@ export default function ProductReviews({
               }}
               className="text-xs underline text-emerald-900 font-semibold hover:text-emerald-700 shrink-0"
             >
-              Write another
+              {t("reviews.writeAnother", "Write another")}
             </button>
           </div>
         ) : (
@@ -274,12 +284,12 @@ export default function ProductReviews({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-tea-dark mb-1">
-                  Your Name *
+                  {t("reviews.nameLabel", "Your Name *")}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Ruwan Silva"
+                  placeholder={t("reviews.namePlaceholder", "e.g. Ruwan Silva")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
@@ -288,12 +298,12 @@ export default function ProductReviews({
 
               <div>
                 <label className="block text-xs font-semibold text-tea-dark mb-1">
-                  Email Address *
+                  {t("reviews.emailLabel", "Email Address *")}
                 </label>
                 <input
                   type="email"
                   required
-                  placeholder="e.g. ruwan@example.com"
+                  placeholder={t("reviews.emailPlaceholder", "e.g. ruwan@example.com")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2 text-xs rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
@@ -304,7 +314,7 @@ export default function ProductReviews({
             {/* Rating selector */}
             <div>
               <label className="block text-xs font-semibold text-tea-dark mb-1.5">
-                Rating
+                {t("reviews.ratingLabel", "Rating")}
               </label>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -322,37 +332,44 @@ export default function ProductReviews({
                     />
                   </button>
                 ))}
-                <span className="text-xs text-tea-muted ml-2 font-medium">
-                  {rating} of 5 Stars
+                <span className="text-xs text-tea-muted ms-2 font-medium">
+                  {rating} {t("reviews.ofStars", "of 5 Stars")}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-tea-dark mb-1">
-                Your Review *
+                {t("reviews.reviewLabel", "Your Review *")}
               </label>
               <textarea
                 required
                 rows={3}
-                placeholder="Share your experience regarding aroma, taste, color and character of this Ceylon tea..."
+                placeholder={t(
+                  "reviews.reviewPlaceholder",
+                  "Share your experience regarding aroma, taste, color and character of this Ceylon tea..."
+                )}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 className="w-full px-3.5 py-2 text-xs rounded-xl border border-tea-border bg-white focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
               />
             </div>
 
-            <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
               <button
                 type="submit"
                 disabled={status === "loading"}
-                className="px-6 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition disabled:opacity-50 flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {status === "loading" ? "Submitting..." : pendingReview ? "Update Review" : "Submit Review"}
+                {status === "loading"
+                  ? t("reviews.submitting", "Submitting...")
+                  : pendingReview
+                  ? t("reviews.updateBtn", "Update Review")
+                  : t("reviews.submitBtn", "Submit Review")}
               </button>
-              <span className="text-[11px] text-tea-muted flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5 text-tea-forest" />
-                Moderated by admin before public display
+              <span className="text-[11px] text-tea-muted flex items-center gap-1 justify-center sm:justify-start">
+                <ShieldCheck className="w-3.5 h-3.5 text-tea-forest shrink-0" />
+                {t("reviews.moderatedHint", "Moderated by admin before public display")}
               </span>
             </div>
           </form>
@@ -362,21 +379,25 @@ export default function ProductReviews({
       {/* Public Approved Reviews List */}
       <div className="space-y-4">
         <h4 className="text-xs font-bold uppercase tracking-wider text-tea-dark flex items-center justify-between">
-          <span>Approved Public Reviews ({approvedReviews.length})</span>
+          <span>
+            {t("reviews.approvedHeading", "Approved Public Reviews")} ({approvedReviews.length})
+          </span>
           <button
             type="button"
             onClick={refreshApprovedReviews}
             className="text-[11px] font-normal text-tea-forest hover:underline"
           >
-            Refresh
+            {t("reviews.refresh", "Refresh")}
           </button>
         </h4>
 
         {approvedReviews.length === 0 ? (
           <div className="p-8 text-center bg-tea-surface rounded-2xl border border-tea-border">
-            <p className="text-sm font-medium text-tea-muted">No public reviews yet.</p>
+            <p className="text-sm font-medium text-tea-muted">
+              {t("reviews.noReviews", "No public reviews yet.")}
+            </p>
             <p className="text-xs text-tea-muted/80 mt-1">
-              Be the first to share your experience with this Ceylon tea above!
+              {t("reviews.firstToReview", "Be the first to share your experience with this Ceylon tea above!")}
             </p>
           </div>
         ) : (
@@ -398,16 +419,16 @@ export default function ProductReviews({
                     ))}
                   </div>
                   <span className="text-[10px] text-tea-muted">
-                    {new Date(rev.createdAt).toLocaleDateString()}
+                    {new Date(rev.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}
                   </span>
                 </div>
                 <p className="text-xs text-tea-dark italic leading-relaxed">
-                  "{rev.comment}"
+                  &ldquo;{rev.comment}&rdquo;
                 </p>
                 <div className="text-[11px] font-semibold text-tea-forest flex items-center gap-1.5">
                   <span>— {rev.customerName}</span>
-                  <span className="text-[9px] px-1.5 py-0.2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold">
-                    Verified
+                  <span className="text-[9px] px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full font-bold">
+                    {t("reviews.verifiedBadge", "Verified")}
                   </span>
                 </div>
               </div>

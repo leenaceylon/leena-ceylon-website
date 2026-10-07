@@ -532,20 +532,20 @@ export default function ProductDetailsClient({
         <div className="bg-tea-surface p-5 rounded-2xl border border-tea-border space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-tea-muted block">Tea Grade:</span>
+              <span className="text-tea-muted block">{t("product.teaGrade", "Tea Grade")}:</span>
               <span className="font-semibold text-tea-dark">{product.teaGrade || "BOPF"}</span>
             </div>
             <div>
-              <span className="text-tea-muted block">Tea Type:</span>
+              <span className="text-tea-muted block">{t("product.teaType", "Tea Type")}:</span>
               <span className="font-semibold text-tea-dark">{product.teaType || "Pure Ceylon Black Tea"}</span>
             </div>
             <div>
-              <span className="text-tea-muted block">Origin:</span>
+              <span className="text-tea-muted block">{t("product.origin", "Origin")}:</span>
               <span className="font-semibold text-tea-dark">{product.origin || "Sri Lanka"}</span>
             </div>
             <div>
-              <span className="text-tea-muted block">Dispatched From:</span>
-              <span className="font-semibold text-tea-dark">Kekirawa Head Office</span>
+              <span className="text-tea-muted block">{t("product.dispatchedFrom", "Dispatched From:")}</span>
+              <span className="font-semibold text-tea-dark">{t("product.dispatchedPlace", "Kekirawa Head Office")}</span>
             </div>
           </div>
         </div>
@@ -554,18 +554,18 @@ export default function ProductDetailsClient({
         <div className="grid grid-cols-3 gap-3 pt-2 text-center text-xs text-tea-dark border-t border-tea-border/60">
           <div className="p-3 bg-tea-bg rounded-xl">
             <Truck className="w-5 h-5 text-tea-leaf mx-auto mb-1" />
-            <span className="font-medium text-[11px] block">Island-wide</span>
-            <span className="text-tea-muted text-[10px]">2-4 business days</span>
+            <span className="font-medium text-[11px] block">{t("product.islandwide", "Island-wide")}</span>
+            <span className="text-tea-muted text-[10px]">{t("product.deliveryTime", "24–48 hours")}</span>
           </div>
           <div className="p-3 bg-tea-bg rounded-xl">
             <ShieldCheck className="w-5 h-5 text-tea-leaf mx-auto mb-1" />
-            <span className="font-medium text-[11px] block">Authentic</span>
-            <span className="text-tea-muted text-[10px]">100% Pure Ceylon</span>
+            <span className="font-medium text-[11px] block">{t("trust.pureTea", "Authentic")}</span>
+            <span className="text-tea-muted text-[10px]">{t("product.authenticGuarantee", "100% Pure Ceylon")}</span>
           </div>
           <div className="p-3 bg-tea-bg rounded-xl">
             <RotateCcw className="w-5 h-5 text-tea-leaf mx-auto mb-1" />
-            <span className="font-medium text-[11px] block">Fresh Pack</span>
-            <span className="text-tea-muted text-[10px]">Airtight Sealed</span>
+            <span className="font-medium text-[11px] block">{t("trust.freshPure", "Fresh Pack")}</span>
+            <span className="text-tea-muted text-[10px]">{t("product.freshPack", "Airtight Sealed")}</span>
           </div>
         </div>
       </div>

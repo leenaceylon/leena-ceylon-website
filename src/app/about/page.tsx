@@ -128,7 +128,7 @@ export default function AboutPage() {
               Unlike mass commercial brands that blend teas from across disparate continents to mask inconsistencies, LEENA CEYLON remains fiercely committed to 100% single-origin Ceylon tea.
             </p>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
               <div className="p-4 rounded-xl bg-tea-surface border border-tea-border">
                 <span className="font-serif text-2xl font-bold text-tea-forest block">100%</span>
                 <span className="text-[11px] text-tea-muted font-medium">Authentic Ceylon Tea</span>
@@ -136,6 +136,10 @@ export default function AboutPage() {
               <div className="p-4 rounded-xl bg-tea-surface border border-tea-border">
                 <span className="font-serif text-2xl font-bold text-tea-forest block">Single Origin</span>
                 <span className="text-[11px] text-tea-muted font-medium">Direct Estate Sourcing</span>
+              </div>
+              <div className="p-4 rounded-xl bg-tea-surface border border-tea-border col-span-2 sm:col-span-1">
+                <span className="font-serif text-2xl font-bold text-tea-gold block">Registered</span>
+                <span className="text-[11px] text-tea-muted font-medium">Ceylon Tea Exporter</span>
               </div>
             </div>
           </div>

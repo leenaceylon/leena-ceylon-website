@@ -122,10 +122,16 @@ export default function HomePageContent({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
             {/* Left Column: Brand Story & Taglines */}
             <div className={`lg:col-span-6 space-y-4 sm:space-y-5 text-center ${isRTL ? "lg:text-right" : "lg:text-left"}`}>
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-tea-leaf/10 border border-tea-leaf/25 text-tea-forest text-xs font-bold uppercase tracking-widest backdrop-blur-xs">
-                <Leaf className="w-3.5 h-3.5 text-tea-leaf" />
-                <span>{t("hero.badge", "100% AUTHENTIC SRI LANKAN TEA")}</span>
+              {/* Badges */}
+              <div className={`flex flex-wrap items-center justify-center ${isRTL ? "lg:justify-end" : "lg:justify-start"} gap-2`}>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tea-leaf/10 border border-tea-leaf/25 text-tea-forest text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
+                  <Leaf className="w-3.5 h-3.5 text-tea-leaf" />
+                  <span>{t("hero.badge", "100% AUTHENTIC SRI LANKAN TEA")}</span>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-900 text-xs font-bold uppercase tracking-wider backdrop-blur-xs">
+                  <Award className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span>{t("badge.registeredExporter", "REGISTERED CEYLON TEA EXPORTER")}</span>
+                </div>
               </div>
 
               {/* Main Headings */}
@@ -229,7 +235,7 @@ export default function HomePageContent({
       {/* ================================================== */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-8 relative z-20">
         <div className="bg-white rounded-2xl sm:rounded-3xl border border-tea-border shadow-subtle p-4 sm:p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
             {/* Feature 1 */}
             <div className="flex flex-col items-center text-center space-y-1.5">
               <div className="w-10 h-10 rounded-xl bg-tea-surface flex items-center justify-center text-tea-leaf border border-tea-border/60 shadow-xs">
@@ -243,7 +249,20 @@ export default function HomePageContent({
               </p>
             </div>
 
-            {/* Feature 2 */}
+            {/* Feature 2: Registered Tea Exporter */}
+            <div className="flex flex-col items-center text-center space-y-1.5">
+              <div className="w-10 h-10 rounded-xl bg-tea-surface flex items-center justify-center text-tea-gold border border-tea-border/60 shadow-xs">
+                <Award className="w-5 h-5 text-tea-gold" />
+              </div>
+              <h4 className="font-serif font-bold text-xs text-tea-dark uppercase tracking-wider">
+                {t("trust.registeredExporter", "REGISTERED TEA EXPORTER")}
+              </h4>
+              <p className="text-[11px] text-tea-muted">
+                {t("trust.registeredExporterSub", "Official Sri Lanka registered exporter")}
+              </p>
+            </div>
+
+            {/* Feature 3 */}
             <div className="flex flex-col items-center text-center space-y-1.5">
               <div className="w-10 h-10 rounded-xl bg-tea-surface flex items-center justify-center text-tea-leaf border border-tea-border/60 shadow-xs">
                 <Mountain className="w-5 h-5" />
@@ -256,7 +275,7 @@ export default function HomePageContent({
               </p>
             </div>
 
-            {/* Feature 3 */}
+            {/* Feature 4 */}
             <div className="flex flex-col items-center text-center space-y-1.5">
               <div className="w-10 h-10 rounded-xl bg-tea-surface flex items-center justify-center text-tea-leaf border border-tea-border/60 shadow-xs">
                 <Leaf className="w-5 h-5" />
@@ -269,8 +288,8 @@ export default function HomePageContent({
               </p>
             </div>
 
-            {/* Feature 4 */}
-            <div className="flex flex-col items-center text-center space-y-1.5">
+            {/* Feature 5 */}
+            <div className="flex flex-col items-center text-center space-y-1.5 col-span-2 sm:col-span-1 lg:col-span-1">
               <div className="w-10 h-10 rounded-xl bg-tea-surface flex items-center justify-center text-tea-leaf border border-tea-border/60 shadow-xs">
                 <Sparkles className="w-5 h-5" />
               </div>
