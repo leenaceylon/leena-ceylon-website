@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Star, ChevronLeft, ChevronRight, Quote, CheckCircle2 } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Quote, CheckCircle2, ArrowRight } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
+import Link from "next/link";
 
 export interface Testimonial {
   id: string;
@@ -12,11 +13,13 @@ export interface Testimonial {
   product: string;
   comment: string;
   date: string;
+  productSlug?: string;
+  isLiveReview?: boolean;
 }
 
-const TESTIMONIALS: Testimonial[] = [
+const DEFAULT_TESTIMONIALS: Testimonial[] = [
   {
-    id: "1",
+    id: "def-1",
     name: "Dr. K. Senanayake",
     city: "Colombo 07, Sri Lanka",
     rating: 5,
@@ -26,7 +29,7 @@ const TESTIMONIALS: Testimonial[] = [
     date: "Verified Buyer",
   },
   {
-    id: "2",
+    id: "def-2",
     name: "Niluka Fernando",
     city: "Kandy, Sri Lanka",
     rating: 5,
@@ -36,7 +39,7 @@ const TESTIMONIALS: Testimonial[] = [
     date: "Verified Buyer",
   },
   {
-    id: "3",
+    id: "def-3",
     name: "Chaminda Kulasekara",
     city: "Kurunegala, Sri Lanka",
     rating: 5,
@@ -46,7 +49,7 @@ const TESTIMONIALS: Testimonial[] = [
     date: "Verified Buyer",
   },
   {
-    id: "4",
+    id: "def-4",
     name: "Sarah Jenkins",
     city: "Melbourne, Australia",
     rating: 5,
@@ -56,7 +59,7 @@ const TESTIMONIALS: Testimonial[] = [
     date: "International Customer",
   },
   {
-    id: "5",
+    id: "def-5",
     name: "Priyantha Ranasinghe",
     city: "Galle, Sri Lanka",
     rating: 5,
@@ -67,14 +70,47 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-export default function TestimonialsSlider() {
+interface TestimonialsSliderProps {
+  customerReviews?: Array<{
+    id: string;
+    customerName: string;
+    rating: number;
+    comment: string;
+    createdAt?: Date | string;
+    product?: {
+      name: string;
+      slug?: string;
+    };
+  }>;
+}
+
+export default function TestimonialsSlider({ customerReviews }: TestimonialsSliderProps) {
   const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
 
-  const total = TESTIMONIALS.length;
+  // Convert live approved customer reviews into Testimonial items
+  const dynamicReviews: Testimonial[] = (customerReviews || []).map((r, i) => ({
+    id: r.id || `live-${i}`,
+    name: r.customerName || "Customer",
+    city: "Verified Ceylon Tea Lover",
+    rating: Math.min(5, Math.max(1, r.rating || 5)),
+    product: r.product?.name || "Pure Ceylon Tea",
+    productSlug: r.product?.slug,
+    comment: r.comment,
+    date: "Verified Buyer",
+    isLiveReview: true,
+  }));
+
+  // Combine live reviews first, then fallback testimonials
+  const allTestimonials: Testimonial[] =
+    dynamicReviews.length > 0
+      ? [...dynamicReviews, ...DEFAULT_TESTIMONIALS.slice(0, Math.max(2, 5 - dynamicReviews.length))]
+      : DEFAULT_TESTIMONIALS;
+
+  const total = allTestimonials.length;
 
   const handleNext = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % total);
@@ -85,12 +121,12 @@ export default function TestimonialsSlider() {
   }, [total]);
 
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || total <= 1) return;
     const timer = setInterval(() => {
       handleNext();
     }, 4500);
     return () => clearInterval(timer);
-  }, [isPaused, handleNext]);
+  }, [isPaused, handleNext, total]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.targetTouches[0].clientX;
@@ -107,7 +143,7 @@ export default function TestimonialsSlider() {
     touchEndX.current = null;
   };
 
-  const current = TESTIMONIALS[currentIndex];
+  const current = allTestimonials[currentIndex] || DEFAULT_TESTIMONIALS[0];
 
   return (
     <div
@@ -126,10 +162,19 @@ export default function TestimonialsSlider() {
           {/* Star Rating & Verified Badge */}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1">
-              {[...Array(current.rating)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`w-4 h-4 ${
+                    i < current.rating
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-gray-200"
+                  }`}
+                />
               ))}
-              <span className="ml-2 text-xs font-bold text-tea-dark">5.0 / 5.0</span>
+              <span className="ml-2 text-xs font-bold text-tea-dark">
+                {current.rating.toFixed(1)} / 5.0
+              </span>
             </div>
 
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">
@@ -140,18 +185,38 @@ export default function TestimonialsSlider() {
 
           {/* Testimonial Quote */}
           <p className="font-serif text-base sm:text-xl text-tea-dark leading-relaxed italic">
-            &ldquo;{t(`testimonial.${current.id}.comment`, current.comment)}&rdquo;
+            &ldquo;
+            {current.isLiveReview
+              ? current.comment
+              : t(`testimonial.${current.id}.comment`, current.comment)}
+            &rdquo;
           </p>
 
           {/* Author Details & Ordered Product */}
           <div className="pt-4 border-t border-tea-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h4 className="font-bold text-sm sm:text-base text-tea-dark">{current.name}</h4>
-              <p className="text-xs text-tea-muted">{t(`testimonial.${current.id}.city`, current.city)}</p>
+              <p className="text-xs text-tea-muted">
+                {current.isLiveReview
+                  ? current.city
+                  : t(`testimonial.${current.id}.city`, current.city)}
+              </p>
             </div>
             <div className="self-start sm:self-auto text-left sm:text-right">
-              <span className="text-[11px] text-tea-muted block">{t("testimonials.purchased", "Purchased:")}</span>
-              <span className="text-xs font-semibold text-tea-forest">{current.product}</span>
+              <span className="text-[11px] text-tea-muted block">
+                {t("testimonials.purchased", "Purchased:")}
+              </span>
+              {current.productSlug ? (
+                <Link
+                  href={`/products/${current.productSlug}`}
+                  className="text-xs font-semibold text-tea-forest hover:text-tea-dark hover:underline inline-flex items-center gap-1 group transition"
+                >
+                  <span>{current.product}</span>
+                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition shrink-0" />
+                </Link>
+              ) : (
+                <span className="text-xs font-semibold text-tea-forest">{current.product}</span>
+              )}
             </div>
           </div>
         </div>
@@ -159,8 +224,8 @@ export default function TestimonialsSlider() {
         {/* Carousel Bottom Controls */}
         <div className="flex items-center justify-between pt-6 mt-4 border-t border-tea-border/40">
           {/* Indicators */}
-          <div className="flex items-center gap-2">
-            {TESTIMONIALS.map((_, idx) => (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {allTestimonials.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
@@ -174,7 +239,7 @@ export default function TestimonialsSlider() {
           </div>
 
           {/* Next / Prev Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handlePrev}

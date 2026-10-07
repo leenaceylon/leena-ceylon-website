@@ -41,6 +41,7 @@ interface HomePageContentProps {
     minOrder?: number | null;
     maxDiscount?: number | null;
   } | null;
+  customerReviews?: any[];
 }
 
 export default function HomePageContent({
@@ -48,6 +49,7 @@ export default function HomePageContent({
   categories,
   settings,
   activePromotion,
+  customerReviews,
 }: HomePageContentProps) {
   const { t, isRTL } = useLanguage();
   const whatsappNumber = settings.whatsappNumber || "071 777 4717";
@@ -587,7 +589,7 @@ export default function HomePageContent({
             </p>
           </div>
 
-          <TestimonialsSlider />
+          <TestimonialsSlider customerReviews={customerReviews} />
         </div>
       </section>
 

@@ -3,18 +3,25 @@ import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { getCurrentCustomer, getCurrentAdmin } from "@/lib/auth";
 
-// GET /api/reviews?productId=...
-// Fetches approved reviews for a given product (by id or slug)
+// GET /api/reviews?productId=... (or without productId for home testimonials)
+// Fetches approved reviews
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");
 
     if (!productId) {
-      return NextResponse.json(
-        { error: "productId parameter is required" },
-        { status: 400 }
-      );
+      const reviews = await prisma.review.findMany({
+        where: { isApproved: true },
+        include: {
+          product: {
+            select: { name: true, slug: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+      });
+      return NextResponse.json({ success: true, reviews });
     }
 
     const product = await prisma.product.findFirst({
@@ -187,6 +194,7 @@ export async function PUT(req: NextRequest) {
       if (updated.product?.slug) {
         revalidatePath(`/products/${updated.product.slug}`);
       }
+      revalidatePath("/");
       revalidatePath("/products");
       revalidatePath("/admin/reviews");
     } catch (e) {
@@ -224,6 +232,7 @@ export async function DELETE(req: NextRequest) {
       if (deleted.product?.slug) {
         revalidatePath(`/products/${deleted.product.slug}`);
       }
+      revalidatePath("/");
       revalidatePath("/products");
       revalidatePath("/admin/reviews");
     } catch (e) {

@@ -40,7 +40,13 @@ export default function AdminReviewsPage() {
         body: JSON.stringify({ id, isApproved }),
       });
       if (res.ok) {
-        showNotice(`Review ${isApproved ? "approved successfully! It is now live on the customer product page." : "unapproved (hidden from public)."}`);
+        showNotice(
+          `Review ${
+            isApproved
+              ? "approved! Live on Product Details & Home Page 'What Our Customers Say'."
+              : "unapproved (hidden from storefront)."
+          }`
+        );
         loadReviews();
       } else {
         const err = await res.json();
@@ -85,7 +91,7 @@ export default function AdminReviewsPage() {
             Product Reviews Moderation
           </h1>
           <p className="text-xs text-tea-muted mt-0.5">
-            Approve customer-submitted reviews before they appear publicly on the storefront
+            Approve customer product reviews to display them on the Product page AND on the Home Page &ldquo;What Our Customers Say&rdquo; testimonials slider
           </p>
         </div>
 
@@ -239,7 +245,7 @@ export default function AdminReviewsPage() {
                         {r.isApproved ? (
                           <>
                             <Check className="w-3 h-3 text-emerald-700" />
-                            Approved (Live)
+                            Live on Product & Home Page
                           </>
                         ) : (
                           <>

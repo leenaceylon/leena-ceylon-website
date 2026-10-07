@@ -155,6 +155,28 @@ export default async function HomePage() {
     ],
   };
 
+  // Fetch live approved customer reviews for "What Our Customers Say" testimonials slider
+  let approvedReviews: any[] = [];
+  try {
+    approvedReviews = await prisma.review.findMany({
+      where: {
+        isApproved: true,
+      },
+      include: {
+        product: {
+          select: {
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+    });
+  } catch (reviewErr) {
+    console.warn("Could not load approved reviews for home page:", reviewErr);
+  }
+
   return (
     <>
       <script
@@ -166,6 +188,7 @@ export default async function HomePage() {
         categories={categories}
         settings={settings}
         activePromotion={activePromotion}
+        customerReviews={approvedReviews}
       />
     </>
   );
