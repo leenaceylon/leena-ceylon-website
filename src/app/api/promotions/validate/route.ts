@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
         isFreeShipping: isFreeShipping,
         minOrder: coupon.minOrder ?? null,
         maxDiscount: coupon.maxDiscount ?? null,
+        isAutoApply: coupon.isAutoApply ?? false,
       },
       message,
     });

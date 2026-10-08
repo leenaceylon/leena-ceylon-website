@@ -16,6 +16,7 @@ export default function AdminPromotionsPage() {
     minOrder: 1500,
     maxDiscount: 500,
     usageLimit: 100,
+    isAutoApply: false,
   });
 
   const loadCoupons = async () => {
@@ -58,6 +59,7 @@ export default function AdminPromotionsPage() {
         minOrder: 1500,
         maxDiscount: 500,
         usageLimit: 100,
+        isAutoApply: false,
       });
       loadCoupons();
     } catch (e) {
@@ -87,6 +89,23 @@ export default function AdminPromotionsPage() {
       });
       if (res.ok) {
         setNotice(`Coupon ${!currentActive ? "activated" : "deactivated"}.`);
+        setTimeout(() => setNotice(null), 3000);
+        loadCoupons();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleAutoApply = async (id: string, currentAutoApply: boolean) => {
+    try {
+      const res = await fetch("/api/promotions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isAutoApply: !currentAutoApply }),
+      });
+      if (res.ok) {
+        setNotice(`Auto-apply ${!currentAutoApply ? "enabled" : "disabled"}.`);
         setTimeout(() => setNotice(null), 3000);
         loadCoupons();
       }
@@ -142,6 +161,7 @@ export default function AdminPromotionsPage() {
                   <th className="py-3.5 px-4">Type</th>
                   <th className="py-3.5 px-4">Discount</th>
                   <th className="py-3.5 px-4">Min Spend</th>
+                  <th className="py-3.5 px-4">Auto-Apply</th>
                   <th className="py-3.5 px-4">Times Used</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Action</th>
@@ -163,6 +183,20 @@ export default function AdminPromotionsPage() {
                     </td>
                     <td className="py-3 px-4 text-tea-muted">
                       {c.minOrder ? `Rs. ${c.minOrder}` : "None"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAutoApply(c.id, Boolean(c.isAutoApply))}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition ${
+                          c.isAutoApply
+                            ? "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200"
+                            : "bg-gray-100 text-gray-500 border-gray-300 hover:bg-gray-200"
+                        }`}
+                        title="Click to toggle auto-apply when customer purchase qualifies"
+                      >
+                        <span>{c.isAutoApply ? "⚡ AUTO ON" : "MANUAL"}</span>
+                      </button>
                     </td>
                     <td className="py-3 px-4 text-tea-dark">{c.timesUsed} uses</td>
                     <td className="py-3 px-4">
@@ -229,7 +263,14 @@ export default function AdminPromotionsPage() {
                   </label>
                   <select
                     value={formData.discountType}
-                    onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      setFormData({
+                        ...formData,
+                        discountType: newType,
+                        isAutoApply: newType === "FREE_SHIPPING" ? true : formData.isAutoApply,
+                      });
+                    }}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface"
                   >
                     <option value="PERCENTAGE">Percentage (%)</option>
@@ -264,6 +305,23 @@ export default function AdminPromotionsPage() {
                   onChange={(e) => setFormData({ ...formData, minOrder: Number(e.target.value) })}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-tea-border bg-tea-surface"
                 />
+              </div>
+
+              <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isAutoApply}
+                    onChange={(e) => setFormData({ ...formData, isAutoApply: e.target.checked })}
+                    className="w-4 h-4 text-tea-forest rounded border-tea-border focus:ring-tea-leaf"
+                  />
+                  <span className="text-xs font-bold text-tea-dark flex items-center gap-1">
+                    <span>⚡ Auto-Apply to Eligible Orders</span>
+                  </span>
+                </label>
+                <p className="text-[11px] text-tea-muted pl-6">
+                  Automatically applied at checkout when customer purchase reaches Rs. {formData.minOrder || 1500}+.
+                </p>
               </div>
             </div>
 

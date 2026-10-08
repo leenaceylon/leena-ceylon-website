@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { code, discountType, discountValue, minOrder, maxDiscount, usageLimit } = body;
+    const { code, discountType, discountValue, minOrder, maxDiscount, usageLimit, isAutoApply } = body;
 
     if (!code || !discountValue) {
       return NextResponse.json(
@@ -46,6 +46,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const autoApplyVal =
+      isAutoApply !== undefined
+        ? Boolean(isAutoApply)
+        : discountType === "FREE_SHIPPING";
 
     const coupon = await prisma.coupon.create({
       data: {
@@ -55,6 +60,7 @@ export async function POST(req: NextRequest) {
         minOrder: minOrder ? Number(minOrder) : null,
         maxDiscount: maxDiscount ? Number(maxDiscount) : null,
         usageLimit: usageLimit ? Number(usageLimit) : null,
+        isAutoApply: autoApplyVal,
       },
     });
 
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
         adminId: admin.id,
         adminName: admin.name,
         action: "CREATE_COUPON",
-        details: `Created coupon code ${coupon.code}`,
+        details: `Created coupon code ${coupon.code} (AutoApply: ${coupon.isAutoApply})`,
         entityType: "Coupon",
         entityId: coupon.id,
       },
@@ -81,13 +87,14 @@ export async function PUT(req: NextRequest) {
     if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { id, isActive, discountType, discountValue, minOrder, maxDiscount, usageLimit } = body;
+    const { id, isActive, isAutoApply, discountType, discountValue, minOrder, maxDiscount, usageLimit } = body;
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
     const updated = await prisma.coupon.update({
       where: { id },
       data: {
         ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+        ...(isAutoApply !== undefined ? { isAutoApply: Boolean(isAutoApply) } : {}),
         ...(discountType ? { discountType } : {}),
         ...(discountValue !== undefined ? { discountValue: Number(discountValue) } : {}),
         ...(minOrder !== undefined ? { minOrder: minOrder ? Number(minOrder) : null } : {}),

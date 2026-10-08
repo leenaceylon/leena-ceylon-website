@@ -61,7 +61,9 @@ export default function WhatsAppModal({
     minOrder?: number | null;
     maxDiscount?: number | null;
     calculatedDiscount?: number;
+    isAutoApplied?: boolean;
   }[]>([]);
+  const [dismissedCouponCodes, setDismissedCouponCodes] = useState<string[]>([]);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
@@ -147,9 +149,11 @@ export default function WhatsAppModal({
       setDeliveryMethod("COURIER");
       setCouponError(null);
       setCouponSuccess(null);
+      setDismissedCouponCodes([]);
     } else {
       setCopiedAccount(false);
       setAppliedCoupons([]);
+      setDismissedCouponCodes([]);
       setCouponInput("");
       setCouponError(null);
       setCouponSuccess(null);
@@ -245,6 +249,57 @@ export default function WhatsAppModal({
     setRegularUnitPrice(sz.regularPrice ?? sz.price);
   };
 
+  // Automatic coupon application for eligible coupons (e.g. Free Delivery coupon on orders >= Rs. 1,500)
+  useEffect(() => {
+    if (!whatsAppModal.isOpen || !availableCoupons || availableCoupons.length === 0) return;
+
+    // Filter active coupons eligible for auto-application
+    const eligibleAutoCoupons = availableCoupons.filter((c) => {
+      const isAuto =
+        Boolean(c.isAutoApply) ||
+        (c.discountType === "FREE_SHIPPING" && Number(c.minOrder) > 0);
+      if (!isAuto) return false;
+
+      const minOrder = Number(c.minOrder) || 0;
+      return itemsSubtotal >= minOrder;
+    });
+
+    setAppliedCoupons((prev) => {
+      let updated = [...prev];
+      let hasChanges = false;
+
+      // 1. Remove auto-applied coupons whose minimum spend requirement is no longer met
+      updated = updated.filter((ac) => {
+        if (ac.isAutoApplied && ac.minOrder && itemsSubtotal < ac.minOrder) {
+          hasChanges = true;
+          return false;
+        }
+        return true;
+      });
+
+      // 2. Add eligible auto-apply coupons if not already present and not explicitly dismissed by customer
+      for (const ec of eligibleAutoCoupons) {
+        const isAlreadyApplied = updated.some((ac) => ac.code === ec.code);
+        const isDismissed = dismissedCouponCodes.includes(ec.code);
+
+        if (!isAlreadyApplied && !isDismissed) {
+          hasChanges = true;
+          updated.push({
+            code: ec.code,
+            discountType: ec.discountType,
+            discountValue: Number(ec.discountValue),
+            isFreeShipping: ec.discountType === "FREE_SHIPPING" || Boolean(ec.isFreeShipping),
+            minOrder: ec.minOrder ? Number(ec.minOrder) : null,
+            maxDiscount: ec.maxDiscount ? Number(ec.maxDiscount) : null,
+            isAutoApplied: true,
+          });
+        }
+      }
+
+      return hasChanges ? updated : prev;
+    });
+  }, [whatsAppModal.isOpen, availableCoupons, itemsSubtotal, dismissedCouponCodes]);
+
   const handleApplyCoupon = async (codeToUse?: string) => {
     const code = (codeToUse || couponInput).trim().toUpperCase();
     if (!code) {
@@ -273,6 +328,7 @@ export default function WhatsAppModal({
 
       if (res.ok && data.valid && data.coupon) {
         setAppliedCoupons((prev) => [...prev, data.coupon]);
+        setDismissedCouponCodes((prev) => prev.filter((c) => c !== code));
         setCouponInput("");
         setCouponSuccess(data.message || `Code ${data.coupon.code} applied!`);
         setCouponError(null);
@@ -287,6 +343,9 @@ export default function WhatsAppModal({
   };
 
   const handleRemoveCoupon = (codeToRemove: string) => {
+    setDismissedCouponCodes((prev) =>
+      prev.includes(codeToRemove) ? prev : [...prev, codeToRemove]
+    );
     setAppliedCoupons((prev) => prev.filter((c) => c.code !== codeToRemove));
     setCouponSuccess(null);
     setCouponError(null);
@@ -689,6 +748,12 @@ export default function WhatsAppModal({
                             ? "🚚 Free Islandwide Delivery"
                             : `- Rs. ${(cpn.calculatedDiscount || 0).toLocaleString("en-US")}`}
                         </span>
+                        {cpn.isAutoApplied && (
+                          <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-0.5 shadow-2xs">
+                            <span>⚡</span>
+                            <span>{t("modal.autoAppliedBadge", "Auto-Applied")}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
@@ -703,6 +768,34 @@ export default function WhatsAppModal({
                 ))}
               </div>
             )}
+
+            {/* Helpful indicator if order is close to unlocking Auto-Free Delivery */}
+            {(() => {
+              const freeDeliveryCoupon = availableCoupons.find(
+                (c) =>
+                  (Boolean(c.isAutoApply) || c.discountType === "FREE_SHIPPING") &&
+                  Number(c.minOrder) > itemsSubtotal &&
+                  !appliedCoupons.some((ac) => ac.code === c.code)
+              );
+              if (!freeDeliveryCoupon || !freeDeliveryCoupon.minOrder) return null;
+              const neededAmount = Math.max(0, Number(freeDeliveryCoupon.minOrder) - itemsSubtotal);
+              return (
+                <div className="p-2.5 bg-amber-50/90 border border-amber-300/80 rounded-xl text-xs text-amber-950 flex items-center justify-between gap-2 shadow-2xs animate-fade-in">
+                  <div className="flex items-center gap-1.5 font-medium flex-wrap">
+                    <span>⚡</span>
+                    <span>
+                      {t("modal.spendMoreForFreeDelivery", "Add Rs. {amount} more to unlock Free Delivery with coupon").replace(
+                        "{amount}",
+                        neededAmount.toLocaleString("en-US")
+                      )}{" "}
+                      <strong className="font-mono font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded border border-amber-300">
+                        {freeDeliveryCoupon.code}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Input field to apply coupon or apply extra coupon */}
             <div className={`space-y-2 ${appliedCoupons.length > 0 ? "pt-2 border-t border-tea-border/60" : ""}`}>
@@ -798,7 +891,7 @@ export default function WhatsAppModal({
                         {cpn.discountType === "PERCENTAGE"
                           ? `${cpn.discountValue}% OFF`
                           : cpn.discountType === "FREE_SHIPPING"
-                          ? "FREE DELIVERY"
+                          ? `FREE DELIVERY${cpn.minOrder ? ` (Rs. ${cpn.minOrder}+)` : ""}`
                           : `Rs. ${cpn.discountValue} OFF`}
                         )
                       </button>
