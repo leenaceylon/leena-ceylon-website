@@ -186,9 +186,17 @@ export default function WhatsAppModal({
     setTimeout(() => setCopiedAccount(false), 2000);
   };
 
-  if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
-
-  const { details } = whatsAppModal;
+  const details = whatsAppModal.details || {
+    productId: undefined,
+    variantId: undefined,
+    image: undefined,
+    productName: "",
+    size: "Standard",
+    quantity: 1,
+    price: 0,
+    regularPrice: 0,
+    availableSizes: [] as WhatsAppOrderSizeOption[],
+  };
   const availableSizes: WhatsAppOrderSizeOption[] = details.availableSizes || [];
 
   // Calculate live pricing with offer discounts and quantity scaling
@@ -251,7 +259,7 @@ export default function WhatsAppModal({
 
   // Automatic coupon application for eligible coupons (e.g. Free Delivery coupon on orders >= Rs. 1,500)
   useEffect(() => {
-    if (!whatsAppModal.isOpen || !availableCoupons || availableCoupons.length === 0) return;
+    if (!whatsAppModal.isOpen || !whatsAppModal.details || !availableCoupons || availableCoupons.length === 0) return;
 
     // Filter active coupons eligible for auto-application
     const eligibleAutoCoupons = availableCoupons.filter((c) => {
@@ -298,7 +306,7 @@ export default function WhatsAppModal({
 
       return hasChanges ? updated : prev;
     });
-  }, [whatsAppModal.isOpen, availableCoupons, itemsSubtotal, dismissedCouponCodes]);
+  }, [whatsAppModal.isOpen, whatsAppModal.details, availableCoupons, itemsSubtotal, dismissedCouponCodes]);
 
   const handleApplyCoupon = async (codeToUse?: string) => {
     const code = (codeToUse || couponInput).trim().toUpperCase();
@@ -455,6 +463,8 @@ export default function WhatsAppModal({
     setIsSubmittingOrder(false);
     closeWhatsAppModal();
   };
+
+  if (!whatsAppModal.isOpen || !whatsAppModal.details) return null;
 
   return (
     <div
