@@ -626,8 +626,8 @@ function TrackOrderContent() {
                     <div className="flex items-center gap-3">
                       <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-tea-surface border border-tea-border shrink-0">
                         <Image
-                          src={item.image}
-                          alt={item.productName}
+                          src={item.image || "/uploads/leena-tea-powder-200g.jpeg"}
+                          alt={item.productName || "Ceylon Tea"}
                           fill
                           className="object-cover"
                         />

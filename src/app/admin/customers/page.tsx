@@ -1094,7 +1094,7 @@ export default function AdminCustomersPage() {
                             {new Date(ord.createdAt).toLocaleDateString()}
                           </td>
                           <td className="py-2.5 px-3">
-                            {ord.orderNumber.startsWith("SHOP-") ? (
+                            {ord.orderNumber?.startsWith("SHOP-") ? (
                               <div className="space-y-0.5">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                                   🏬 Rep Bill

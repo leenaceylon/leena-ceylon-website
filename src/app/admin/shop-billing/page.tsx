@@ -619,9 +619,9 @@ export default function ShopBillingPage() {
     const term = productSearch.toLowerCase();
     return products.filter(
       (p) =>
-        p.name.toLowerCase().includes(term) ||
-        p.teaGrade.toLowerCase().includes(term) ||
-        p.category?.name.toLowerCase().includes(term)
+        Boolean(p.name && p.name.toLowerCase().includes(term)) ||
+        Boolean(p.teaGrade && p.teaGrade.toLowerCase().includes(term)) ||
+        Boolean(p.category?.name && p.category.name.toLowerCase().includes(term))
     );
   }, [products, productSearch]);
 

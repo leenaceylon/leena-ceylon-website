@@ -186,8 +186,8 @@ export default function ProductDetailsClient({
         <div className="relative aspect-square w-full rounded-3xl overflow-hidden bg-gradient-to-b from-tea-surface/50 via-white to-tea-bg/40 border border-tea-border shadow-subtle p-6 flex items-center justify-center">
           <div className="relative w-full h-full">
             <Image
-              src={selectedImage}
-              alt={product.name}
+              src={selectedImage || product.mainImage || fallbackImg}
+              alt={product.name || "Ceylon Tea"}
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
@@ -222,7 +222,7 @@ export default function ProductDetailsClient({
                 }`}
               >
                 <Image
-                  src={imgUrl}
+                  src={imgUrl || fallbackImg}
                   alt={`Thumbnail ${idx + 1}`}
                   fill
                   className="object-contain"

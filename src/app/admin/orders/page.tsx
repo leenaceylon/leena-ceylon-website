@@ -131,7 +131,7 @@ function AdminOrdersView() {
         // Automatically prompt to send WhatsApp confirmation when status is set to CONFIRMED
         if (newStatus === "CONFIRMED") {
           const target = data?.order || orders.find((o) => o.id === orderId);
-          if (target && !target.isShopOrder && !target.orderNumber.startsWith("SHOP-")) {
+          if (target && !target.isShopOrder && !target.orderNumber?.startsWith("SHOP-")) {
             setConfirmationModalOrder({ ...target, orderStatus: "CONFIRMED" });
           }
         }
@@ -144,7 +144,7 @@ function AdminOrdersView() {
   const shopOrdersCount = orders.filter(
     (o) =>
       o.isShopOrder ||
-      o.orderNumber.startsWith("SHOP-") ||
+      o.orderNumber?.startsWith("SHOP-") ||
       o.paymentMethod === "CREDIT_SHOP" ||
       Boolean(o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
   ).length;
@@ -154,7 +154,7 @@ function AdminOrdersView() {
   const filteredOrders = orders.filter((o) => {
     const isShop = Boolean(
       o.isShopOrder ||
-      o.orderNumber.startsWith("SHOP-") ||
+      o.orderNumber?.startsWith("SHOP-") ||
       o.paymentMethod === "CREDIT_SHOP" ||
       (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
     );
@@ -165,10 +165,10 @@ function AdminOrdersView() {
     const term = search.toLowerCase().trim();
     const matchesSearch =
       !term ||
-      o.orderNumber.toLowerCase().includes(term) ||
-      o.customerName.toLowerCase().includes(term) ||
-      o.customerPhone.includes(term) ||
-      (o.salesRepName && o.salesRepName.toLowerCase().includes(term));
+      (o.orderNumber && o.orderNumber.toLowerCase().includes(term)) ||
+      (o.customerName && o.customerName.toLowerCase().includes(term)) ||
+      (o.customerPhone && o.customerPhone.includes(term)) ||
+      Boolean(o.salesRepName && o.salesRepName.toLowerCase().includes(term));
 
     const matchesStatus =
       statusFilter === "ALL" ? true : o.orderStatus === statusFilter;
@@ -297,7 +297,7 @@ function AdminOrdersView() {
               {filteredOrders.map((o) => {
                 const isShop = Boolean(
                   o.isShopOrder ||
-                  o.orderNumber.startsWith("SHOP-") ||
+                  o.orderNumber?.startsWith("SHOP-") ||
                   o.paymentMethod === "CREDIT_SHOP" ||
                   (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
                 );
@@ -483,7 +483,7 @@ function AdminOrdersView() {
                   {filteredOrders.map((o) => {
                     const isShop = Boolean(
                       o.isShopOrder ||
-                      o.orderNumber.startsWith("SHOP-") ||
+                      o.orderNumber?.startsWith("SHOP-") ||
                       o.paymentMethod === "CREDIT_SHOP" ||
                       (o.deliveryNotes && (o.deliveryNotes.includes("SHOP:") || o.deliveryNotes.includes("SALES_REP:")))
                     );
