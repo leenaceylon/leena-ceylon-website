@@ -92,8 +92,11 @@ export function compileSingleProductWhatsAppOrder(params: WhatsAppOrderCompilati
     `• *Items Subtotal:* Rs. ${itemSubtotal.toLocaleString("en-US")}`,
   ];
 
-  if (details.couponCode && couponDiscount > 0) {
-    lines.push(`• *Coupon Code:* ${details.couponCode} (-Rs. ${couponDiscount.toLocaleString("en-US")})`);
+  if (details.couponCode) {
+    const isMulti = details.couponCode.includes(",");
+    const label = isMulti ? "Applied Coupons" : "Coupon Code";
+    const discountInfo = couponDiscount > 0 ? ` (-Rs. ${couponDiscount.toLocaleString("en-US")})` : "";
+    lines.push(`• *${label}:* ${details.couponCode}${discountInfo}`);
   }
 
   if (isPickup) {

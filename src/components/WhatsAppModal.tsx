@@ -50,15 +50,18 @@ export default function WhatsAppModal({
   const [regularUnitPrice, setRegularUnitPrice] = useState<number | undefined>(undefined);
   const [copiedAccount, setCopiedAccount] = useState(false);
 
-  // Coupon state
+  // Multi-Coupon state
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
+  const [appliedCoupons, setAppliedCoupons] = useState<{
     code: string;
     discountType: string;
     discountValue: number;
-    discountAmount: number;
+    discountAmount?: number;
     isFreeShipping?: boolean;
-  } | null>(null);
+    minOrder?: number | null;
+    maxDiscount?: number | null;
+    calculatedDiscount?: number;
+  }[]>([]);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
@@ -146,7 +149,7 @@ export default function WhatsAppModal({
       setCouponSuccess(null);
     } else {
       setCopiedAccount(false);
-      setAppliedCoupon(null);
+      setAppliedCoupons([]);
       setCouponInput("");
       setCouponError(null);
       setCouponSuccess(null);
@@ -189,33 +192,52 @@ export default function WhatsAppModal({
   const itemsSubtotal = pricing.totalPrice;
   const offerSavings = pricing.totalSavings;
 
-  // Re-calculate coupon discount according to live itemsSubtotal
-  let couponDiscount = 0;
-  if (appliedCoupon) {
-    if (appliedCoupon.discountType === "PERCENTAGE") {
-      couponDiscount = Math.round((itemsSubtotal * appliedCoupon.discountValue) / 100);
-    } else if (appliedCoupon.discountType === "FIXED") {
-      couponDiscount = Math.min(appliedCoupon.discountValue, itemsSubtotal);
-    }
-  }
-
-  // Delivery charge calculation
-  const isFreeDeliveryCoupon = Boolean(appliedCoupon?.isFreeShipping);
-  const qualifiesForFreeDelivery = itemsSubtotal >= 3500 || isFreeDeliveryCoupon;
-  const standardDeliveryFee = 350;
+  // Delivery charge and coupon calculations:
+  const isFreeDeliveryCoupon = appliedCoupons.some(
+    (c) => Boolean(c.isFreeShipping) || c.discountType === "FREE_SHIPPING"
+  );
+  const freeDeliveryThreshold = Number(settings?.freeDeliveryThreshold) || 3500;
+  const qualifiesForFreeDelivery = itemsSubtotal >= freeDeliveryThreshold || isFreeDeliveryCoupon;
+  const standardDeliveryFee = Number(settings?.standardDeliveryFee) || 350;
   // If Office Pick-up is selected, delivery charge is completely removed (Rs. 0)
   const deliveryFee =
     deliveryMethod === "PICKUP" ? 0 : (qualifiesForFreeDelivery ? 0 : standardDeliveryFee);
 
-  // Final Payable Amount: Items Subtotal - Coupon Discount + Delivery Fee
-  const finalTotal = Math.max(0, itemsSubtotal - couponDiscount + deliveryFee);
+  // Calculate breakdown of discounts for each applied coupon
+  const couponDiscountBreakdown = appliedCoupons.map((c) => {
+    let disc = 0;
+    if (c.discountType === "PERCENTAGE") {
+      disc = Math.round((itemsSubtotal * c.discountValue) / 100);
+      if (c.maxDiscount && c.maxDiscount > 0) {
+        disc = Math.min(disc, c.maxDiscount);
+      }
+    } else if (c.discountType === "FIXED") {
+      disc = Math.min(Number(c.discountValue), itemsSubtotal);
+    } else if (c.discountType === "FREE_SHIPPING" || c.isFreeShipping) {
+      disc = 0; // Benefit given through Rs. 0 delivery fee
+    }
+    return {
+      ...c,
+      calculatedDiscount: disc,
+    };
+  });
+
+  const rawCouponDiscountSum = couponDiscountBreakdown.reduce(
+    (sum, c) => sum + (c.calculatedDiscount || 0),
+    0
+  );
+  // Total coupon discount cannot exceed item subtotal
+  const totalCouponDiscount = Math.min(rawCouponDiscountSum, itemsSubtotal);
+
+  // Final Payable Amount: Items Subtotal - Total Coupon Discount + Delivery Fee
+  const finalTotal = Math.max(0, itemsSubtotal - totalCouponDiscount + deliveryFee);
   
   // Total Savings: Offer discount + Coupon discount + Delivery waiver (Rs. 350 saved on pickup or free delivery)
   const deliverySavings =
     deliveryMethod === "PICKUP"
       ? standardDeliveryFee
       : (qualifiesForFreeDelivery ? standardDeliveryFee : 0);
-  const totalSavings = offerSavings + couponDiscount + deliverySavings;
+  const totalSavings = offerSavings + totalCouponDiscount + deliverySavings;
 
   const handleSelectSize = (sz: WhatsAppOrderSizeOption) => {
     setSelectedSize(sz.sizeName);
@@ -226,7 +248,14 @@ export default function WhatsAppModal({
   const handleApplyCoupon = async (codeToUse?: string) => {
     const code = (codeToUse || couponInput).trim().toUpperCase();
     if (!code) {
-      setCouponError("Please enter a coupon code");
+      setCouponError(t("modal.couponPlaceholder", "Please enter a coupon code"));
+      return;
+    }
+
+    if (appliedCoupons.some((c) => c.code === code)) {
+      setCouponError(
+        t("modal.couponAlreadyApplied", `Coupon code "${code}" is already applied.`)
+      );
       return;
     }
 
@@ -243,13 +272,12 @@ export default function WhatsAppModal({
       const data = await res.json();
 
       if (res.ok && data.valid && data.coupon) {
-        setAppliedCoupon(data.coupon);
-        setCouponInput(data.coupon.code);
+        setAppliedCoupons((prev) => [...prev, data.coupon]);
+        setCouponInput("");
         setCouponSuccess(data.message || `Code ${data.coupon.code} applied!`);
         setCouponError(null);
       } else {
         setCouponError(data.message || "Invalid coupon code");
-        setAppliedCoupon(null);
       }
     } catch {
       setCouponError("Could not validate coupon. Please try again.");
@@ -258,9 +286,8 @@ export default function WhatsAppModal({
     }
   };
 
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponInput("");
+  const handleRemoveCoupon = (codeToRemove: string) => {
+    setAppliedCoupons((prev) => prev.filter((c) => c.code !== codeToRemove));
     setCouponSuccess(null);
     setCouponError(null);
   };
@@ -272,6 +299,7 @@ export default function WhatsAppModal({
     let createdOrderNumber: string | undefined = undefined;
 
     try {
+      const appliedCodes = appliedCoupons.map((c) => c.code).join(", ");
       const orderPayload = {
         fullName: customerName.trim() || "WhatsApp Customer",
         mobileNumber: customerPhone.trim() || "Not Provided",
@@ -288,7 +316,7 @@ export default function WhatsAppModal({
           deliveryMethod === "PICKUP"
             ? "Office Pick-up (Kekirawa Head Office)"
             : "Islandwide Courier Delivery"
-        }${appliedCoupon ? ` | Coupon: ${appliedCoupon.code} (-Rs. ${couponDiscount})` : ""}${
+        }${appliedCodes ? ` | Coupon(s): ${appliedCodes} (-Rs. ${totalCouponDiscount}${isFreeDeliveryCoupon ? ", Free Delivery" : ""})` : ""}${
           customerAddress ? ` | Notes: ${customerAddress}` : ""
         }`,
         paymentMethod:
@@ -309,10 +337,10 @@ export default function WhatsAppModal({
           },
         ],
         subtotal: itemsSubtotal,
-        discount: couponDiscount,
+        discount: totalCouponDiscount,
         deliveryCharge: deliveryFee,
         grandTotal: finalTotal,
-        couponCode: appliedCoupon ? appliedCoupon.code : null,
+        couponCode: appliedCodes || null,
         deliveryMethod: deliveryMethod,
       };
 
@@ -330,6 +358,7 @@ export default function WhatsAppModal({
       console.warn("Order recording failed, proceeding with WhatsApp message:", e);
     }
 
+    const appliedCodes = appliedCoupons.map((c) => c.code).join(", ");
     const orderDetails: WhatsAppOrderDetails = {
       productId: details.productId,
       variantId: details.variantId,
@@ -344,8 +373,8 @@ export default function WhatsAppModal({
       regularTotal: pricing.hasDiscount ? pricing.totalRegularPrice : undefined,
       savings: pricing.hasDiscount ? pricing.totalSavings : undefined,
       availableSizes: details.availableSizes,
-      couponCode: appliedCoupon ? appliedCoupon.code : undefined,
-      couponDiscount: couponDiscount > 0 ? couponDiscount : undefined,
+      couponCode: appliedCodes || undefined,
+      couponDiscount: totalCouponDiscount > 0 ? totalCouponDiscount : undefined,
       deliveryMethod: deliveryMethod,
       deliveryCharge: deliveryFee,
       finalTotal: finalTotal,
@@ -543,9 +572,11 @@ export default function WhatsAppModal({
               </span>
               <span className="text-[11px] text-tea-muted">
                 {qualifiesForFreeDelivery ? (
-                  <strong className="text-emerald-700 font-bold">🎉 FREE Courier Delivery Qualified!</strong>
+                  <strong className="text-emerald-700 font-bold">
+                    🎉 FREE Courier Delivery Qualified!{isFreeDeliveryCoupon ? " (Coupon Applied)" : ""}
+                  </strong>
                 ) : (
-                  <span>Free courier over Rs. 3,500</span>
+                  <span>Free courier over Rs. {freeDeliveryThreshold.toLocaleString("en-US")}</span>
                 )}
               </span>
             </div>
@@ -619,95 +650,151 @@ export default function WhatsAppModal({
             )}
           </div>
 
-          {/* 3. Coupon Code Option */}
-          <div className="bg-white p-3.5 rounded-xl border border-tea-border/80 shadow-xs space-y-2">
+          {/* 3. Multi-Coupon Code Option with Extra Coupon Support */}
+          <div className="bg-white p-3.5 rounded-xl border border-tea-border/80 shadow-xs space-y-3">
             <div className="flex items-center justify-between text-xs">
               <label className="font-bold uppercase tracking-wider text-tea-forest flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-tea-leaf" />
-                <span>{t("modal.applyCoupon", "Have a Coupon Code?")}</span>
+                <span>
+                  {appliedCoupons.length > 0
+                    ? `${t("modal.appliedCoupons", "Applied Coupons")} (${appliedCoupons.length})`
+                    : t("modal.applyCoupon", "Have a Coupon Code?")}
+                </span>
               </label>
-              {appliedCoupon && (
-                <button
-                  type="button"
-                  onClick={handleRemoveCoupon}
-                  className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold transition"
-                >
-                  ✕ Remove
-                </button>
+              {appliedCoupons.length > 0 && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                  {isFreeDeliveryCoupon ? "Free Delivery Active" : ""}
+                  {isFreeDeliveryCoupon && totalCouponDiscount > 0 ? " + " : ""}
+                  {totalCouponDiscount > 0 ? `- Rs. ${totalCouponDiscount.toLocaleString("en-US")}` : ""}
+                </span>
               )}
             </div>
 
-            {appliedCoupon ? (
-              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-300 rounded-lg text-xs text-emerald-950 font-medium animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                  <span>
-                    Coupon <strong className="font-mono text-emerald-800 font-bold">{appliedCoupon.code}</strong> Applied:
-                  </span>
-                  <strong className="text-emerald-700 font-bold">
-                    {appliedCoupon.isFreeShipping
-                      ? "Free Delivery Waiver"
-                      : `- Rs. ${couponDiscount.toLocaleString("en-US")}`}
-                  </strong>
-                </div>
-                <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
-                  Applied
-                </span>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Tag className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
-                    <input
-                      type="text"
-                      placeholder={t("modal.couponPlaceholder", "Enter coupon (e.g. WELCOME10)")}
-                      value={couponInput}
-                      onChange={(e) => {
-                        setCouponInput(e.target.value.toUpperCase());
-                        setCouponError(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleApplyCoupon();
-                        }
-                      }}
-                      className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs font-mono font-semibold uppercase"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleApplyCoupon()}
-                    disabled={couponLoading || !couponInput.trim()}
-                    className="px-4 py-2 bg-tea-dark hover:bg-tea-forest disabled:opacity-50 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 shrink-0"
+            {/* List of Applied Coupons */}
+            {appliedCoupons.length > 0 && (
+              <div className="space-y-2">
+                {couponDiscountBreakdown.map((cpn) => (
+                  <div
+                    key={cpn.code}
+                    className="flex items-center justify-between p-2.5 bg-emerald-50/90 border border-emerald-300 rounded-xl text-xs text-emerald-950 font-medium animate-fade-in shadow-2xs"
                   >
-                    {couponLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <span>{t("modal.apply", "Apply")}</span>
-                    )}
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse shrink-0" />
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono font-bold text-emerald-900 bg-white px-2 py-0.5 rounded-md border border-emerald-300 shadow-2xs">
+                          {cpn.code}
+                        </span>
+                        <span className="font-semibold text-emerald-800">
+                          {cpn.isFreeShipping || cpn.discountType === "FREE_SHIPPING"
+                            ? "🚚 Free Islandwide Delivery"
+                            : `- Rs. ${(cpn.calculatedDiscount || 0).toLocaleString("en-US")}`}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCoupon(cpn.code)}
+                      className="text-[11px] text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg font-semibold transition"
+                      title={`Remove coupon ${cpn.code}`}
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input field to apply coupon or apply extra coupon */}
+            <div className={`space-y-2 ${appliedCoupons.length > 0 ? "pt-2 border-t border-tea-border/60" : ""}`}>
+              {appliedCoupons.length > 0 && (
+                <div className="flex items-center justify-between text-[11px] text-tea-forest font-semibold">
+                  <span className="flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5 text-tea-leaf" />
+                    <span>{t("modal.applyExtraCoupon", "Apply Extra Coupon")}</span>
+                  </span>
+                  <span className="text-[10px] text-tea-muted">
+                    Stack multiple discounts & promotions
+                  </span>
                 </div>
+              )}
 
-                {couponError && (
-                  <p className="text-[11px] text-rose-600 font-medium animate-fade-in">
-                    ⚠️ {couponError}
-                  </p>
-                )}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className={`w-3.5 h-3.5 absolute ${isRTL ? "right-3" : "left-3"} top-2.5 text-tea-muted/70`} />
+                  <input
+                    type="text"
+                    placeholder={
+                      appliedCoupons.length > 0
+                        ? t("modal.extraCouponPlaceholder", "Enter extra coupon (e.g. CC, LEENA10)")
+                        : t("modal.couponPlaceholder", "Enter coupon (e.g. WELCOME10)")
+                    }
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value.toUpperCase());
+                      setCouponError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleApplyCoupon();
+                      }
+                    }}
+                    className="w-full pl-8 pr-3 rtl:pl-3 rtl:pr-8 py-2 rounded-lg border border-tea-border focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf transition text-xs font-mono font-semibold uppercase"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleApplyCoupon()}
+                  disabled={couponLoading || !couponInput.trim()}
+                  className="px-4 py-2 bg-tea-dark hover:bg-tea-forest disabled:opacity-50 text-white font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1.5 shrink-0"
+                >
+                  {couponLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <span>
+                      {appliedCoupons.length > 0
+                        ? t("modal.applyExtra", "Apply Extra")
+                        : t("modal.apply", "Apply")}
+                    </span>
+                  )}
+                </button>
+              </div>
 
-                {/* Dynamic Quick Coupon Tap suggestions */}
-                {availableCoupons && availableCoupons.length > 0 && (
+              {couponError && (
+                <p className="text-[11px] text-rose-600 font-medium animate-fade-in flex items-center gap-1">
+                  <span>⚠️</span>
+                  <span>{couponError}</span>
+                </p>
+              )}
+
+              {couponSuccess && (
+                <p className="text-[11px] text-emerald-700 font-medium animate-fade-in flex items-center gap-1">
+                  <span>🎉</span>
+                  <span>{couponSuccess}</span>
+                </p>
+              )}
+
+              {/* Dynamic Quick Coupon Tap suggestions for unapplied coupons */}
+              {(() => {
+                const unappliedCoupons = availableCoupons.filter(
+                  (cpn) => !appliedCoupons.some((ac) => ac.code === cpn.code)
+                );
+                if (!unappliedCoupons || unappliedCoupons.length === 0) return null;
+                return (
                   <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-tea-muted flex-wrap">
-                    <span>{t("modal.availableCoupons", "Available Coupons:")}</span>
-                    {availableCoupons.map((cpn) => (
+                    <span>
+                      {appliedCoupons.length > 0
+                        ? t("modal.applyExtraCoupon", "More Available Coupons:")
+                        : t("modal.availableCoupons", "Available Coupons:")}
+                    </span>
+                    {unappliedCoupons.map((cpn) => (
                       <button
                         key={cpn.id || cpn.code}
                         type="button"
                         onClick={() => handleApplyCoupon(cpn.code)}
                         className="px-2 py-0.5 rounded bg-tea-surface hover:bg-emerald-50 hover:text-emerald-800 border border-tea-border hover:border-emerald-300 font-mono font-semibold transition"
                       >
-                        {cpn.code} (
+                        + {cpn.code} (
                         {cpn.discountType === "PERCENTAGE"
                           ? `${cpn.discountValue}% OFF`
                           : cpn.discountType === "FREE_SHIPPING"
@@ -717,9 +804,9 @@ export default function WhatsAppModal({
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-            )}
+                );
+              })()}
+            </div>
           </div>
 
           {/* 4. Complete Transparent Order Bill & Final Amount */}
@@ -759,7 +846,7 @@ export default function WhatsAppModal({
               {pricing.hasDiscount && (
                 <div className="flex justify-between items-center text-emerald-800">
                   <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Special Offer ({pricing.discountPercent}% OFF)</span>
                   </span>
                   <span className="font-bold">
@@ -769,14 +856,20 @@ export default function WhatsAppModal({
               )}
 
               {/* Coupon Discount (if any) */}
-              {appliedCoupon && couponDiscount > 0 && (
+              {totalCouponDiscount > 0 && (
                 <div className="flex justify-between items-center text-emerald-800">
                   <span className="flex items-center gap-1">
-                    <Tag className="w-3 h-3 text-emerald-600" />
-                    <span>{t("modal.couponDiscount", "Coupon Discount")} ({appliedCoupon.code})</span>
+                    <Tag className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>
+                      {t("modal.couponDiscount", "Coupon Discount")}{" "}
+                      ({couponDiscountBreakdown
+                        .filter((c) => (c.calculatedDiscount || 0) > 0)
+                        .map((c) => c.code)
+                        .join(", ")})
+                    </span>
                   </span>
                   <span className="font-bold">
-                    - Rs. {couponDiscount.toLocaleString("en-US")}
+                    - Rs. {totalCouponDiscount.toLocaleString("en-US")}
                   </span>
                 </div>
               )}
@@ -796,16 +889,17 @@ export default function WhatsAppModal({
                 <div>
                   {deliveryMethod === "PICKUP" ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="line-through text-tea-muted text-xs">Rs. 350</span>
+                      <span className="line-through text-tea-muted text-xs">Rs. {standardDeliveryFee}</span>
                       <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
                         {t("modal.freeDelivery", "FREE")} (Rs. 0)
                       </strong>
                     </div>
                   ) : qualifiesForFreeDelivery ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="line-through text-tea-muted text-xs">Rs. 350</span>
+                      <span className="line-through text-tea-muted text-xs">Rs. {standardDeliveryFee}</span>
                       <strong className="text-emerald-800 font-bold uppercase text-[11px] bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
                         {t("modal.freeDelivery", "FREE")} (Rs. 0)
+                        {isFreeDeliveryCoupon ? " • Coupon" : ""}
                       </strong>
                     </div>
                   ) : (

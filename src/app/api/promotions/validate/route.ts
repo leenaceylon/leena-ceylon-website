@@ -98,6 +98,8 @@ export async function POST(req: NextRequest) {
         discountValue: coupon.discountValue,
         discountAmount: discountAmount,
         isFreeShipping: isFreeShipping,
+        minOrder: coupon.minOrder ?? null,
+        maxDiscount: coupon.maxDiscount ?? null,
       },
       message,
     });

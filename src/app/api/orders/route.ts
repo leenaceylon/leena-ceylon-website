@@ -110,10 +110,16 @@ export async function POST(req: NextRequest) {
       // 3. Increment coupon usage if applied
       if (couponCode) {
         try {
-          await tx.coupon.updateMany({
-            where: { code: String(couponCode).trim().toUpperCase() },
-            data: { timesUsed: { increment: 1 } },
-          });
+          const codes = String(couponCode)
+            .split(",")
+            .map((c) => c.trim().toUpperCase())
+            .filter(Boolean);
+          for (const code of codes) {
+            await tx.coupon.updateMany({
+              where: { code },
+              data: { timesUsed: { increment: 1 } },
+            });
+          }
         } catch (couponErr) {
           console.warn("Could not increment coupon timesUsed:", couponErr);
         }
