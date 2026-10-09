@@ -130,13 +130,14 @@ export default function HomePageContent({
 
               {/* Main Headings */}
               <div className="space-y-2">
-                <div className={`relative h-10 sm:h-14 w-44 sm:w-56 mx-auto ${isRTL ? "lg:mr-0 lg:ml-auto" : "lg:mx-0"}`}>
+                <div className={`relative h-14 sm:h-18 md:h-20 lg:h-22 w-52 sm:w-64 md:w-72 lg:w-80 mx-auto ${isRTL ? "lg:mr-0 lg:ml-auto" : "lg:mx-0"} mb-2`}>
                   <Image
                     src="/brand/logo.png"
                     alt="LEENA CEYLON"
                     fill
                     priority
-                    className="object-contain object-center lg:object-left"
+                    sizes="(max-width: 640px) 208px, (max-width: 1024px) 288px, 320px"
+                    className="object-contain object-center lg:object-left drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]"
                   />
                 </div>
                 <h1 className="font-serif text-3xl sm:text-5xl lg:text-5xl font-bold text-tea-dark tracking-tight leading-tight">
@@ -655,12 +656,13 @@ export default function HomePageContent({
       {/* 12. ABOUT LEENA CEYLON */}
       {/* ================================================== */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2.5">
-        <div className="relative h-10 sm:h-12 w-40 sm:w-48 mx-auto">
+        <div className="relative h-16 sm:h-20 md:h-24 w-52 sm:w-68 md:w-76 mx-auto transition-transform hover:scale-[1.02] duration-300 mb-1">
           <Image
             src="/brand/logo.png"
-            alt="LEENA CEYLON"
+            alt="LEENA CEYLON - Authentic Pure Ceylon Tea"
             fill
-            className="object-contain"
+            sizes="(max-width: 640px) 208px, (max-width: 1024px) 272px, 304px"
+            className="object-contain object-center drop-shadow-sm"
           />
         </div>
         <h2 className="font-serif text-xl sm:text-2xl font-bold text-tea-dark uppercase tracking-wide">
