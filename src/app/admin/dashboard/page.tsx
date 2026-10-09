@@ -28,6 +28,7 @@ import {
   UserCheck,
   Camera,
   QrCode,
+  Mail,
 } from "lucide-react";
 
 export const revalidate = 0; // Always real-time database driven
@@ -698,6 +699,7 @@ export default async function AdminDashboardPage() {
   let totalProducts = 4;
   let lowStockProducts: any[] = [];
   let recentOrders: any[] = [];
+  let unreadInquiriesCount = 0;
 
   try {
     const res = await Promise.all([
@@ -732,6 +734,7 @@ export default async function AdminDashboardPage() {
         take: 6,
         orderBy: { createdAt: "desc" },
       }),
+      prisma.inquiry.count({ where: { status: "UNREAD" } }).catch(() => 0),
     ]);
     allOrders = res[0] || [];
     todayOrders = res[1] || [];
@@ -742,6 +745,7 @@ export default async function AdminDashboardPage() {
     totalProducts = res[6] || 4;
     lowStockProducts = res[7] || [];
     recentOrders = res[8] || [];
+    unreadInquiriesCount = res[9] || 0;
   } catch (err: any) {
     console.warn("Notice: could not load all dashboard metrics:", err?.message);
   }
@@ -828,6 +832,33 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Unread Customer Inquiries Alert */}
+      {unreadInquiriesCount > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-rose-950 flex items-center gap-2">
+                <span>{unreadInquiriesCount} New Customer {unreadInquiriesCount === 1 ? "Inquiry" : "Inquiries"} Received</span>
+                <span className="px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 text-[10px] font-bold">Action Needed</span>
+              </p>
+              <p className="text-xs text-rose-800 mt-0.5">
+                Customers submitted inquiries via the Contact form awaiting your reply.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/inquiries"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs whitespace-nowrap"
+          >
+            <span>Review & Reply Inquiries</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* SALES AMOUNT MASTER PANEL (Visible to Super Admin & Manager Admin) */}
       <div className="bg-gradient-to-br from-tea-dark to-[#0f2317] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">

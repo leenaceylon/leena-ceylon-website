@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Menu,
   X,
+  Mail,
 } from "lucide-react";
 
 const ADMIN_NAV_ITEMS = [
@@ -29,6 +30,7 @@ const ADMIN_NAV_ITEMS = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Categories", href: "/admin/categories", icon: Layers },
   { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { name: "Inquiries", href: "/admin/inquiries", icon: Mail },
   { name: "Shop Order Taking", href: "/admin/shop-billing", icon: Store },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Sales Reports", href: "/admin/sales", icon: BarChart3 },
@@ -54,9 +56,24 @@ export default function AdminSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadInquiries, setUnreadInquiries] = useState(0);
 
   const isShopRep = adminUser?.role === "SHOP_ORDER_REP";
   const navItems = isShopRep ? SHOP_REP_NAV_ITEMS : ADMIN_NAV_ITEMS;
+
+  // Poll / fetch unread inquiries count for executive admin
+  useEffect(() => {
+    if (!isShopRep) {
+      fetch("/api/admin/inquiries")
+        .then((res) => res.json())
+        .then((data) => {
+          if (typeof data?.unreadCount === "number") {
+            setUnreadInquiries(data.unreadCount);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isShopRep, pathname]);
 
   // Auto-redirect SHOP_ORDER_REP away from unauthorized executive pages
   useEffect(() => {
@@ -157,14 +174,21 @@ export default function AdminSidebar({
                   key={item.name}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
                     isActive
                       ? "bg-tea-leaf text-white shadow-sm"
                       : "text-tea-pale/75 hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span>{item.name}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.name}</span>
+                  </div>
+                  {item.href === "/admin/inquiries" && unreadInquiries > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                      {unreadInquiries}
+                    </span>
+                  )}
                 </Link>
               );
             })}

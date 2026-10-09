@@ -11,6 +11,7 @@ import {
   Navigation,
   Building2,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 import { SiteSettingsMap } from "@/types";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
@@ -23,6 +24,8 @@ export default function ContactPageClient({
 }) {
   const [settings, setSettings] = useState<SiteSettingsMap>(initialSettings);
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -69,16 +72,43 @@ export default function ContactPageClient({
   const pickupBenefit =
     settings.mapPickupBenefit || "✓ Rs. 0 Delivery Charge (Free Pick-Up)";
 
+  const getStructuredWhatsAppMessage = () => {
+    return `🌿 *NEW CUSTOMER INQUIRY — LEENA CEYLON* 🌿\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n👤 *Customer Name:* ${formData.name.trim() || "Customer"}\n📞 *Contact Phone:* ${formData.phone.trim() || "Not provided"}\n✉️ *Email:* ${formData.email.trim() || "Not provided"}\n📋 *Subject:* ${formData.subject}\n💬 *Inquiry Message:*\n"${formData.message.trim()}"\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n*Direct inquiry registered on LEENA CEYLON website.*`;
+  };
+
   const whatsappDirectUrl = getWhatsAppUrl(
     whatsappNumber,
-    `Hello LEENA CEYLON,\n\nI would like to inquire about your Ceylon teas.\n\nName: ${
-      formData.name || "[My Name]"
-    }\nMessage: ${formData.message || "General Inquiry"}`
+    getStructuredWhatsAppMessage()
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit inquiry. Please try again.");
+      }
+
+      setSubmitted(true);
+
+      // Open WhatsApp with pre-filled message so admin immediately receives it on WhatsApp too
+      const waUrl = getWhatsAppUrl(whatsappNumber, getStructuredWhatsAppMessage());
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      console.error("Inquiry submission error:", err);
+      setErrorMessage(err.message || "Something went wrong. Please connect with us directly on WhatsApp.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -185,28 +215,61 @@ export default function ContactPageClient({
           </h3>
 
           {submitted ? (
-            <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-              <h4 className="font-serif font-bold text-emerald-900 text-base">
-                Message Received
+            <div className="p-6 sm:p-8 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-center space-y-3 animate-fade-in">
+              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+              <h4 className="font-serif font-bold text-emerald-950 text-lg">
+                Inquiry Sent Successfully!
               </h4>
-              <p className="text-xs text-emerald-800 max-w-sm mx-auto">
-                Thank you for contacting LEENA CEYLON. A tea specialist will review your note and respond promptly.
+              <p className="text-xs text-emerald-900 max-w-md mx-auto leading-relaxed">
+                Thank you, <strong>{formData.name}</strong>. Your inquiry has been registered in our store database and forwarded directly to the LEENA CEYLON admin team.
               </p>
-              <div className="pt-3">
+
+              <div className="p-3 bg-white/80 rounded-xl border border-emerald-200 text-left text-xs max-w-md mx-auto space-y-1">
+                <p>
+                  <span className="text-tea-muted">Subject:</span> <strong>{formData.subject}</strong>
+                </p>
+                <p>
+                  <span className="text-tea-muted">Direct Hotline:</span> <strong>{phone}</strong>
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
                   href={whatsappDirectUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition shadow-sm"
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Continue on WhatsApp
+                  <MessageSquare className="w-4 h-4 fill-current" />
+                  <span>Chat on WhatsApp Directly</span>
                 </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmitted(false);
+                    setFormData({
+                      name: "",
+                      email: "",
+                      phone: "",
+                      subject: "Product Inquiry",
+                      message: "",
+                    });
+                  }}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-tea-border text-tea-dark hover:bg-white text-xs font-semibold uppercase tracking-wider transition"
+                >
+                  Send Another Inquiry
+                </button>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl">
+                  {errorMessage}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-tea-dark mb-1">
@@ -215,10 +278,11 @@ export default function ContactPageClient({
                   <input
                     type="text"
                     required
+                    disabled={isSubmitting}
                     placeholder="Kasun Jayawardena"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf disabled:opacity-60"
                   />
                 </div>
 
@@ -229,10 +293,11 @@ export default function ContactPageClient({
                   <input
                     type="tel"
                     required
+                    disabled={isSubmitting}
                     placeholder="071 777 4717"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -244,10 +309,11 @@ export default function ContactPageClient({
                 <input
                   type="email"
                   required
+                  disabled={isSubmitting}
                   placeholder="kasun@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf disabled:opacity-60"
                 />
               </div>
 
@@ -256,9 +322,10 @@ export default function ContactPageClient({
                   Subject
                 </label>
                 <select
+                  disabled={isSubmitting}
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf disabled:opacity-60"
                 >
                   <option value="Product Inquiry">Product Inquiry</option>
                   <option value="WhatsApp Order Support">WhatsApp Order Support</option>
@@ -274,19 +341,28 @@ export default function ContactPageClient({
                 </label>
                 <textarea
                   required
+                  disabled={isSubmitting}
                   rows={4}
                   placeholder="How can we assist you with our Ceylon tea selections?"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-tea-border bg-tea-surface focus:outline-none focus:ring-2 focus:ring-tea-leaf/30 focus:border-tea-leaf disabled:opacity-60"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-6 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-card hover:shadow-hover"
+                disabled={isSubmitting}
+                className="w-full py-3.5 px-6 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-bold uppercase tracking-wider transition shadow-card hover:shadow-hover disabled:opacity-60 flex items-center justify-center gap-2"
               >
-                Send Message
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Submitting Inquiry...</span>
+                  </>
+                ) : (
+                  <span>Send Message & Notify Admin</span>
+                )}
               </button>
             </form>
           )}
