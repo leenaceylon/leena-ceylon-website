@@ -436,8 +436,8 @@ export default function HomePageContent({
             <div className="lg:col-span-6 relative">
               <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden shadow-card border-2 border-white">
                 <Image
-                  src="/uploads/1790331419153_tea-splash.jpg"
-                  alt="Sri Lankan Tea Highlands - LEENA CEYLON"
+                  src="/images/ceylon-highlands-heritage.jpg"
+                  alt="Sri Lankan Tea Highlands & Heritage - LEENA CEYLON"
                   fill
                   sizes="(max-width: 1024px) 100vw, 500px"
                   className="object-cover object-center"
