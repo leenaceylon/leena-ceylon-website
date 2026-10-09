@@ -138,13 +138,19 @@ export default function AdminInquiriesPage() {
   });
 
   const getCleanPhone = (phoneStr: string) => {
-    return phoneStr.replace(/\D/g, "").replace(/^0/, "94");
+    let digits = (phoneStr || "").replace(/\D/g, "");
+    if (digits.startsWith("0")) {
+      digits = "94" + digits.slice(1);
+    } else if (!digits.startsWith("94") && digits.length === 9) {
+      digits = "94" + digits;
+    }
+    return digits;
   };
 
   const getWhatsAppReplyUrl = (inq: Inquiry) => {
     const cleanPhone = getCleanPhone(inq.phone);
     const greeting = encodeURIComponent(
-      `Hello ${inq.name},\n\nThank you for contacting LEENA CEYLON regarding "${inq.subject}".\n\n`
+      `Hello ${inq.name},\n\nThank you for reaching out to LEENA CEYLON regarding your inquiry: "${inq.subject}".\n\n`
     );
     return `https://wa.me/${cleanPhone}?text=${greeting}`;
   };

@@ -99,13 +99,9 @@ export default function ContactPageClient({
       }
 
       setSubmitted(true);
-
-      // Open WhatsApp with pre-filled message so admin immediately receives it on WhatsApp too
-      const waUrl = getWhatsAppUrl(whatsappNumber, getStructuredWhatsAppMessage());
-      window.open(waUrl, "_blank", "noopener,noreferrer");
     } catch (err: any) {
       console.error("Inquiry submission error:", err);
-      setErrorMessage(err.message || "Something went wrong. Please connect with us directly on WhatsApp.");
+      setErrorMessage(err.message || "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -215,35 +211,30 @@ export default function ContactPageClient({
           </h3>
 
           {submitted ? (
-            <div className="p-6 sm:p-8 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-center space-y-3 animate-fade-in">
+            <div className="p-6 sm:p-8 bg-emerald-50/80 border border-emerald-200 rounded-2xl text-center space-y-4 animate-fade-in">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
               <h4 className="font-serif font-bold text-emerald-950 text-lg">
                 Inquiry Sent Successfully!
               </h4>
               <p className="text-xs text-emerald-900 max-w-md mx-auto leading-relaxed">
-                Thank you, <strong>{formData.name}</strong>. Your inquiry has been registered in our store database and forwarded directly to the LEENA CEYLON admin team.
+                Thank you, <strong>{formData.name}</strong>. Your inquiry has been delivered directly to the LEENA CEYLON administration team. We will review your message and contact you shortly.
               </p>
 
-              <div className="p-3 bg-white/80 rounded-xl border border-emerald-200 text-left text-xs max-w-md mx-auto space-y-1">
+              <div className="p-3.5 bg-white/80 rounded-xl border border-emerald-200 text-left text-xs max-w-md mx-auto space-y-1.5">
                 <p>
                   <span className="text-tea-muted">Subject:</span> <strong>{formData.subject}</strong>
                 </p>
                 <p>
-                  <span className="text-tea-muted">Direct Hotline:</span> <strong>{phone}</strong>
+                  <span className="text-tea-muted">Contact Phone:</span> <strong>{formData.phone}</strong>
                 </p>
+                {formData.email && (
+                  <p>
+                    <span className="text-tea-muted">Email:</span> <strong>{formData.email}</strong>
+                  </p>
+                )}
               </div>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                <a
-                  href={whatsappDirectUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition shadow-sm"
-                >
-                  <MessageSquare className="w-4 h-4 fill-current" />
-                  <span>Chat on WhatsApp Directly</span>
-                </a>
-
                 <button
                   type="button"
                   onClick={() => {
@@ -256,10 +247,17 @@ export default function ContactPageClient({
                       message: "",
                     });
                   }}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-tea-border text-tea-dark hover:bg-white text-xs font-semibold uppercase tracking-wider transition"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-tea-dark hover:bg-tea-forest text-white text-xs font-semibold uppercase tracking-wider transition"
                 >
                   Send Another Inquiry
                 </button>
+
+                <a
+                  href="/products"
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-tea-border text-tea-dark hover:bg-white text-xs font-semibold uppercase tracking-wider transition text-center"
+                >
+                  Browse Ceylon Teas
+                </a>
               </div>
             </div>
           ) : (
@@ -361,7 +359,7 @@ export default function ContactPageClient({
                     <span>Submitting Inquiry...</span>
                   </>
                 ) : (
-                  <span>Send Message & Notify Admin</span>
+                  <span>Send Inquiry</span>
                 )}
               </button>
             </form>
